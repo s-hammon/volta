@@ -1,13 +1,8 @@
 package entity
 
-import "github.com/google/uuid"
-
-type PatientType int
-
-const (
-	outPatient PatientType = iota + 1
-	inPatient
-	edPatient
+import (
+	"github.com/google/uuid"
+	"github.com/s-hammon/volta/internal/objects"
 )
 
 type Visit struct {
@@ -15,5 +10,5 @@ type Visit struct {
 	Accession string
 	Site      Site
 	MRN       MRN
-	Type      PatientType
+	Type      objects.PatientType
 }
