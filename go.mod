@@ -1,0 +1,5 @@
+module github.com/s-hammon/volta
+
+go 1.23.1
+
+require github.com/google/uuid v1.6.0
