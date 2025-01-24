@@ -6,24 +6,35 @@ import (
 	"strings"
 )
 
+/*
+TODO: Turn all of this into a map[string]interface{} representation of the HL7 message,
+rather than a struct. We never use the struct.
+
+Instead of Type, we can directly reference Message["MSH.9"][0].Value (with casting, of course).
+*/
 type Message struct {
+	Type     string    `json:"type"`
 	Segments []Segment `json:"segments"`
 }
 
 func NewMessage(msg []byte) (Message, error) {
 	segBytes := bytes.Split(msg, []byte("\r"))
-	if len(segBytes) == 1 {
-		segBytes = bytes.Split(msg, []byte("\n"))
-		if len(segBytes) == 1 {
-			return Message{}, fmt.Errorf("couldn't split segments, unrecognized line ending")
+	// get rid of any blank segments
+	for i, seg := range segBytes {
+		if len(seg) == 0 {
+			segBytes = append(segBytes[:i], segBytes[i+1:]...)
 		}
+	}
+
+	if len(segBytes) == 1 {
+		return Message{}, fmt.Errorf("couldn't split segments, unrecognized line ending")
 	}
 
 	msh := segBytes[0]
 	if len(msh) < 8 {
 		return Message{}, fmt.Errorf("invalid MSH segment")
 	}
-	delimField := segBytes[0][3:8]
+	delimField := msh[3:8]
 
 	delims, err := getDelimiters(delimField)
 	if err != nil {
@@ -31,6 +42,7 @@ func NewMessage(msg []byte) (Message, error) {
 	}
 
 	segments := []Segment{}
+	msgType := ""
 	for _, seg := range segBytes {
 		s, err := NewSegment(seg, delims)
 		if err != nil {
@@ -38,9 +50,44 @@ func NewMessage(msg []byte) (Message, error) {
 		}
 
 		segments = append(segments, s)
+		if s.Name == "MSH" {
+			typeField, err := s.getField("MSH.9")
+			if err != nil {
+				return Message{}, err
+			}
+			msgType = typeField.Value.([]Hl7Obj)[0].Value.(string)
+		}
 	}
 
-	return Message{Segments: segments}, nil
+	return Message{Type: msgType, Segments: segments}, nil
+}
+
+// wll handle cases where we have repeated segments--AL1, NK1, OBX, etc.
+// in those cases, the value of the segment will be a slice of maps
+func (m *Message) Map() map[string]interface{} {
+	maps := map[string]interface{}{}
+	repeats := map[string][]map[string]interface{}{}
+
+	for _, s := range m.Segments {
+		if _, exists := maps[s.Name]; exists {
+			if _, ok := repeats[s.Name]; ok {
+				repeats[s.Name] = append(repeats[s.Name], s.Map())
+			} else {
+				// it is what it is
+				repeats[s.Name] = []map[string]interface{}{
+					maps[s.Name].(map[string]interface{}),
+				}
+			}
+		} else {
+			maps[s.Name] = s.Map()
+		}
+	}
+
+	for name, segments := range repeats {
+		maps[name] = segments
+	}
+
+	return maps
 }
 
 type Segment struct {
@@ -51,7 +98,7 @@ type Segment struct {
 func NewSegment(seg []byte, delims Delimiters) (Segment, error) {
 	split := bytes.Split(seg, []byte{delims[0]})
 	if len(split) < 2 {
-		return Segment{}, fmt.Errorf("segment must have at least 2 fields")
+		return Segment{}, fmt.Errorf("segment must have at least 2 fields: %s", string(seg))
 	}
 
 	segName := string(split[0])
@@ -64,9 +111,47 @@ func NewSegment(seg []byte, delims Delimiters) (Segment, error) {
 	return Segment{Name: segName, Fields: hl7Ojbs}, nil
 }
 
+// Segment.Map returns a map[string]interface{} representation of the segment's fields
+// since Hl7Obj.Value could be another Hl7Obj, this function should be recursive
+// the base case is when Hl7Obj.Value is a string
+func (s Segment) Map() map[string]interface{} {
+	m := make(map[string]interface{})
+	for _, f := range s.Fields {
+		m = f.Map(m)
+	}
+
+	return m
+}
+
+func (s *Segment) getField(name string) (Hl7Obj, error) {
+	for _, f := range s.Fields {
+		if f.Name == name {
+			return f, nil
+		}
+	}
+
+	return Hl7Obj{}, fmt.Errorf("field %s not found", name)
+}
+
 type Hl7Obj struct {
 	Name  string      `json:"name"`
 	Value interface{} `json:"value"`
+}
+
+func (h *Hl7Obj) Map(m map[string]interface{}) map[string]interface{} {
+	if t, ok := h.Value.(string); ok {
+		m[h.Name] = t
+		return m
+	}
+
+	subMap := make(map[string]interface{})
+	t, _ := h.Value.([]Hl7Obj)
+	for _, o := range t {
+		subMap = o.Map(subMap)
+	}
+	m[h.Name] = subMap
+
+	return m
 }
 
 func parseObj(name string, delimIdx int, objs [][]byte, delimiters Delimiters) []Hl7Obj {

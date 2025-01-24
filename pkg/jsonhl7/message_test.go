@@ -23,6 +23,7 @@ func TestNewMessage(t *testing.T) {
 	}
 
 	want := Message{
+		Type: "ORU",
 		Segments: []Segment{
 			{
 				Name: "MSH",

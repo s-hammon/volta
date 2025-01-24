@@ -6,9 +6,9 @@ import (
 )
 
 type Visit struct {
-	ID        uuid.UUID
-	Accession string
-	Site      Site
-	MRN       MRN
-	Type      objects.PatientType
+	ID      uuid.UUID
+	VisitNo string
+	Site    Site
+	MRN     MRN
+	Type    objects.PatientType
 }

@@ -6,10 +6,13 @@ import (
 )
 
 type Patient struct {
-	ID   uuid.UUID
-	Name objects.Name
-	DOB  string
-	SSN  string
+	ID        uuid.UUID
+	Name      objects.Name
+	DOB       string
+	SSN       string
+	HomePhone objects.PhoneNumber
+	WorkPhone objects.PhoneNumber
+	CellPhone objects.PhoneNumber
 }
 
 type MRN struct {
