@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -8,7 +10,8 @@ import (
 type Patient struct {
 	ID        uuid.UUID
 	Name      objects.Name
-	DOB       string
+	DOB       time.Time
+	Sex       string
 	SSN       string
 	HomePhone objects.PhoneNumber
 	WorkPhone objects.PhoneNumber

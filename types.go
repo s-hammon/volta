@@ -194,25 +194,14 @@ func (e *EI) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Extended Composite ID & Name
-type XCN struct {
-	IDNumber             string `json:"1"`
-	FamilyName           string `json:"2"`
-	GivenName            string `json:"3"`
-	MiddleName           string `json:"4"`
-	Suffix               string `json:"5"`
-	Prefix               string `json:"6"`
-	Degree               string `json:"7"`
-	SourceTable          string `json:"8"`
-	AssigningAuthority   string `json:"9"`
-	NameTypeCode         string `json:"10"`
-	IdentifierCheckDigit string `json:"11"`
-	CheckDigitScheme     string `json:"12"`
-	IdentifierTypeCode   string `json:"13"`
-	AssigningFacility    string `json:"14"`
+// Hierarchic Designator
+type HD struct {
+	NamespaceID     string `json:"1"`
+	UniversalID     string `json:"2"`
+	UniversalIDType string `json:"3"`
 }
 
-func (x *XCN) UnmarshalJSON(data []byte) error {
+func (h *HD) UnmarshalJSON(data []byte) error {
 	var tempMap map[string]string
 	if err := json.Unmarshal(data, &tempMap); err != nil {
 		return err
@@ -224,33 +213,54 @@ func (x *XCN) UnmarshalJSON(data []byte) error {
 			index := matches[len(matches)-1]
 			switch index {
 			case "1":
-				x.IDNumber = v
+				h.NamespaceID = v
 			case "2":
-				x.FamilyName = v
+				h.UniversalID = v
 			case "3":
-				x.GivenName = v
+				h.UniversalIDType = v
+			}
+		}
+	}
+
+	return nil
+}
+
+// Extended Composite ID & Name
+type XCN struct {
+	IDNumber   string `json:"1"`
+	FamilyName string `json:"2"`
+	GivenName  string `json:"3"`
+	MiddleName string `json:"4"`
+	Suffix     string `json:"5"`
+	Prefix     string `json:"6"`
+	Degree     string `json:"7"`
+}
+
+func (x *XCN) UnmarshalJSON(data []byte) error {
+	var tempMap map[string]interface{}
+	if err := json.Unmarshal(data, &tempMap); err != nil {
+		return err
+	}
+
+	for k, v := range tempMap {
+		matches := re.FindStringSubmatch(k)
+		if len(matches) >= 2 {
+			index := matches[len(matches)-1]
+			switch index {
+			case "1":
+				x.IDNumber = v.(string)
+			case "2":
+				x.FamilyName = v.(string)
+			case "3":
+				x.GivenName = v.(string)
 			case "4":
-				x.MiddleName = v
+				x.MiddleName = v.(string)
 			case "5":
-				x.Suffix = v
+				x.Suffix = v.(string)
 			case "6":
-				x.Prefix = v
+				x.Prefix = v.(string)
 			case "7":
-				x.Degree = v
-			case "8":
-				x.SourceTable = v
-			case "9":
-				x.AssigningAuthority = v
-			case "10":
-				x.NameTypeCode = v
-			case "11":
-				x.IdentifierCheckDigit = v
-			case "12":
-				x.CheckDigitScheme = v
-			case "13":
-				x.IdentifierTypeCode = v
-			case "14":
-				x.AssigningFacility = v
+				x.Degree = v.(string)
 			}
 		}
 	}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -19,12 +21,74 @@ type MessageModel struct {
 	Version        string `json:"MSH.12"`
 }
 
+func (m *MessageModel) ToEntity() entity.Message {
+	dt, err := time.Parse("20060102150405", m.DateTime)
+	if err != nil {
+		dt = time.Now()
+	}
+	return entity.Message{
+		FieldSeparator: m.FieldSeparator,
+		EncodingChars:  m.EncodingChars,
+		SendingApp:     m.SendingApp,
+		SendingFac:     m.SendingFac,
+		ReceivingApp:   m.ReceivingApp,
+		ReceivingFac:   m.ReceivingFac,
+		DateTime:       dt,
+		Type:           m.Type.Type,
+		TriggerEvent:   m.Type.TriggerEvent,
+		ControlID:      m.ControlID,
+		ProcessingID:   m.ProcessingID,
+		Version:        m.Version,
+	}
+}
+
 type PatientModel struct {
-	ID   CX     `json:"PID.3"`
-	Name []XPN  `json:"PID.5"`
+	MRN  CX     `json:"PID.3"`
+	Name XPN    `json:"PID.5"`
 	DOB  string `json:"PID.7"`
 	Sex  string `json:"PID.8"`
 	SSN  string `json:"PID.19"`
+}
+
+func (p *PatientModel) ToEntity() entity.Patient {
+	name := objects.Name{
+		Last:   p.Name.LastName,
+		First:  p.Name.FirstName,
+		Middle: p.Name.MiddleName,
+		Suffix: p.Name.Suffix,
+		Prefix: p.Name.Prefix,
+		Degree: p.Name.Degree,
+	}
+
+	return entity.Patient{
+		Name: name,
+		DOB:  tryParseDOB(p.DOB),
+		Sex:  p.Sex,
+		SSN:  p.SSN,
+	}
+
+}
+
+func tryParseDOB(dob string) time.Time {
+	// try to parse dob a few different ways
+	// if none work, use current time
+	formats := []string{
+		"20060102",
+		"2006-01-02",
+		"2006/01/02",
+		"01/02/2006",
+		"01-02-2006",
+		"01/02/06",
+	}
+
+	for _, f := range formats {
+		dt, err := time.Parse(f, dob)
+		if err == nil {
+			return dt
+		}
+	}
+
+	return time.Now()
 }
 
 type VisitModel struct {
@@ -32,41 +96,97 @@ type VisitModel struct {
 	AssignedLocation PL     `json:"PV1.3"`
 }
 
-func (m *PatientModel) GetMRN() entity.MRN {
-	return entity.MRN{
-		Value:              m.ID.ID,
-		AssigningAuthority: m.ID.AssigningAuthority,
-	}
-}
+func (v *VisitModel) ToEntity(siteCode string, mrn CX) entity.Visit {
+	site := entity.Site{Code: siteCode}
 
-func (m *PatientModel) ToPatientRepository() entity.Patient {
-	// just get the first patient
-	pt := m.Name[0]
-	return entity.Patient{
-		Name: objects.Name{
-			Last:   pt.LastName,
-			First:  pt.FirstName,
-			Middle: pt.MiddleName,
+	return entity.Visit{
+		VisitNo: v.VisitNo,
+		Site:    site,
+		MRN: entity.MRN{
+			Value:              mrn.ID,
+			AssigningAuthority: mrn.AssigningAuthority,
 		},
-		DOB: m.DOB,
-		SSN: m.SSN,
 	}
 }
 
 type OrderModel struct {
-	OrderNo          EI     `json:"ORC.2"`
-	FillerOrderNo    EI     `json:"ORC.3"`
+	OrderNo          string `json:"ORC.2"`
+	FillerOrderNo    string `json:"ORC.3"`
 	OrderDT          string `json:"ORC.9"`
-	OrderingProvider PL     `json:"ORC.12"`
+	OrderingProvider XCN    `json:"ORC.12"`
+}
+
+func (o *OrderModel) ToEntity() entity.Order {
+	orderDT, err := time.Parse("20060102150405", o.OrderDT)
+	if err != nil {
+		orderDT = time.Now()
+	}
+
+	provider := entity.Physician{
+		Name: objects.Name{
+			Last:   o.OrderingProvider.FamilyName,
+			First:  o.OrderingProvider.GivenName,
+			Middle: o.OrderingProvider.MiddleName,
+			Suffix: o.OrderingProvider.Suffix,
+			Prefix: o.OrderingProvider.Prefix,
+			Degree: o.OrderingProvider.Degree,
+		},
+		// TODO: NPI
+	}
+
+	return entity.Order{
+		Accession: o.FillerOrderNo,
+		Date:      orderDT,
+		Provider:  provider,
+	}
 }
 
 type ExamModel struct {
-	Accession     EI     `json:"OBR.3"`
+	Accession     string `json:"OBR.3"`
 	Service       CE     `json:"OBR.4"`
 	Priority      string `json:"OBR.5"`
 	RequestDT     string `json:"OBR.6"`
 	ObservationDT string `json:"OBR.7"`
 	StatusDT      string `json:"OBR.22"`
+}
+
+func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {
+	procedure := entity.Procedure{
+		Code:        e.Service.Identifier,
+		Description: e.Service.Text,
+	}
+
+	site := entity.Site{Code: siteCode}
+
+	exam := entity.Exam{
+		Accession: e.Accession,
+		MRN: entity.MRN{
+			Value:              mrn.ID,
+			AssigningAuthority: mrn.AssigningAuthority,
+		},
+		Procedure: procedure,
+		Site:      site,
+	}
+
+	dt, err := time.Parse("20060102150405", e.RequestDT)
+	if err != nil {
+		dt = time.Now()
+	}
+
+	switch status {
+	case "SC":
+		exam.Scheduled = dt
+	case "IP":
+		exam.Begin = dt
+	case "CM":
+		exam.End = dt
+	case "CA":
+		exam.Cancelled = dt
+	case "RS":
+		exam.Rescheduled[dt] = struct{}{}
+	}
+
+	return exam
 }
 
 type InsuranceModel struct {

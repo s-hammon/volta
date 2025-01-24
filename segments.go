@@ -1,6 +1,8 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type ADT struct {
 	MSH MessageModel   `json:"MSH"`
