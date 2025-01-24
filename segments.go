@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type ADT struct {
@@ -26,6 +27,14 @@ func NewADT(msgMap map[string]interface{}) (ADT, error) {
 	return adt, nil
 }
 
+func (a *ADT) Materialize() {
+	// check if MSH is not empty
+	if a.MSH != (MessageModel{}) {
+		msg := a.MSH.ToEntity()
+		fmt.Println(msg)
+	}
+}
+
 type ORM struct {
 	MSH MessageModel `json:"MSH"`
 	PID PatientModel `json:"PID"`
@@ -46,6 +55,25 @@ func NewORM(msgMap map[string]interface{}) (ORM, error) {
 	}
 
 	return orm, nil
+}
+
+func (o *ORM) Materialize() {
+	siteCode := o.MSH.SendingFac
+	mrn := o.PID.MRN
+	status := o.PV1.Class
+
+	msg := o.MSH.ToEntity()
+	pt := o.PID.ToEntity()
+	visit := o.PV1.ToEntity(siteCode, mrn)
+	order := o.ORC.ToEntity()
+	exam := o.OBR.ToEntity(siteCode, status, mrn)
+
+	// print all details
+	fmt.Printf("Message:\t%+v\n", msg)
+	fmt.Printf("Patient:\t%+v\n", pt)
+	fmt.Printf("Visit:\t%+v\n", visit)
+	fmt.Printf("Order:\t%+v\n", order)
+	fmt.Printf("Exam:\t%+v\n", exam)
 }
 
 type ORU struct {

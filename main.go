@@ -48,6 +48,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("error creating ORM: %v", err)
 		}
+		orm := msg.(ORM)
+		orm.Materialize()
 	case "ADT":
 		msg, err = NewADT(message)
 		if err != nil {
