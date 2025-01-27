@@ -2,12 +2,10 @@ package entity
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Message struct {
-	ID             uuid.UUID
+	Base
 	FieldSeparator string
 	EncodingChars  string
 	SendingApp     string
