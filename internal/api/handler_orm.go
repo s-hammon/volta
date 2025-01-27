@@ -10,7 +10,7 @@ import (
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
-const segDelim = "\r"
+const SegDelim = "\r"
 
 type HealthcareService interface {
 	GetHL7V2Message(messagePath string) ([]byte, error)
@@ -30,7 +30,7 @@ func (a *API) HandleORM(ctx context.Context, msg *pubsub.Message) (models.Respon
 		return resp, errors.New("error getting HL7 message" + err.Error())
 	}
 
-	msgMap, err := hl7.NewMessage(raw, []byte(segDelim))
+	msgMap, err := hl7.NewMessage(raw, []byte(SegDelim))
 	if err != nil {
 		return resp, errors.New("error creating message from raw: " + err.Error())
 	}

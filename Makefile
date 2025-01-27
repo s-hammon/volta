@@ -1,5 +1,5 @@
 SCHEMA_DIR := sql/schema
-CONN_STR := "host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable"
+CONN_STR := ${CONN_STR}
 
 up:
 	@goose -dir ${SCHEMA_DIR} postgres ${CONN_STR} up

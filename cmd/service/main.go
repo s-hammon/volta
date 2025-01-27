@@ -3,28 +3,26 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
-	"syscall"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/s-hammon/volta/internal/api"
 	"github.com/s-hammon/volta/internal/database"
+	"github.com/s-hammon/volta/internal/models"
+	"github.com/s-hammon/volta/pkg/hl7"
 )
 
 var (
-	dbURL     string
-	projectID string
-	ormTopic  string
-	ormSub    string
+	dbURL string
+	port  string
 
 	db *pgxpool.Pool
-	ps *pubsub.Client
 	a  *api.API
 
 	wg     sync.WaitGroup
@@ -38,9 +36,11 @@ func init() {
 		log.Fatal("DATABASE_URL is required")
 	}
 
-	projectID = os.Getenv("PROJECT_ID")
-	ormTopic = os.Getenv("ORM_TOPIC")
-	ormSub = os.Getenv("ORM_SUB")
+	port = os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("defaulting to port %s", port)
+	}
 
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -48,11 +48,6 @@ func init() {
 	db, err = pgxpool.New(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("error connecting to DB: %v", err)
-	}
-
-	ps, err = pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		log.Fatalf("error creating pubsub client: %v", err)
 	}
 
 	svc, err := api.NewHCService(ctx)
@@ -68,44 +63,16 @@ func init() {
 
 func main() {
 	defer cleanup()
-
 	go handleShutdown()
 
+	http.HandleFunc("/", handleMessage)
+
 	wg.Add(1)
-	go startSubscriber(ctx, ps, ormSub, ormTopic, a.HandleORM, &wg)
-
+	log.Printf("Listening on port %s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal(err)
+	}
 	wg.Wait()
-}
-
-func startSubscriber(ctx context.Context, ps *pubsub.Client, subName, topic string, handler api.Handler, wg *sync.WaitGroup) {
-	defer wg.Done()
-	sub, err := getOrCreateSub(ctx, ps, topic, subName)
-	if err != nil {
-		log.Fatalf("error getting or creating subscription: %v", err)
-	}
-
-	log.Printf("starting subscriber: %s", sub.String())
-	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		log.Printf("received message for ORM: %s", string(m.Data))
-		resp, err := handler(ctx, m)
-		if err != nil {
-			log.Printf("error handling message: %v", err)
-			m.Nack()
-		}
-
-		b, err := json.Marshal(resp)
-		if err != nil {
-			log.Printf("error marshalling response: %v", err)
-			m.Nack()
-		}
-
-		log.Printf("message processed: %s", b)
-		m.Ack()
-	})
-
-	if err != nil {
-		log.Fatalf("error receiving message: %v", err)
-	}
 }
 
 func cleanup() {
@@ -115,48 +82,102 @@ func cleanup() {
 		db.Close()
 	}
 
-	if ps != nil {
-		ps.Close()
-	}
-
 	cancel()
 }
 
 func handleShutdown() {
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt)
 
 	<-sigChan
-	log.Println("received shutdown signal, exiting...")
+	log.Println("received shutdown signal, shutting down...")
 
 	cleanup()
 	os.Exit(0)
 }
 
-func getOrCreateSub(ctx context.Context, ps *pubsub.Client, topic, sub string) (*pubsub.Subscription, error) {
-	t := ps.Topic(topic)
-	if _, err := t.Exists(ctx); err != nil {
-		return nil, err
-	}
+type pubSubMessage struct {
+	Message struct {
+		Data       []byte                 `json:"data,omitempty"`
+		Attributes map[string]interface{} `json:"attributes,omitempty"`
+	} `json:"message"`
+	Subscription string `json:"subscription"`
+}
 
-	s := ps.Subscription(sub)
-	ok, err := s.Exists(ctx)
+func handleMessage(w http.ResponseWriter, r *http.Request) {
+	var m pubSubMessage
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		log.Printf("io.ReadAll: %v", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
 
+	if err := json.Unmarshal(body, &m); err != nil {
+		log.Printf("json.Unmarshal: %v", err)
+		log.Printf("body: %s", body)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	msgType, ok := m.Message.Attributes["type"]
 	if !ok {
-		s, err = ps.CreateSubscription(ctx, sub, pubsub.SubscriptionConfig{
-			Topic: t,
-			RetryPolicy: &pubsub.RetryPolicy{
-				MinimumBackoff: 10,
-				MaximumBackoff: 60,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
+		log.Printf("missing message_type attribute")
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	msgType, ok = msgType.(string)
+	if !ok {
+		log.Printf("invalid message_type attribute: expecting string, got %T", msgType)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
 	}
 
-	return s, nil
+	raw, err := a.Svc.GetHL7V2Message(string(m.Message.Data))
+	if err != nil {
+		log.Printf("error getting HL7 message: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	msgMap, err := hl7.NewMessage(raw, []byte(api.SegDelim))
+	if err != nil {
+		log.Printf("error creating message from raw: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	switch strings.ToUpper(msgType.(string)) {
+	case "ORM":
+		orm, err := models.NewORM(msgMap)
+		if err != nil {
+			log.Printf("error creating ORM: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		resp, err := orm.ToDB(ctx, a.DB)
+		if err != nil {
+			log.Printf("error processing ORM: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("message processed: %+v", resp)
+
+		w.WriteHeader(http.StatusCreated)
+	case "ORU":
+		oru, err := models.NewORU(msgMap)
+		if err != nil {
+			log.Printf("error creating ORU: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("received message ID: %s", oru.MSH.ControlID)
+	default:
+		log.Printf("unknown message type: %s", msgType)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 }
