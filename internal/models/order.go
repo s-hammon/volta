@@ -10,6 +10,7 @@ import (
 type OrderModel struct {
 	OrderNo          string `json:"ORC.2"`
 	FillerOrderNo    string `json:"ORC.3"`
+	Status           string `json:"ORC.5"`
 	OrderDT          string `json:"ORC.9"`
 	OrderingProvider XCN    `json:"ORC.12"`
 }
@@ -33,8 +34,9 @@ func (o *OrderModel) ToEntity() entity.Order {
 	}
 
 	return entity.Order{
-		Number:   o.FillerOrderNo,
-		Date:     orderDT,
-		Provider: provider,
+		Number:        o.FillerOrderNo,
+		CurrentStatus: o.Status,
+		Date:          orderDT,
+		Provider:      provider,
 	}
 }

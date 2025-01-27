@@ -81,11 +81,17 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["order"] = order
 
-	procedure, err := e.Procedure.ToDB(ctx, db)
+	procedure, err := e.Procedure.ToDB(ctx, site.ID, db)
 	if err != nil {
 		return handleError("error creating procedure: "+err.Error(), r, entities)
 	}
 	entities["procedure"] = procedure
+
+	exam, err := e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
+	if err != nil {
+		return handleError("error creating exam: "+err.Error(), r, entities)
+	}
+	entities["exam"] = exam
 
 	return r, nil
 }

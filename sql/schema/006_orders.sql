@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS orders (
     visit_id BIGINT REFERENCES visits(id) ON DELETE CASCADE,
     mrn_id BIGINT REFERENCES mrns(id) ON DELETE CASCADE,
     ordering_physician_id BIGINT REFERENCES physicians(id) ON DELETE CASCADE,
-    arrival TIMESTAMP NOT NULL,
+    arrival TIMESTAMP,
     number TEXT NOT NULL,
     current_status TEXT NOT NULL
 );

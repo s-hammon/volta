@@ -17,13 +17,9 @@ type Procedure struct {
 	Modality    objects.Modality
 }
 
-func (p *Procedure) ToDB(ctx context.Context, db *database.Queries) (database.Procedure, error) {
-	var sID pgtype.Int4
-	if err := sID.Scan(p.Site.ID); err != nil {
-		return database.Procedure{}, err
-	}
-
+func (p *Procedure) ToDB(ctx context.Context, siteID int32, db *database.Queries) (database.Procedure, error) {
 	res, err := db.CreateProcedure(ctx, database.CreateProcedureParams{
+		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
 		Code:        p.Code,
 		Description: p.Description,
 	})
@@ -33,7 +29,7 @@ func (p *Procedure) ToDB(ctx context.Context, db *database.Queries) (database.Pr
 
 	if extractErrCode(err) == "23505" {
 		res, err = db.GetProcedureBySiteIDCode(ctx, database.GetProcedureBySiteIDCodeParams{
-			SiteID: sID,
+			SiteID: pgtype.Int4{Int32: siteID, Valid: true},
 			Code:   p.Code,
 		})
 		if err == nil {

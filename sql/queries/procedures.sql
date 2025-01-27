@@ -1,6 +1,6 @@
 -- name: CreateProcedure :one
-INSERT INTO procedures (code, description, specialty, modality)
-VALUES ($1, $2, $3, $4)
+INSERT INTO procedures (site_id, code, description, specialty, modality)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetProcedureBySiteIDCode :one

@@ -12,12 +12,13 @@ import (
 )
 
 const createProcedure = `-- name: CreateProcedure :one
-INSERT INTO procedures (code, description, specialty, modality)
-VALUES ($1, $2, $3, $4)
+INSERT INTO procedures (site_id, code, description, specialty, modality)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_at, updated_at, site_id, code, description, specialty, modality
 `
 
 type CreateProcedureParams struct {
+	SiteID      pgtype.Int4
 	Code        string
 	Description string
 	Specialty   pgtype.Text
@@ -26,6 +27,7 @@ type CreateProcedureParams struct {
 
 func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (Procedure, error) {
 	row := q.db.QueryRow(ctx, createProcedure,
+		arg.SiteID,
 		arg.Code,
 		arg.Description,
 		arg.Specialty,
