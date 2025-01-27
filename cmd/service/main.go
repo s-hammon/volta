@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -112,6 +113,7 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+	fmt.Printf("received message of size %d bytes\n", len(body))
 
 	if err := json.Unmarshal(body, &m); err != nil {
 		log.Printf("json.Unmarshal: %v", err)

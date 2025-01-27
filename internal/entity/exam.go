@@ -2,6 +2,8 @@ package entity
 
 import (
 	"time"
+
+	"github.com/s-hammon/volta/internal/database"
 )
 
 type Exam struct {
@@ -18,3 +20,5 @@ type Exam struct {
 	Cancelled   time.Time
 	Rescheduled map[time.Time]struct{} // this should be interesting
 }
+
+func (e *Exam) ToDB() (database.Exam, error)

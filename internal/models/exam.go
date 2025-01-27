@@ -16,12 +16,13 @@ type ExamModel struct {
 }
 
 func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {
+	site := entity.Site{Code: siteCode}
+
 	procedure := entity.Procedure{
+		Site:        site,
 		Code:        e.Service.Identifier,
 		Description: e.Service.Text,
 	}
-
-	site := entity.Site{Code: siteCode}
 
 	exam := entity.Exam{
 		Accession: e.Accession,

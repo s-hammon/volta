@@ -43,6 +43,7 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	m := orm.MSH.ToEntity()
 	v := orm.PV1.ToEntity(m.SendingFac, orm.PID.MRN)
 	o := orm.ORC.ToEntity()
+	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus, orm.PID.MRN)
 
 	site, err := v.Site.ToDB(ctx, db)
 	if err != nil {
@@ -79,6 +80,12 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 		return handleError("error creating order: "+err.Error(), r, entities)
 	}
 	entities["order"] = order
+
+	procedure, err := e.Procedure.ToDB(ctx, db)
+	if err != nil {
+		return handleError("error creating procedure: "+err.Error(), r, entities)
+	}
+	entities["procedure"] = procedure
 
 	return r, nil
 }
