@@ -13,6 +13,7 @@ type ExamModel struct {
 	RequestDT     string `json:"OBR.6"`
 	ObservationDT string `json:"OBR.7"`
 	StatusDT      string `json:"OBR.22"`
+	Status        string `json:"OBR.25"`
 }
 
 func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {
