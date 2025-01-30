@@ -33,8 +33,13 @@ func (o *OrderModel) ToEntity() entity.Order {
 		// TODO: NPI
 	}
 
+	orderNo := o.OrderNo
+	if orderNo == "" {
+		orderNo = o.FillerOrderNo
+	}
+
 	return entity.Order{
-		Number:        o.FillerOrderNo,
+		Number:        orderNo,
 		CurrentStatus: o.Status,
 		Date:          orderDT,
 		Provider:      provider,

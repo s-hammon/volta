@@ -132,7 +132,6 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// TODO: make sure we're sending out Content-Length
 	size := r.Header.Get("Content-Length")
 	if size == "" {
 		log.Println("Content-Length not provided")
@@ -163,6 +162,10 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	switch m.Message.Attributes.Type {
 	case "ORM":
+		j, _ := json.Marshal(msgMap)
+		if err := os.WriteFile("orm.json", j, 0644); err != nil {
+			log.Printf("error writing ORM to file: %v", err)
+		}
 		orm, err := models.NewORM(msgMap)
 		if err != nil {
 			log.Printf("error creating ORM: %v", err)

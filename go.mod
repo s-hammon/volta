@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/pubsub v1.45.3
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/mitchellh/mapstructure v1.5.0
 	google.golang.org/api v0.217.0
 )
 

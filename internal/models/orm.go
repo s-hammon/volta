@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/s-hammon/volta/internal/database"
 )
 
@@ -24,8 +23,13 @@ type ORM struct {
 }
 
 func NewORM(msgMap map[string]interface{}) (ORM, error) {
-	var orm ORM
-	if err := mapstructure.Decode(msgMap, &orm); err != nil {
+	b, err := json.Marshal(msgMap)
+	if err != nil {
+		return ORM{}, err
+	}
+
+	orm := ORM{}
+	if err = json.Unmarshal(b, &orm); err != nil {
 		return ORM{}, err
 	}
 
@@ -60,7 +64,11 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["mrn"] = mrn
 
-	fmt.Printf("visit number before: %s\nvisit number after: %s\n", orm.PV1.VisitNo, v.VisitNo)
+	if v.VisitNo == "" {
+		// set this equal to the order number--it's the best we can do :/
+		fmt.Printf("filling visit number with order number: %s\n", o.Number)
+		v.VisitNo = o.Number
+	}
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
 	if err != nil {
 		return handleError("error creating visit: "+err.Error(), r, entities)
