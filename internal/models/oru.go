@@ -121,6 +121,11 @@ func (oru *ORU) getReport(exam database.Exam, mrn database.Mrn, radiologist data
 		body += obx.ObservationValue + "\n"
 	}
 
+	observation := ""
+	if len(oru.OBX) > 0 {
+		observation = oru.OBX[0].ObservationValue
+	}
+
 	submitDT, err := time.Parse("20060102150405", oru.OBR.ObservationDT)
 	if err != nil {
 		submitDT = time.Now()
@@ -167,7 +172,7 @@ func (oru *ORU) getReport(exam database.Exam, mrn database.Mrn, radiologist data
 		Exam:        examModel,
 		Radiologist: radModel,
 		Body:        body,
-		Impression:  oru.OBX[0].ObservationSubID,
+		Impression:  observation,
 		Status:      objects.NewReportStatus(oru.OBR.Status),
 		SubmittedDT: submitDT,
 	}

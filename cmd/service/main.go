@@ -165,7 +165,7 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("message processed: %+v", resp)
+		log.Printf("%s:\n%s", resp.Message, resp.Entities)
 
 		w.WriteHeader(http.StatusCreated)
 	case "ORU":
@@ -176,7 +176,17 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("received message ID: %s", oru.MSH.ControlID)
+		resp, err := oru.ToDB(ctx, a.DB)
+		if err != nil {
+			log.Printf("error processing ORU: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("%s:\n%s", resp.Message, resp.Entities)
+
+		w.WriteHeader(http.StatusCreated)
+
 	default:
 		log.Printf("unknown message type: %s", msgType)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
