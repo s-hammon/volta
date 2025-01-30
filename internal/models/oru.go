@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/objects"
@@ -79,15 +80,41 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["order"] = order
 
-	exam, err := e.ToDB(ctx, db)
+	procedure, err := e.Procedure.ToDB(ctx, site.ID, db)
+	if err != nil {
+		return handleError("error creating procedure: "+err.Error(), r, entities)
+	}
+	entities["procedure"] = procedure
+
+	exam, err := e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
 	if err != nil {
 		return handleError("error creating exam: "+err.Error(), r, entities)
 	}
 
-	report := oru.getReport(exam, physician)
+	reportModel := oru.getReport(exam, mrn, physician)
+	res, err := db.CreateReport(ctx, database.CreateReportParams{
+		ExamID:        pgtype.Int8{Int64: int64(exam.ID), Valid: true},
+		RadiologistID: pgtype.Int8{Int64: int64(physician.ID), Valid: true},
+		Body:          reportModel.Body,
+		Impression:    reportModel.Impression,
+		ReportStatus:  reportModel.Status.String(),
+		SubmittedDt:   pgtype.Timestamp{Time: reportModel.SubmittedDT, Valid: true},
+	})
+	if err != nil {
+		return handleError("error creating report: "+err.Error(), r, entities)
+	}
+	entities["report"] = res
+
+	b, err := json.Marshal(entities)
+	if err != nil {
+		return r, nil
+	}
+
+	r.Entities = b
+	return r, nil
 }
 
-func (oru *ORU) getReport(exam entity.Exam, radiologist entity.Physician) entity.Report {
+func (oru *ORU) getReport(exam database.Exam, mrn database.Mrn, radiologist database.Physician) entity.Report {
 	body := ""
 
 	for _, obx := range oru.OBX {
@@ -99,9 +126,46 @@ func (oru *ORU) getReport(exam entity.Exam, radiologist entity.Physician) entity
 		submitDT = time.Now()
 	}
 
+	mrnModel := entity.MRN{
+		Base: entity.Base{
+			ID:        int(mrn.ID),
+			CreatedAt: mrn.CreatedAt.Time,
+			UpdatedAt: mrn.UpdatedAt.Time,
+		},
+		Value: mrn.Mrn,
+	}
+
+	examModel := entity.Exam{
+		Base: entity.Base{
+			ID:        int(exam.ID),
+			CreatedAt: exam.CreatedAt.Time,
+			UpdatedAt: exam.UpdatedAt.Time,
+		},
+		Accession: exam.Accession,
+		MRN:       mrnModel,
+	}
+
+	radModel := entity.Physician{
+		Base: entity.Base{
+			ID:        int(radiologist.ID),
+			CreatedAt: radiologist.CreatedAt.Time,
+			UpdatedAt: radiologist.UpdatedAt.Time,
+		},
+		Name: objects.Name{
+			Last:   radiologist.LastName,
+			First:  radiologist.FirstName,
+			Middle: radiologist.MiddleName.String,
+			Suffix: radiologist.Suffix.String,
+			Prefix: radiologist.Prefix.String,
+			Degree: radiologist.Degree.String,
+		},
+		NPI:       radiologist.Npi,
+		Specialty: objects.Specialty(radiologist.Specialty.String),
+	}
+
 	return entity.Report{
-		Exam:        exam,
-		Radiologist: radiologist,
+		Exam:        examModel,
+		Radiologist: radModel,
 		Body:        body,
 		Impression:  oru.OBX[0].ObservationSubID,
 		Status:      objects.NewReportStatus(oru.OBR.Status),

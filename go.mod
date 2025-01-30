@@ -4,7 +4,6 @@ go 1.23.1
 
 require (
 	cloud.google.com/go/pubsub v1.45.3
-	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/mattn/go-sqlite3 v1.14.24
 	google.golang.org/api v0.217.0
@@ -16,12 +15,11 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/iam v1.2.2 // indirect
-	cloud.google.com/go/logging v1.13.0 // indirect
-	cloud.google.com/go/longrunning v0.6.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

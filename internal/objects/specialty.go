@@ -13,6 +13,10 @@ const (
 
 type Specialty string
 
+func NewSpecialty(s string) Specialty {
+	return Specialty(s)
+}
+
 func (s Specialty) String() string {
 	return string(s)
 }
