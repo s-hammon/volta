@@ -93,6 +93,14 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["exam"] = exam
 
+	b, err := json.Marshal(entities)
+	if err != nil {
+		return handleError("error marshalling entities: "+err.Error(), r, entities)
+	}
+	r.Entities = b
+
+	r.Message = "success"
+
 	return r, nil
 }
 
