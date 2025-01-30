@@ -15,8 +15,8 @@ type Patient struct {
 	Name objects.Name
 	DOB  time.Time
 	Sex  string
-	// TODO: format SSN
-	SSN       string
+	// TODO: encrypt SSN
+	SSN       objects.SSN
 	HomePhone objects.PhoneNumber
 	WorkPhone objects.PhoneNumber
 	CellPhone objects.PhoneNumber
@@ -40,7 +40,7 @@ func DBtoPatient(patient database.Patient) Patient {
 		},
 		DOB: patient.Dob.Time,
 		Sex: patient.Sex,
-		SSN: patient.Ssn.String,
+		SSN: objects.SSN(patient.Ssn.String),
 	}
 }
 
@@ -75,7 +75,7 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (database.Pati
 			FirstName: p.Name.First,
 			LastName:  p.Name.Last,
 			Dob:       pgtype.Date{Time: p.DOB, Valid: true},
-			Ssn:       pgtype.Text{String: p.SSN, Valid: true},
+			Ssn:       pgtype.Text{String: p.SSN.String(), Valid: true},
 		})
 		if err != nil {
 			return database.Patient{}, err
@@ -94,7 +94,7 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (database.Pati
 				Degree:     pgtype.Text{String: pt.Name.Degree, Valid: true},
 				Dob:        pgtype.Date{Time: pt.DOB, Valid: true},
 				Sex:        pt.Sex,
-				Ssn:        pgtype.Text{String: pt.SSN, Valid: true},
+				Ssn:        pgtype.Text{String: pt.SSN.String(), Valid: true},
 			})
 			if err != nil {
 				return database.Patient{}, err
@@ -147,6 +147,7 @@ func (m *MRN) ToDB(ctx context.Context, siteID int32, patientID int64, db *datab
 	res, err := db.CreateMrn(ctx, database.CreateMrnParams{
 		SiteID:    siteID,
 		PatientID: ptID,
+		Mrn:       m.Value,
 	})
 	if err == nil {
 		return res, nil
