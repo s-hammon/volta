@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mitchellh/mapstructure"
 	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/objects"
@@ -21,13 +22,8 @@ type ORU struct {
 }
 
 func NewORU(msgMap map[string]interface{}) (ORU, error) {
-	b, err := json.Marshal(msgMap)
-	if err != nil {
-		return ORU{}, err
-	}
-
-	oru := ORU{}
-	if err = json.Unmarshal(b, &oru); err != nil {
+	var oru ORU
+	if err := mapstructure.Decode(msgMap, &oru); err != nil {
 		return ORU{}, err
 	}
 

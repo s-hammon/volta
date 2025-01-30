@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/s-hammon/volta/internal/database"
 )
 
@@ -22,13 +23,8 @@ type ORM struct {
 }
 
 func NewORM(msgMap map[string]interface{}) (ORM, error) {
-	b, err := json.Marshal(msgMap)
-	if err != nil {
-		return ORM{}, err
-	}
-
-	orm := ORM{}
-	if err = json.Unmarshal(b, &orm); err != nil {
+	var orm ORM
+	if err := mapstructure.Decode(msgMap, &orm); err != nil {
 		return ORM{}, err
 	}
 

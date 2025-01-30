@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"slices"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -99,38 +99,50 @@ func handleShutdown() {
 
 type pubSubMessage struct {
 	Message struct {
-		Data       []byte                 `json:"data,omitempty"`
-		Attributes map[string]interface{} `json:"attributes,omitempty"`
+		Data       []byte     `json:"data,omitempty"`
+		Attributes attributes `json:"attributes,omitempty"`
 	} `json:"message"`
 	Subscription string `json:"subscription"`
 }
 
-func handleMessage(w http.ResponseWriter, r *http.Request) {
+func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 	var m pubSubMessage
-	body, err := io.ReadAll(r.Body)
+	decoder := json.NewDecoder(body)
+	if err := decoder.Decode(&m); err != nil {
+		return nil, err
+	}
+	if m.Message.Data == nil {
+		return nil, errors.New("empty message data")
+	}
+	if !slices.Contains([]string{"ORM", "ORU", "ADT"}, m.Message.Attributes.Type) {
+		return nil, errors.New("unknown message type")
+	}
+
+	return &m, nil
+}
+
+type attributes struct {
+	Type string `json:"type"`
+}
+
+func handleMessage(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		http.Error(w, "Empty Request Body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	// TODO: make sure we're sending out Content-Length
+	size := r.Header.Get("Content-Length")
+	if size == "" {
+		log.Println("Content-Length not provided")
+	} else {
+		log.Printf("received message of size %s bytes\n", size)
+	}
+
+	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
-		log.Printf("io.ReadAll: %v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	fmt.Printf("received message of size %d bytes\n", len(body))
-
-	if err := json.Unmarshal(body, &m); err != nil {
-		log.Printf("json.Unmarshal: %v", err)
-		log.Printf("body: %s", body)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	msgType, ok := m.Message.Attributes["type"]
-	if !ok {
-		log.Printf("missing message_type attribute")
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	msgType, ok = msgType.(string)
-	if !ok {
-		log.Printf("invalid message_type attribute: expecting string, got %T", msgType)
+		log.Printf("error parsing message: %v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
@@ -149,7 +161,7 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch strings.ToUpper(msgType.(string)) {
+	switch m.Message.Attributes.Type {
 	case "ORM":
 		orm, err := models.NewORM(msgMap)
 		if err != nil {
@@ -188,7 +200,7 @@ func handleMessage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 
 	default:
-		log.Printf("unknown message type: %s", msgType)
+		log.Printf("unknown message type: %s", m.Message.Attributes.Type)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
