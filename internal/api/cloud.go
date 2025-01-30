@@ -23,7 +23,7 @@ func (h *hcService) GetHL7V2Message(messagePath string) ([]byte, error) {
 	messageService := h.Projects.Locations.Datasets.Hl7V2Stores.Messages
 	message, err := messageService.Get(messagePath).Do()
 	if err != nil {
-		return nil, fmt.Errorf("messageService.Get: %w", err)
+		return nil, fmt.Errorf("messageService.Get: got error trying to fetch message %s (%w)", messagePath, err)
 	}
 
 	return base64.StdEncoding.DecodeString(message.Data)

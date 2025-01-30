@@ -28,3 +28,24 @@ func (n *Name) Full() string {
 func (n *Name) Record() string {
 	return n.Last + ", " + n.First + " " + n.Middle
 }
+
+func (n *Name) Coalesce(other Name) {
+	if other.Last != "" {
+		n.Last = other.Last
+	}
+	if other.First != "" {
+		n.First = other.First
+	}
+	if other.Middle != "" {
+		n.Middle = other.Middle
+	}
+	if other.Suffix != "" {
+		n.Suffix = other.Suffix
+	}
+	if other.Prefix != "" {
+		n.Prefix = other.Prefix
+	}
+	if other.Degree != "" {
+		n.Degree = other.Degree
+	}
+}

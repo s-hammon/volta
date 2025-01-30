@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/s-hammon/volta/internal/database"
@@ -59,6 +60,7 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["mrn"] = mrn
 
+	fmt.Printf("visit number before: %s\nvisit number after: %s\n", orm.PV1.VisitNo, v.VisitNo)
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
 	if err != nil {
 		return handleError("error creating visit: "+err.Error(), r, entities)
