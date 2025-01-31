@@ -29,7 +29,7 @@ func (p *PatientModel) ToEntity() entity.Patient {
 		Name: name,
 		DOB:  tryParseDOB(p.DOB),
 		Sex:  p.Sex,
-		SSN:  p.SSN,
+		SSN:  objects.NewSSN(p.SSN),
 	}
 
 }

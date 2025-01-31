@@ -75,11 +75,30 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, e
 }
 
 const getExamBySiteIDAccession = `-- name: GetExamBySiteIDAccession :one
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
-FROM exams
+SELECT
+    e.id, e.created_at, e.updated_at, e.outside_system_id, e.order_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt,
+    m.created_at AS mrn_created_at,
+    m.updated_at AS mrn_updated_at,
+    m.mrn AS mrn_value,
+    p.created_at AS procedure_created_at,
+    p.updated_at AS procedure_updated_at,
+    p.code AS procedure_code,
+    p.description AS procedure_description,
+    p.specialty AS procedure_specialty,
+    p.modality AS procedure_modality,
+    s.created_at AS site_created_at,
+    s.updated_at AS site_updated_at,
+    s.code AS site_code,
+    s.name AS site_name,
+    s.address AS site_address,
+    s.is_cms AS site_is_cms
+FROM exams AS e
+LEFT JOIN mrns AS m ON e.mrn_id = m.id
+LEFT JOIN procedures AS p ON e.procedure_id = p.id and e.site_id = p.site_id
+LEFT JOIN sites AS s ON e.site_id = s.id
 WHERE
-    site_id = $1
-    AND accession = $2
+    e.site_id = $1
+    AND e.accession = $2
 `
 
 type GetExamBySiteIDAccessionParams struct {
@@ -87,9 +106,41 @@ type GetExamBySiteIDAccessionParams struct {
 	Accession string
 }
 
-func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySiteIDAccessionParams) (Exam, error) {
+type GetExamBySiteIDAccessionRow struct {
+	ID                   int64
+	CreatedAt            pgtype.Timestamp
+	UpdatedAt            pgtype.Timestamp
+	OutsideSystemID      pgtype.Int4
+	OrderID              pgtype.Int8
+	VisitID              pgtype.Int8
+	MrnID                pgtype.Int8
+	SiteID               pgtype.Int4
+	ProcedureID          pgtype.Int4
+	Accession            string
+	CurrentStatus        string
+	ScheduleDt           pgtype.Timestamp
+	BeginExamDt          pgtype.Timestamp
+	EndExamDt            pgtype.Timestamp
+	MrnCreatedAt         pgtype.Timestamp
+	MrnUpdatedAt         pgtype.Timestamp
+	MrnValue             pgtype.Text
+	ProcedureCreatedAt   pgtype.Timestamp
+	ProcedureUpdatedAt   pgtype.Timestamp
+	ProcedureCode        pgtype.Text
+	ProcedureDescription pgtype.Text
+	ProcedureSpecialty   pgtype.Text
+	ProcedureModality    pgtype.Text
+	SiteCreatedAt        pgtype.Timestamp
+	SiteUpdatedAt        pgtype.Timestamp
+	SiteCode             pgtype.Text
+	SiteName             pgtype.Text
+	SiteAddress          pgtype.Text
+	SiteIsCms            pgtype.Bool
+}
+
+func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySiteIDAccessionParams) (GetExamBySiteIDAccessionRow, error) {
 	row := q.db.QueryRow(ctx, getExamBySiteIDAccession, arg.SiteID, arg.Accession)
-	var i Exam
+	var i GetExamBySiteIDAccessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -105,13 +156,29 @@ func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySit
 		&i.ScheduleDt,
 		&i.BeginExamDt,
 		&i.EndExamDt,
+		&i.MrnCreatedAt,
+		&i.MrnUpdatedAt,
+		&i.MrnValue,
+		&i.ProcedureCreatedAt,
+		&i.ProcedureUpdatedAt,
+		&i.ProcedureCode,
+		&i.ProcedureDescription,
+		&i.ProcedureSpecialty,
+		&i.ProcedureModality,
+		&i.SiteCreatedAt,
+		&i.SiteUpdatedAt,
+		&i.SiteCode,
+		&i.SiteName,
+		&i.SiteAddress,
+		&i.SiteIsCms,
 	)
 	return i, err
 }
 
-const updateExamByID = `-- name: UpdateExamByID :one
+const updateExam = `-- name: UpdateExam :one
 UPDATE exams
 SET
+    updated_at = CURRENT_TIMESTAMP,
     order_id = $2,
     visit_id = $3,
     mrn_id = $4,
@@ -121,13 +188,12 @@ SET
     current_status = $8,
     schedule_dt = $9,
     begin_exam_dt = $10,
-    end_exam_dt = $11,
-    updated_at = CURRENT_TIMESTAMP
+    end_exam_dt = $11
 WHERE id = $1
 RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
 `
 
-type UpdateExamByIDParams struct {
+type UpdateExamParams struct {
 	ID            int64
 	OrderID       pgtype.Int8
 	VisitID       pgtype.Int8
@@ -141,8 +207,8 @@ type UpdateExamByIDParams struct {
 	EndExamDt     pgtype.Timestamp
 }
 
-func (q *Queries) UpdateExamByID(ctx context.Context, arg UpdateExamByIDParams) (Exam, error) {
-	row := q.db.QueryRow(ctx, updateExamByID,
+func (q *Queries) UpdateExam(ctx context.Context, arg UpdateExamParams) (Exam, error) {
+	row := q.db.QueryRow(ctx, updateExam,
 		arg.ID,
 		arg.OrderID,
 		arg.VisitID,

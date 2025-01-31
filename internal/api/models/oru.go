@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -62,6 +63,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	entities["mrn"] = mrn
 
+	fmt.Printf("visit number before: %s\nvisit number after: %s\n", oru.PV1.VisitNo, v.VisitNo)
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
 	if err != nil {
 		return handleError("error creating visit: "+err.Error(), r, entities)
@@ -118,7 +120,9 @@ func (oru *ORU) getReport(exam database.Exam, mrn database.Mrn, radiologist data
 	body := ""
 
 	for _, obx := range oru.OBX {
-		body += obx.ObservationValue + "\n"
+		if obx.ObservationValue != "" {
+			body += obx.ObservationValue + "\n"
+		}
 	}
 
 	observation := ""

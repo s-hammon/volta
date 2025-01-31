@@ -138,3 +138,76 @@ func (q *Queries) GetPatientByNameSSN(ctx context.Context, arg GetPatientByNameS
 	)
 	return i, err
 }
+
+const updatePatient = `-- name: UpdatePatient :one
+UPDATE patients
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    first_name = $2,
+    last_name = $3,
+    middle_name = $4,
+    suffix = $5,
+    prefix = $6,
+    degree = $7,
+    dob = $8,
+    sex = $9,
+    ssn = $10,
+    home_phone = $11,
+    work_phone = $12,
+    cell_phone = $13
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+`
+
+type UpdatePatientParams struct {
+	ID         int64
+	FirstName  string
+	LastName   string
+	MiddleName pgtype.Text
+	Suffix     pgtype.Text
+	Prefix     pgtype.Text
+	Degree     pgtype.Text
+	Dob        pgtype.Date
+	Sex        string
+	Ssn        pgtype.Text
+	HomePhone  pgtype.Text
+	WorkPhone  pgtype.Text
+	CellPhone  pgtype.Text
+}
+
+func (q *Queries) UpdatePatient(ctx context.Context, arg UpdatePatientParams) (Patient, error) {
+	row := q.db.QueryRow(ctx, updatePatient,
+		arg.ID,
+		arg.FirstName,
+		arg.LastName,
+		arg.MiddleName,
+		arg.Suffix,
+		arg.Prefix,
+		arg.Degree,
+		arg.Dob,
+		arg.Sex,
+		arg.Ssn,
+		arg.HomePhone,
+		arg.WorkPhone,
+		arg.CellPhone,
+	)
+	var i Patient
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.MiddleName,
+		&i.Suffix,
+		&i.Prefix,
+		&i.Degree,
+		&i.Dob,
+		&i.Sex,
+		&i.Ssn,
+		&i.HomePhone,
+		&i.WorkPhone,
+		&i.CellPhone,
+	)
+	return i, err
+}

@@ -2,77 +2,94 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/s-hammon/volta/internal/api"
 	"github.com/s-hammon/volta/internal/database"
-	"github.com/s-hammon/volta/internal/models"
-	"github.com/s-hammon/volta/pkg/hl7"
 )
 
 var (
-	dbURL string
-	port  string
+	dbURL        string
+	domain       string
+	port         string
+	hl7AuthToken string
+	baseURL      string
 
 	db *pgxpool.Pool
-	a  *api.API
+	a  *http.ServeMux
 
-	wg     sync.WaitGroup
-	ctx    context.Context
-	cancel context.CancelFunc
+	wg      sync.WaitGroup
+	ctx     context.Context
+	cancel  context.CancelFunc
+	timeout time.Duration
 )
 
 func init() {
+	// TODO: put next 3 as CLI args
 	dbURL = os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is required")
 	}
 
+	host := os.Getenv("SERVICE_HOST")
+	if host == "" {
+		host = "localhost"
+		log.Println("using default host")
+	}
+
 	port = os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		log.Printf("defaulting to port %s", port)
+		log.Printf("defaulting to port %s\n", port)
+	}
+
+	hl7AuthToken = os.Getenv("HL7_AUTH_TOKEN")
+	if hl7AuthToken == "" {
+		log.Fatal("HL7_AUTH_TOKEN is required")
+	}
+
+	baseURL = os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://healthcare.googleapis.com/v1"
+		log.Printf("defaulting to base URL %s\n", baseURL)
+	}
+
+	timeout = 5 * time.Second
+
+	client, err := api.NewHl7Client(baseURL, hl7AuthToken, timeout)
+	if err != nil {
+		log.Fatalf("error creating HL7 client: %v", err)
 	}
 
 	ctx, cancel = context.WithCancel(context.Background())
 
-	var err error
 	db, err = pgxpool.New(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("error connecting to DB: %v", err)
 	}
 
-	svc, err := api.NewHCService(ctx)
-	if err != nil {
-		log.Fatalf("error creating HC service: %v", err)
-	}
-
-	a = &api.API{
-		DB:  database.New(db),
-		Svc: svc,
-	}
+	a = api.New(database.New(db), client)
 }
 
 func main() {
 	defer cleanup()
 	go handleShutdown()
 
-	http.HandleFunc("/", handleMessage)
+	srv := &http.Server{
+		Addr:    net.JoinHostPort(domain, port),
+		Handler: a,
+	}
 
 	wg.Add(1)
 	log.Printf("Listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatal(err)
-	}
+	log.Fatal(srv.ListenAndServe())
 	wg.Wait()
 }
 
@@ -95,101 +112,4 @@ func handleShutdown() {
 
 	cleanup()
 	os.Exit(0)
-}
-
-type pubSubMessage struct {
-	Message struct {
-		Data       []byte                 `json:"data,omitempty"`
-		Attributes map[string]interface{} `json:"attributes,omitempty"`
-	} `json:"message"`
-	Subscription string `json:"subscription"`
-}
-
-func handleMessage(w http.ResponseWriter, r *http.Request) {
-	var m pubSubMessage
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("io.ReadAll: %v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	fmt.Printf("received message of size %d bytes\n", len(body))
-
-	if err := json.Unmarshal(body, &m); err != nil {
-		log.Printf("json.Unmarshal: %v", err)
-		log.Printf("body: %s", body)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	msgType, ok := m.Message.Attributes["type"]
-	if !ok {
-		log.Printf("missing message_type attribute")
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	msgType, ok = msgType.(string)
-	if !ok {
-		log.Printf("invalid message_type attribute: expecting string, got %T", msgType)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	raw, err := a.Svc.GetHL7V2Message(string(m.Message.Data))
-	if err != nil {
-		log.Printf("error getting HL7 message: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	msgMap, err := hl7.NewMessage(raw, []byte(api.SegDelim))
-	if err != nil {
-		log.Printf("error creating message from raw: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	switch strings.ToUpper(msgType.(string)) {
-	case "ORM":
-		orm, err := models.NewORM(msgMap)
-		if err != nil {
-			log.Printf("error creating ORM: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		resp, err := orm.ToDB(ctx, a.DB)
-		if err != nil {
-			log.Printf("error processing ORM: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("%s:\n%s", resp.Message, resp.Entities)
-
-		w.WriteHeader(http.StatusCreated)
-	case "ORU":
-		oru, err := models.NewORU(msgMap)
-		if err != nil {
-			log.Printf("error creating ORU: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		resp, err := oru.ToDB(ctx, a.DB)
-		if err != nil {
-			log.Printf("error processing ORU: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("%s:\n%s", resp.Message, resp.Entities)
-
-		w.WriteHeader(http.StatusCreated)
-
-	default:
-		log.Printf("unknown message type: %s", msgType)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
 }

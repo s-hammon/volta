@@ -38,6 +38,7 @@ func NewMessage(msg []byte, segDelim []byte) (Message, error) {
 	delimiters := extractDelimiters(msh)
 
 	message := make(Message, len(segBytes))
+	repeatSegments := []map[string]interface{}{}
 	for _, seg := range segBytes {
 		segFields := bytes.Split(seg, delimiters[0])
 		if len(segFields) < 2 {
@@ -54,7 +55,15 @@ func NewMessage(msg []byte, segDelim []byte) (Message, error) {
 		if err != nil {
 			return Message{}, err
 		}
+		if segName == "OBX" {
+			repeatSegments = append(repeatSegments, parsed)
+			continue
+		}
 		message[segName] = parsed
+	}
+
+	if len(repeatSegments) > 0 {
+		message["OBX"] = repeatSegments
 	}
 
 	return message, nil

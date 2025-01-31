@@ -107,3 +107,60 @@ func (q *Queries) GetPhysicianByNameNPI(ctx context.Context, arg GetPhysicianByN
 	)
 	return i, err
 }
+
+const updatePhysician = `-- name: UpdatePhysician :one
+UPDATE physicians
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    first_name = $2,
+    last_name = $3,
+    middle_name = $4,
+    suffix = $5,
+    prefix = $6,
+    degree = $7,
+    npi = $8,
+    specialty = $9
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+`
+
+type UpdatePhysicianParams struct {
+	ID         int64
+	FirstName  string
+	LastName   string
+	MiddleName pgtype.Text
+	Suffix     pgtype.Text
+	Prefix     pgtype.Text
+	Degree     pgtype.Text
+	Npi        string
+	Specialty  pgtype.Text
+}
+
+func (q *Queries) UpdatePhysician(ctx context.Context, arg UpdatePhysicianParams) (Physician, error) {
+	row := q.db.QueryRow(ctx, updatePhysician,
+		arg.ID,
+		arg.FirstName,
+		arg.LastName,
+		arg.MiddleName,
+		arg.Suffix,
+		arg.Prefix,
+		arg.Degree,
+		arg.Npi,
+		arg.Specialty,
+	)
+	var i Physician
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.MiddleName,
+		&i.Suffix,
+		&i.Prefix,
+		&i.Degree,
+		&i.Npi,
+		&i.Specialty,
+	)
+	return i, err
+}

@@ -14,6 +14,9 @@ type VisitModel struct {
 func (v *VisitModel) ToEntity(siteCode string, mrn CX) entity.Visit {
 	site := entity.Site{Code: siteCode}
 
+	// TODO: for STRIC, need to use something else for VisitNo
+	// since apparently they do not use it...
+
 	visit := entity.Visit{
 		VisitNo: v.VisitNo,
 		Site:    site,

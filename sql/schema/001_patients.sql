@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS patients (
     cell_phone TEXT
 );
 
+ALTER TABLE patients ADD CONSTRAINT patients_ssn_unique UNIQUE (ssn);
 CREATE INDEX patients_dob_idx ON patients(dob ASC);
 CREATE INDEX patients_gender_idx ON patients(sex ASC);
 CREATE INDEX patients_name_idx ON patients(last_name ASC, first_name ASC);
-ALTER TABLE patients ADD CONSTRAINT patients_ssn_unique UNIQUE (ssn);
 
 CREATE TABLE IF NOT EXISTS mrns (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,

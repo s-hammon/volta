@@ -60,11 +60,23 @@ func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (Visit
 }
 
 const getVisitBySiteIdNumber = `-- name: GetVisitBySiteIdNumber :one
-SELECT id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type
-FROM visits
+SELECT
+    v.id, v.created_at, v.updated_at, v.outside_system_id, v.site_id, v.mrn_id, v.number, v.patient_type,
+    s.created_at as site_created_at,
+    s.updated_at as site_updated_at,
+    s.code as site_code,
+    s.name as site_name,
+    s.address as site_address,
+    s.is_cms as site_is_cms,
+    m.created_at as mrn_created_at,
+    m.updated_at as mrn_updated_at,
+    m.mrn as mrn_value
+FROM visits as v
+LEFT JOIN sites as s ON v.site_id = s.id
+LEFT JOIN mrns as m ON v.mrn_id = m.id
 WHERE
-    site_id = $1
-    AND number = $2
+    v.site_id = $1
+    AND v.number = $2
 `
 
 type GetVisitBySiteIdNumberParams struct {
@@ -72,8 +84,82 @@ type GetVisitBySiteIdNumberParams struct {
 	Number string
 }
 
-func (q *Queries) GetVisitBySiteIdNumber(ctx context.Context, arg GetVisitBySiteIdNumberParams) (Visit, error) {
+type GetVisitBySiteIdNumberRow struct {
+	ID              int64
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+	OutsideSystemID pgtype.Int4
+	SiteID          pgtype.Int4
+	MrnID           pgtype.Int8
+	Number          string
+	PatientType     int16
+	SiteCreatedAt   pgtype.Timestamp
+	SiteUpdatedAt   pgtype.Timestamp
+	SiteCode        pgtype.Text
+	SiteName        pgtype.Text
+	SiteAddress     pgtype.Text
+	SiteIsCms       pgtype.Bool
+	MrnCreatedAt    pgtype.Timestamp
+	MrnUpdatedAt    pgtype.Timestamp
+	MrnValue        pgtype.Text
+}
+
+func (q *Queries) GetVisitBySiteIdNumber(ctx context.Context, arg GetVisitBySiteIdNumberParams) (GetVisitBySiteIdNumberRow, error) {
 	row := q.db.QueryRow(ctx, getVisitBySiteIdNumber, arg.SiteID, arg.Number)
+	var i GetVisitBySiteIdNumberRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.SiteID,
+		&i.MrnID,
+		&i.Number,
+		&i.PatientType,
+		&i.SiteCreatedAt,
+		&i.SiteUpdatedAt,
+		&i.SiteCode,
+		&i.SiteName,
+		&i.SiteAddress,
+		&i.SiteIsCms,
+		&i.MrnCreatedAt,
+		&i.MrnUpdatedAt,
+		&i.MrnValue,
+	)
+	return i, err
+}
+
+const updateVisit = `-- name: UpdateVisit :one
+UPDATE visits
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    outside_system_id = $2,
+    site_id = $3,
+    mrn_id = $4,
+    number = $5,
+    patient_type = $6
+WHERE id = $1
+RETURNING id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type
+`
+
+type UpdateVisitParams struct {
+	ID              int64
+	OutsideSystemID pgtype.Int4
+	SiteID          pgtype.Int4
+	MrnID           pgtype.Int8
+	Number          string
+	PatientType     int16
+}
+
+func (q *Queries) UpdateVisit(ctx context.Context, arg UpdateVisitParams) (Visit, error) {
+	row := q.db.QueryRow(ctx, updateVisit,
+		arg.ID,
+		arg.OutsideSystemID,
+		arg.SiteID,
+		arg.MrnID,
+		arg.Number,
+		arg.PatientType,
+	)
 	var i Visit
 	err := row.Scan(
 		&i.ID,
