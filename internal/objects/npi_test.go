@@ -47,3 +47,14 @@ func TestNewNPI(t *testing.T) {
 		})
 	}
 }
+
+func TestNPIString(t *testing.T) {
+	npi, err := NewNPI("1234567890")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := npi.String(); got != "1234567890" {
+		t.Errorf("got '%v', want '1234567890'", got)
+	}
+}

@@ -45,3 +45,41 @@ func TestNewPhoneNumber(t *testing.T) {
 		})
 	}
 }
+
+func TestPhoneNumberString(t *testing.T) {
+	num, err := NewPhoneNumber("1234567890")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got := num.String(); got != "1234567890" {
+		t.Errorf("got '%v', want '1234567890'", got)
+	}
+}
+
+func TestPhoneNumberPrint(t *testing.T) {
+	tests := []struct {
+		name string
+		num  PhoneNumber
+		want string
+	}{
+		{
+			name: "10 digit number",
+			num:  PhoneNumber(1234567890),
+			want: "123-456-7890",
+		},
+		{
+			name: "11 digit number",
+			num:  PhoneNumber(11234567890),
+			want: "+1 123-456-7890",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.num.Print(); got != tt.want {
+				t.Errorf("got '%v', want '%v'", got, tt.want)
+			}
+		})
+	}
+}

@@ -28,7 +28,7 @@ func NewSSN(s string) SSN {
 	if ssn == "123456789" || ssn == "987654321" {
 		return ""
 	}
-	if ssn[0:3] == ssn[3:5] && ssn[3:5] == ssn[5:9] {
+	if ssn == strings.Repeat(string(ssn[0]), 9) {
 		return ""
 	}
 
