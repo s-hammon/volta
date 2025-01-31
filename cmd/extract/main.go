@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/s-hammon/volta/internal/models"
+	"github.com/s-hammon/volta/internal/api/models"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 

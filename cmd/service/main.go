@@ -14,8 +14,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/s-hammon/volta/internal/api"
+	"github.com/s-hammon/volta/internal/api/models"
 	"github.com/s-hammon/volta/internal/database"
-	"github.com/s-hammon/volta/internal/models"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
