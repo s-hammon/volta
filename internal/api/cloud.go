@@ -1,13 +1,16 @@
 package api
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"slices"
-	"time"
+
+	"google.golang.org/api/healthcare/v1"
+	"google.golang.org/api/option"
 )
 
 type pubSubMessage struct {
@@ -38,55 +41,23 @@ func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 	return &m, nil
 }
 
-type Hl7Client struct {
-	httpClient *http.Client
-	BaseURL    string
-	AuthToken  string
-}
+type Hl7Client healthcare.Service
 
-func NewHl7Client(baseURL, authToken string, timeout time.Duration) (*Hl7Client, error) {
-	return &Hl7Client{
-		httpClient: &http.Client{Timeout: timeout},
-		BaseURL:    baseURL,
-		AuthToken:  authToken,
-	}, nil
+func NewHl7Client(ctx context.Context, opts ...option.ClientOption) (*Hl7Client, error) {
+	client, err := healthcare.NewService(ctx, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating HL7 client: %w", err)
+	}
+
+	return (*Hl7Client)(client), nil
 }
 
 func (h *Hl7Client) GetHL7V2Message(messagePath string) ([]byte, error) {
-	url := fmt.Sprintf("%s/%s", h.BaseURL, messagePath)
-	request, err := http.NewRequest("GET", url, nil)
+	messagesSvc := h.Projects.Locations.Datasets.Hl7V2Stores.Messages
+	msg, err := messagesSvc.Get(messagePath).Do()
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
+		return nil, fmt.Errorf("error getting HL7 message: %w", err)
 	}
 
-	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", h.AuthToken))
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
-
-	response, err := h.httpClient.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("error sending request: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", response.StatusCode)
-	}
-
-	var message struct {
-		Data []byte `json:"data"`
-		Type string `json:"messageType"`
-	}
-
-	decoder := json.NewDecoder(response.Body)
-	if err := decoder.Decode(&message); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
-	}
-	if message.Data == nil {
-		return nil, errors.New("empty message data")
-	}
-	if !slices.Contains([]string{"ORM", "ORU", "ADT"}, message.Type) {
-		return nil, errors.New("unknown message type")
-	}
-
-	return message.Data, nil
+	return base64.StdEncoding.DecodeString(msg.Data)
 }

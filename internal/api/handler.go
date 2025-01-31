@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/s-hammon/volta/internal/api/models"
 	"github.com/s-hammon/volta/internal/database"
@@ -15,6 +18,32 @@ const SegDelim = "\r"
 
 type HealthcareClient interface {
 	GetHL7V2Message(messagePath string) ([]byte, error)
+}
+
+type logMsg struct {
+	notifSize string
+	hl7Size   string
+	result    string
+	elapsed   time.Duration
+}
+
+func (l *logMsg) Log(result string) {
+	l.result = result
+	log.Info().
+		Str("notifSize", l.notifSize).
+		Str("hl7Size", l.hl7Size).
+		Str("result", l.result).
+		Dur("elapsed", l.elapsed).
+		Msg("message processed")
+}
+
+func (l *logMsg) Error(err error, sendingFac, ControlID string) {
+	l.result = err.Error()
+	log.Error().
+		Err(err).
+		Str("sendingFacility", sendingFac).
+		Str("controlID", ControlID).
+		Msg("could not process message")
 }
 
 type API struct {
@@ -38,8 +67,12 @@ func New(db *database.Queries, client HealthcareClient) *http.ServeMux {
 }
 
 func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
+	// time this function
+	start := time.Now()
+	var logMsg logMsg
+
 	if r.Body == nil {
-		log.Printf("error reading request: %v", errors.New("empty request body"))
+		logMsg.Error(errors.New("empty request body"), "", "")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -47,29 +80,27 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	size := r.Header.Get("Content-Length")
 	if size != "" {
-		log.Printf("received message of size %s bytes\n", size)
-	} else {
-		log.Println("received message")
+		logMsg.notifSize = size
 	}
 
 	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
-		log.Printf("error parsing request: %v", err)
+		logMsg.Error(err, "", "")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	raw, err := a.Client.GetHL7V2Message(string(m.Message.Data))
 	if err != nil {
-		log.Printf("error getting HL7 message: %v", err)
+		logMsg.Error(err, "", "")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Printf("got HL7 message: %s", raw)
+	logMsg.hl7Size = strconv.Itoa(len(raw))
 
 	msgMap, err := hl7.NewMessage(raw, []byte(SegDelim))
 	if err != nil {
-		log.Printf("error creating message from raw: %v", err)
+		logMsg.Error(err, "", "")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -78,45 +109,50 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 	case "ORM":
 		orm, err := models.NewORM(msgMap)
 		if err != nil {
-			log.Printf("error creating ORM: %v", err)
+			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
+		// TODO: get rid of first return value
 		_, err = orm.ToDB(context.Background(), a.DB)
 		if err != nil {
-			log.Printf("error processing ORM: %v", err)
+			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		// TOOD: advanced logging
-		log.Printf("ORM processed successfully")
+		logMsg.result = "ORM processed successfully"
 	case "ORU":
 		oru, err := models.NewORU(msgMap)
 		if err != nil {
-			log.Printf("error creating ORU: %v", err)
+			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		_, err = oru.ToDB(context.Background(), a.DB)
 		if err != nil {
-			log.Printf("error processing ORU: %v", err)
+			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("ORU processed successfully")
+		logMsg.result = "ORU processed successfully"
 	case "ADT":
-		log.Printf("ADT message type not implemented yet")
+		log.Warn().
+			Str("messagePath", string(m.Message.Data)).
+			Msg("ADT message type not implemented")
 		w.WriteHeader(http.StatusNotImplemented)
 		return
 	default:
-		log.Printf("unknown message type: %s", m.Message.Attributes.Type)
+		logMsg.Error(errors.New("unknown message type"), "", "")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	logMsg.elapsed = time.Since(start)
+	logMsg.Log(logMsg.result)
 
 	w.WriteHeader(http.StatusCreated)
 }

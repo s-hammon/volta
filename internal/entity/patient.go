@@ -51,7 +51,7 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (database.Pati
 	}
 
 	var ssn pgtype.Text
-	if err := ssn.Scan(p.SSN); err != nil {
+	if err := ssn.Scan(p.SSN.String()); err != nil {
 		return database.Patient{}, err
 	}
 

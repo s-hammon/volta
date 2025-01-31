@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
@@ -41,7 +40,6 @@ func DBtoVisit(visit database.GetVisitBySiteIdNumberRow) Visit {
 }
 
 func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *database.Queries) (database.Visit, error) {
-	fmt.Printf("siteID: %d, mrnID: %d\n", siteID, mrnID)
 	var mID pgtype.Int8
 	if err := mID.Scan(mrnID); err != nil {
 		return database.Visit{}, err

@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/internal/database"
 )
 
@@ -66,7 +66,7 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 
 	if v.VisitNo == "" {
 		// set this equal to the order number--it's the best we can do :/
-		fmt.Printf("filling visit number with order number: %s\n", o.Number)
+		log.Debug().Str("orderNumber", o.Number).Msg("filling visit number with order number")
 		v.VisitNo = o.Number
 	}
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)

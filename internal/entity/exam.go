@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -66,7 +65,6 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 }
 
 func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (database.Exam, error) {
-	fmt.Printf("site_id: %v\n", siteID)
 	res, err := db.CreateExam(ctx, database.CreateExamParams{
 		OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
 		VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
