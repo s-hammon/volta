@@ -8,11 +8,11 @@ import (
 )
 
 type PatientModel struct {
-	MRN  CX     `json:"PID.3"`
-	Name XPN    `json:"PID.5"`
-	DOB  string `json:"PID.7"`
-	Sex  string `json:"PID.8"`
-	SSN  string `json:"PID.19"`
+	MRN  CX     `hl7:"PID.3"`
+	Name XPN    `hl7:"PID.5"`
+	DOB  string `hl7:"PID.7"`
+	Sex  string `hl7:"PID.8"`
+	SSN  string `hl7:"PID.19"`
 }
 
 func (p *PatientModel) ToEntity() entity.Patient {

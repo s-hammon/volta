@@ -12,26 +12,12 @@ import (
 )
 
 type ORU struct {
-	MSH MessageModel  `json:"MSH"`
-	PID PatientModel  `json:"PID"`
-	PV1 VisitModel    `json:"PV1"`
-	ORC OrderModel    `json:"ORC"`
-	OBR ExamModel     `json:"OBR"`
-	OBX []ReportModel `json:"OBX"`
-}
-
-func NewORU(msgMap map[string]interface{}) (ORU, error) {
-	b, err := json.Marshal(msgMap)
-	if err != nil {
-		return ORU{}, err
-	}
-
-	oru := ORU{}
-	if err = json.Unmarshal(b, &oru); err != nil {
-		return ORU{}, err
-	}
-
-	return oru, nil
+	MSH MessageModel  `hl7:"MSH"`
+	PID PatientModel  `hl7:"PID"`
+	PV1 VisitModel    `hl7:"PV1"`
+	ORC OrderModel    `hl7:"ORC"`
+	OBR ExamModel     `hl7:"OBR"`
+	OBX []ReportModel `hl7:"OBX"`
 }
 
 func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) (Response, error) {

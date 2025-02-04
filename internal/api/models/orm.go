@@ -10,30 +10,16 @@ import (
 )
 
 type Response struct {
-	Message  string `json:"message"`
-	Entities []byte `json:"entities"`
+	Message  string `hl7:"message"`
+	Entities []byte `hl7:"entities"`
 }
 
 type ORM struct {
-	MSH MessageModel `json:"MSH"`
-	PID PatientModel `json:"PID"`
-	PV1 VisitModel   `json:"PV1"`
-	ORC OrderModel   `json:"ORC"`
-	OBR ExamModel    `json:"OBR"`
-}
-
-func NewORM(msgMap map[string]interface{}) (ORM, error) {
-	b, err := json.Marshal(msgMap)
-	if err != nil {
-		return ORM{}, err
-	}
-
-	orm := ORM{}
-	if err = json.Unmarshal(b, &orm); err != nil {
-		return ORM{}, err
-	}
-
-	return orm, nil
+	MSH MessageModel `hl7:"MSH"`
+	PID PatientModel `hl7:"PID"`
+	PV1 VisitModel   `hl7:"PV1"`
+	ORC OrderModel   `hl7:"ORC"`
+	OBR ExamModel    `hl7:"OBR"`
 }
 
 func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error) {

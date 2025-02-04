@@ -14,7 +14,7 @@ import (
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
-const SegDelim = "\r"
+const SegDelim = '\r'
 
 type HealthcareClient interface {
 	GetHL7V2Message(messagePath string) ([]byte, error)
@@ -98,7 +98,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	logMsg.hl7Size = strconv.Itoa(len(raw))
 
-	msgMap, err := hl7.NewMessage(raw, []byte(SegDelim))
+	msgMap, err := hl7.NewMessage(raw, byte(SegDelim))
 	if err != nil {
 		logMsg.Error(err, "", "")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,8 +107,8 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	switch m.Message.Attributes.Type {
 	case "ORM":
-		orm, err := models.NewORM(msgMap)
-		if err != nil {
+		orm := models.ORM{}
+		if err = hl7.Unmarshal(msgMap, &orm); err != nil {
 			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -124,8 +124,8 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 		logMsg.result = "ORM processed successfully"
 	case "ORU":
-		oru, err := models.NewORU(msgMap)
-		if err != nil {
+		oru := models.ORU{}
+		if err = hl7.Unmarshal(msgMap, &oru); err != nil {
 			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

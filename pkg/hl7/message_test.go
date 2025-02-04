@@ -3,6 +3,7 @@ package hl7
 import (
 	"bytes"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -10,10 +11,9 @@ var validMSH = []byte("MSH|^~\\&|LabSystem|Hospital|OrderingSystem|Clinic|202501
 var validPV1 = []byte("PV1|1|I|ICU^Room101^BedA^^Hospital||||1234^Smith^John^A^^^Dr.|||Cardiology")
 var validPID = []byte("PID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||19800101|M|||123 Main St^^Metropolis^NY^10001")
 
-// var validEsc = []byte("AL1|1|Penicillin \\T\\ Amoxicillin|P\\S\\A|Severe rash \\F\\ Anaphylaxis||2024\\E\\01\\E\\01")
-var testSegDelim = []byte("\r")
+var testSegDelim = byte('\r')
 
-var validHL7 = bytes.Join([][]byte{validMSH, validPID, validPV1}, testSegDelim)
+var validHL7 = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{testSegDelim})
 var invalidLineEnding = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{'\t'})
 var invalidMSH = bytes.Join([][]byte{[]byte("MSH|"), validPID, validPV1}, []byte("\r"))
 
@@ -108,5 +108,13 @@ func TestNewMessageError(t *testing.T) {
 				t.Errorf("expected error, got nil\nresults: %v", got)
 			}
 		})
+	}
+}
+
+func BenchmarkNewMessage(b *testing.B) {
+	runtime.GOMAXPROCS(1)
+
+	for i := 0; i < b.N; i++ {
+		NewMessage(validHL7, testSegDelim)
 	}
 }

@@ -7,13 +7,13 @@ import (
 )
 
 type ExamModel struct {
-	Accession     string `json:"OBR.3"`
-	Service       CE     `json:"OBR.4"`
-	Priority      string `json:"OBR.5"`
-	RequestDT     string `json:"OBR.6"`
-	ObservationDT string `json:"OBR.7"`
-	StatusDT      string `json:"OBR.22"`
-	Status        string `json:"OBR.25"`
+	Accession     string `hl7:"OBR.3"`
+	Service       CE     `hl7:"OBR.4"`
+	Priority      string `hl7:"OBR.5"`
+	RequestDT     string `hl7:"OBR.6"`
+	ObservationDT string `hl7:"OBR.7"`
+	StatusDT      string `hl7:"OBR.22"`
+	Status        string `hl7:"OBR.25"`
 }
 
 func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {

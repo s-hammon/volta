@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 )
 
 const (
@@ -18,8 +17,8 @@ const (
 
 type Message map[string]interface{}
 
-func NewMessage(msg []byte, segDelim []byte) (Message, error) {
-	segments := bytes.Split(msg, segDelim)
+func NewMessage(msg []byte, segDelim byte) (Message, error) {
+	segments := bytes.Split(msg, []byte{segDelim})
 
 	segBytes := [][]byte{}
 	for _, seg := range segments {
@@ -37,8 +36,9 @@ func NewMessage(msg []byte, segDelim []byte) (Message, error) {
 	}
 	delimiters := extractDelimiters(msh)
 
-	message := make(Message, len(segBytes))
-	repeatSegments := []map[string]interface{}{}
+	message := getMsgMap()
+	var repeatSegments []map[string]interface{}
+
 	for _, seg := range segBytes {
 		segFields := bytes.Split(seg, delimiters[0])
 		if len(segFields) < 2 {
@@ -53,7 +53,7 @@ func NewMessage(msg []byte, segDelim []byte) (Message, error) {
 
 		parsed, err := parseSegment(segName, fields, delimiters)
 		if err != nil {
-			return Message{}, err
+			return nil, err
 		}
 		if segName == "OBX" {
 			repeatSegments = append(repeatSegments, parsed)
@@ -102,7 +102,7 @@ func (m Message) Type() string {
 }
 
 func parseSegment(name string, fields [][]byte, delimiters map[int][]byte) (map[string]interface{}, error) {
-	parsed := make(map[string]interface{}, len(fields))
+	parsed := getMsgMap()
 
 	for i, field := range fields {
 		if len(field) == 0 {
@@ -136,7 +136,7 @@ func parseRepeats(name string, field []byte, delimiters map[int][]byte) ([]map[s
 	repeats := []map[string]interface{}{}
 	parts := bytes.Split(field, delimiters[repeatDelimIdx])
 	for _, part := range parts {
-		rMap := map[string]interface{}{}
+		rMap := getMsgMap()
 		if err := parseObj(name, part, componentDelimIdx, rMap, delimiters); err != nil {
 			return nil, err
 		}
@@ -157,7 +157,7 @@ func parseObj(name string, obj []byte, delimIdx int, parentMap map[string]interf
 	subObjs := bytes.Split(obj, delimiters[delimIdx])
 	// base case
 	if len(subObjs) < 2 {
-		parentMap[name] = replaceEscapes(string(obj))
+		parentMap[name] = replaceEscapes(obj)
 		return nil
 	}
 
@@ -187,16 +187,14 @@ func extractDelimiters(msh []byte) map[int][]byte {
 	}
 }
 
-func replaceEscapes(s string) string {
-	replacer := strings.NewReplacer(
-		"\\F\\", "|",
-		"\\S\\", "^",
-		"\\R\\", "~",
-		"\\T\\", "&",
-		"\\E\\", "\\",
-		"\\X0D\\", "\r",
-		"\\X0A\\", "\n",
-	)
+func replaceEscapes(s []byte) string {
+	s = bytes.ReplaceAll(s, []byte("\\F\\"), []byte("|"))
+	s = bytes.ReplaceAll(s, []byte("\\S\\"), []byte("^"))
+	s = bytes.ReplaceAll(s, []byte("\\R\\"), []byte("~"))
+	s = bytes.ReplaceAll(s, []byte("\\T\\"), []byte("&"))
+	s = bytes.ReplaceAll(s, []byte("\\E\\"), []byte("\\"))
+	s = bytes.ReplaceAll(s, []byte("\\X0D\\"), []byte("\r"))
+	s = bytes.ReplaceAll(s, []byte("\\X0A\\"), []byte("\n"))
 
-	return replacer.Replace(s)
+	return string(s)
 }
