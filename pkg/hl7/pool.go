@@ -12,9 +12,9 @@ func getMsgMap() map[string]interface{} {
 	return pool.Get().(map[string]interface{})
 }
 
-// func putMsgMap(m map[string]interface{}) {
-// 	for k := range m {
-// 		delete(m, k)
-// 	}
-// 	pool.Put(m)
-// }
+func putMsgMap(m map[string]interface{}) {
+	for k := range m {
+		delete(m, k)
+	}
+	pool.Put(m)
+}

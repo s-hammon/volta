@@ -2,7 +2,7 @@ PROJECT_NAME := volta
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
 SCHEMA_DIR := sql/schema
-CONN_STR := ${CONN_STR}
+DATABASE_URL := ${DATABASE_URL}
 
 build:
 	@GOOS=${GOOS} GOARCH=${GOARCH} go build -o bin/${PROJECT_NAME} cmd/service/main.go
@@ -12,16 +12,16 @@ clean: reset up
 	@go mod tidy
 
 up:
-	@goose -dir ${SCHEMA_DIR} postgres ${CONN_STR} up
+	@goose -dir ${SCHEMA_DIR} postgres ${DATABASE_URL} up
 
 down:
-	@goose -dir ${SCHEMA_DIR} postgres ${CONN_STR} down
+	@goose -dir ${SCHEMA_DIR} postgres ${DATABASE_URL} down
 
 status:
-	@goose -dir ${SCHEMA_DIR} postgres ${CONN_STR} status
+	@goose -dir ${SCHEMA_DIR} postgres ${DATABASE_URL} status
 
 reset:
-	@goose -dir ${SCHEMA_DIR} postgres ${CONN_STR} reset
+	@goose -dir ${SCHEMA_DIR} postgres ${DATABASE_URL} reset
 
 test:
 	@go test -cover ./...

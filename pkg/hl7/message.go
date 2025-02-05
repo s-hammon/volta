@@ -20,19 +20,19 @@ type Message map[string]interface{}
 func NewMessage(msg []byte, segDelim byte) (Message, error) {
 	segments := bytes.Split(msg, []byte{segDelim})
 
-	segBytes := [][]byte{}
+	segBytes := segments[:0]
 	for _, seg := range segments {
 		if len(bytes.TrimSpace(seg)) > 0 {
 			segBytes = append(segBytes, seg)
 		}
 	}
 	if len(segBytes) < 2 {
-		return Message{}, fmt.Errorf("couldn't split segments, unrecognized line ending")
+		return nil, fmt.Errorf("couldn't split segments, unrecognized line ending")
 	}
 
 	msh := segBytes[0]
 	if len(msh) < 8 {
-		return Message{}, fmt.Errorf("invalid MSH segment")
+		return nil, fmt.Errorf("invalid MSH segment")
 	}
 	delimiters := extractDelimiters(msh)
 
@@ -42,7 +42,8 @@ func NewMessage(msg []byte, segDelim byte) (Message, error) {
 	for _, seg := range segBytes {
 		segFields := bytes.Split(seg, delimiters[0])
 		if len(segFields) < 2 {
-			return Message{}, fmt.Errorf("segment must have at least 2 fields: %s", string(seg))
+			putMsgMap(message)
+			return nil, fmt.Errorf("segment must have at least 2 fields: %s", string(seg))
 		}
 
 		segName := string(segFields[0])
@@ -53,6 +54,7 @@ func NewMessage(msg []byte, segDelim byte) (Message, error) {
 
 		parsed, err := parseSegment(segName, fields, delimiters)
 		if err != nil {
+			putMsgMap(message)
 			return nil, err
 		}
 		if segName == "OBX" {
@@ -72,13 +74,13 @@ func NewMessage(msg []byte, segDelim byte) (Message, error) {
 func FromJSON(filename string) (Message, error) {
 	msg, err := os.ReadFile(filename)
 	if err != nil {
-		return Message{}, err
+		return nil, err
 	}
 
 	// marshal to Message map
 	var m Message
 	if err := json.Unmarshal(msg, &m); err != nil {
-		return Message{}, err
+		return nil, err
 	}
 
 	return m, nil
