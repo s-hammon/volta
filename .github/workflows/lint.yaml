@@ -1,0 +1,30 @@
+name: Go CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+    
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    goci:
+        name: lint
+        runs-on: ubuntu-latest
+        
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            - name: Install Go
+              uses: actions/setup-go@v2
+              with:
+                go-version: stable
+            - name: Lint
+              uses: golangci/golangci-lint-action@v6
+              with:
+                version: latest
+                github-token: ${{ secrets.GITHUB_TOKEN }}
+                args: --timeout=2m --verbose

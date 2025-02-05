@@ -1,4 +1,7 @@
+#!/bin/bash
+
 docker run --rm \
+    --name srv-volta \
     --network host \
     -v ${HOME}/.config/gcloud:/root/.config/gcloud \
-    $(basename $(pwd)):latest serve -d ${DATABASE_URL}
+    volta:latest serve -d ${DATABASE_URL}
