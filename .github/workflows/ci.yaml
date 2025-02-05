@@ -14,13 +14,7 @@ jobs:
     test:
         name: Unit Tests
         timeout-minutes: 1
-
-        strategy:
-            matrix:
-                go-version: [oldstable, stable]
-                os: [ubuntu-latest]
-
-        runs-on: ${{ matrix.os }}
+        runs-on: ubuntu-latest
 
         steps:
             - name: Checkout code
@@ -28,7 +22,7 @@ jobs:
             - name: Install Go
               uses: actions/setup-go@v5
               with:
-                go-version: ${{ matrix.go-version }}
+                go-version: '1.23.0'
             - name: Check Format
               run: |
                 if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
