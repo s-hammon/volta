@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/internal/api"
-	"github.com/s-hammon/volta/internal/database"
 	"github.com/spf13/cobra"
 )
 
@@ -88,14 +87,15 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		db, err = pgxpool.New(ctx, dbURL)
+		pool, err := pgxpool.New(ctx, dbURL)
 		if err != nil {
 			return err
 		}
+		db := api.NewDB(pool)
 
 		srv := &http.Server{
 			Addr:    net.JoinHostPort(host, port),
-			Handler: api.New(database.New(db), client),
+			Handler: api.New(db, client),
 		}
 
 		return srv.ListenAndServe()

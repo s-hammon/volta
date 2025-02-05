@@ -10,22 +10,26 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/s-hammon/volta/internal/api/models"
-	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
 const SegDelim = '\r'
 
 type HealthcareClient interface {
-	GetHL7V2Message(messagePath string) ([]byte, error)
+	GetHL7V2Message(messagePath string) (hl7.Message, error)
+}
+
+type Repository interface {
+	UpsertORM(ctx context.Context, orm models.ORM) error
+	InsertORU(ctx context.Context, oru models.ORU) error
 }
 
 type API struct {
-	DB     *database.Queries
+	DB     Repository
 	Client HealthcareClient
 }
 
-func New(db *database.Queries, client HealthcareClient) *http.ServeMux {
+func New(db Repository, client HealthcareClient) *http.ServeMux {
 	a := &API{
 		DB:     db,
 		Client: client,
@@ -41,6 +45,7 @@ func New(db *database.Queries, client HealthcareClient) *http.ServeMux {
 }
 
 func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
+	// TODO: reimplement logging (use middleware, perhaps)
 	// time this function
 	start := time.Now()
 	var logMsg logMsg
@@ -51,11 +56,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-
-	size := r.Header.Get("Content-Length")
-	if size != "" {
-		logMsg.notifSize = size
-	}
+	logMsg.notifSize = r.Header.Get("Content-Length")
 
 	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
@@ -64,23 +65,17 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	raw, err := a.Client.GetHL7V2Message(string(m.Message.Data))
+	msgMap, err := a.Client.GetHL7V2Message(string(m.Message.Data))
 	if err != nil {
 		logMsg.Error(err, "", "")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	logMsg.hl7Size = strconv.Itoa(len(raw))
-
-	msgMap, err := hl7.NewMessage(raw, byte(SegDelim))
-	if err != nil {
-		logMsg.Error(err, "", "")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	logMsg.hl7Size = strconv.Itoa(len(msgMap))
 
 	switch m.Message.Attributes.Type {
 	case "ORM":
+		// TODO: to interface
 		orm := models.ORM{}
 		if err = hl7.Unmarshal(msgMap, &orm); err != nil {
 			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
@@ -88,8 +83,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// TODO: get rid of first return value
-		if err = orm.ToDB(context.Background(), a.DB); err != nil {
+		if err = a.DB.UpsertORM(context.Background(), orm); err != nil {
 			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -97,6 +91,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		logMsg.result = "ORM processed successfully"
 
 	case "ORU":
+		// TODO: to interface
 		oru := models.ORU{}
 		if err = hl7.Unmarshal(msgMap, &oru); err != nil {
 			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
@@ -104,7 +99,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = oru.ToDB(context.Background(), a.DB); err != nil {
+		if err = a.DB.InsertORU(context.Background(), oru); err != nil {
 			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

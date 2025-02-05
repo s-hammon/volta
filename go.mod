@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2
+	github.com/json-iterator/go v1.1.12
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
 	google.golang.org/api v0.219.0
@@ -26,6 +27,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
 	go.opentelemetry.io/otel v1.32.0 // indirect

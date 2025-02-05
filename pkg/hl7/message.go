@@ -2,9 +2,10 @@ package hl7
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
+
+	json "github.com/json-iterator/go"
 )
 
 const (

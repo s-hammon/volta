@@ -23,6 +23,11 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
 	o := orm.ORC.ToEntity()
 	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus, orm.PID.MRN)
 
+	_, err := m.ToDB(ctx, db)
+	if err != nil {
+		return errors.New("error creating message: " + err.Error())
+	}
+
 	site, err := v.Site.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating site: " + err.Error())
