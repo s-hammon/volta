@@ -115,6 +115,9 @@ func BenchmarkNewMessage(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
 	for i := 0; i < b.N; i++ {
-		NewMessage(validHL7, testSegDelim)
+		_, err := NewMessage(validHL7, testSegDelim)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
 	}
 }
