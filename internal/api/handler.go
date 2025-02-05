@@ -20,32 +20,6 @@ type HealthcareClient interface {
 	GetHL7V2Message(messagePath string) ([]byte, error)
 }
 
-type logMsg struct {
-	notifSize string
-	hl7Size   string
-	result    string
-	elapsed   time.Duration
-}
-
-func (l *logMsg) Log(result string) {
-	l.result = result
-	log.Info().
-		Str("notifSize", l.notifSize).
-		Str("hl7Size", l.hl7Size).
-		Str("result", l.result).
-		Dur("elapsed", l.elapsed).
-		Msg("message processed")
-}
-
-func (l *logMsg) Error(err error, sendingFac, ControlID string) {
-	l.result = err.Error()
-	log.Error().
-		Err(err).
-		Str("sendingFacility", sendingFac).
-		Str("controlID", ControlID).
-		Msg("could not process message")
-}
-
 type API struct {
 	DB     *database.Queries
 	Client HealthcareClient
@@ -115,14 +89,13 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// TODO: get rid of first return value
-		_, err = orm.ToDB(context.Background(), a.DB)
-		if err != nil {
+		if err = orm.ToDB(context.Background(), a.DB); err != nil {
 			logMsg.Error(err, orm.MSH.SendingFac, orm.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
 		logMsg.result = "ORM processed successfully"
+
 	case "ORU":
 		oru := models.ORU{}
 		if err = hl7.Unmarshal(msgMap, &oru); err != nil {
@@ -131,8 +104,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_, err = oru.ToDB(context.Background(), a.DB)
-		if err != nil {
+		if err = oru.ToDB(context.Background(), a.DB); err != nil {
 			logMsg.Error(err, oru.MSH.SendingFac, oru.MSH.ControlID)
 			w.WriteHeader(http.StatusInternalServerError)
 			return

@@ -2,7 +2,7 @@ package models
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,10 +20,7 @@ type ORU struct {
 	OBX []ReportModel `hl7:"OBX"`
 }
 
-func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) (Response, error) {
-	var r Response
-	entities := map[string]interface{}{}
-
+func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 	p := oru.PID.ToEntity()
 	m := oru.MSH.ToEntity()
 	v := oru.PV1.ToEntity(m.SendingFac, oru.PID.MRN)
@@ -32,72 +29,57 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) (Response, error
 
 	site, err := v.Site.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating site: "+err.Error(), r, entities)
+		return errors.New("error creating site: " + err.Error())
 	}
-	entities["site"] = site
 
 	patient, err := p.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating patient: "+err.Error(), r, entities)
+		return errors.New("error creating patient: " + err.Error())
 	}
-	entities["patient"] = patient
 
 	mrn, err := v.MRN.ToDB(ctx, site.ID, patient.ID, db)
 	if err != nil {
-		return handleError("error creating MRN: "+err.Error(), r, entities)
+		return errors.New("error creating mrn: " + err.Error())
 	}
-	entities["mrn"] = mrn
 
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
 	if err != nil {
-		return handleError("error creating visit: "+err.Error(), r, entities)
+		return errors.New("error creating visit: " + err.Error())
 	}
-	entities["visit"] = visit
 
 	physician, err := o.Provider.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating physician: "+err.Error(), r, entities)
+		return errors.New("error creating physician: " + err.Error())
 	}
-	entities["physician"] = physician
 
 	order, err := o.ToDB(ctx, site.ID, visit.ID, mrn.ID, physician.ID, db)
 	if err != nil {
-		return handleError("error creating order: "+err.Error(), r, entities)
+		return errors.New("error creating order: " + err.Error())
 	}
-	entities["order"] = order
 
 	procedure, err := e.Procedure.ToDB(ctx, site.ID, db)
 	if err != nil {
-		return handleError("error creating procedure: "+err.Error(), r, entities)
+		return errors.New("error creating procedure: " + err.Error())
 	}
-	entities["procedure"] = procedure
 
 	exam, err := e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
 	if err != nil {
-		return handleError("error creating exam: "+err.Error(), r, entities)
+		return errors.New("error creating exam: " + err.Error())
 	}
 
 	reportModel := oru.getReport(exam, mrn, physician)
-	res, err := db.CreateReport(ctx, database.CreateReportParams{
+	if _, err = db.CreateReport(ctx, database.CreateReportParams{
 		ExamID:        pgtype.Int8{Int64: int64(exam.ID), Valid: true},
 		RadiologistID: pgtype.Int8{Int64: int64(physician.ID), Valid: true},
 		Body:          reportModel.Body,
 		Impression:    reportModel.Impression,
 		ReportStatus:  reportModel.Status.String(),
 		SubmittedDt:   pgtype.Timestamp{Time: reportModel.SubmittedDT, Valid: true},
-	})
-	if err != nil {
-		return handleError("error creating report: "+err.Error(), r, entities)
-	}
-	entities["report"] = res
-
-	b, err := json.Marshal(entities)
-	if err != nil {
-		return r, nil
+	}); err != nil {
+		return errors.New("error creating report: " + err.Error())
 	}
 
-	r.Entities = b
-	return r, nil
+	return nil
 }
 
 func (oru *ORU) getReport(exam database.Exam, mrn database.Mrn, radiologist database.Physician) entity.Report {

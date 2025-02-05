@@ -2,17 +2,11 @@ package models
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/internal/database"
 )
-
-type Response struct {
-	Message  string `hl7:"message"`
-	Entities []byte `hl7:"entities"`
-}
 
 type ORM struct {
 	MSH MessageModel `hl7:"MSH"`
@@ -22,10 +16,7 @@ type ORM struct {
 	OBR ExamModel    `hl7:"OBR"`
 }
 
-func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error) {
-	var r Response
-	entities := map[string]interface{}{}
-
+func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
 	p := orm.PID.ToEntity()
 	m := orm.MSH.ToEntity()
 	v := orm.PV1.ToEntity(m.SendingFac, orm.PID.MRN)
@@ -34,21 +25,18 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 
 	site, err := v.Site.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating site: "+err.Error(), r, entities)
+		return errors.New("error creating site: " + err.Error())
 	}
-	entities["site"] = site
 
 	patient, err := p.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating patient: "+err.Error(), r, entities)
+		return errors.New("error creating patient: " + err.Error())
 	}
-	entities["patient"] = patient
 
 	mrn, err := v.MRN.ToDB(ctx, site.ID, patient.ID, db)
 	if err != nil {
-		return handleError("error creating mrn: "+err.Error(), r, entities)
+		return errors.New("error creating mrn: " + err.Error())
 	}
-	entities["mrn"] = mrn
 
 	if v.VisitNo == "" {
 		// set this equal to the order number--it's the best we can do :/
@@ -57,53 +45,28 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) (Response, error
 	}
 	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
 	if err != nil {
-		return handleError("error creating visit: "+err.Error(), r, entities)
+		return errors.New("error creating visit: " + err.Error())
 	}
-	entities["visit"] = visit
 
 	physician, err := o.Provider.ToDB(ctx, db)
 	if err != nil {
-		return handleError("error creating physician: "+err.Error(), r, entities)
+		return errors.New("error creating physician: " + err.Error())
 	}
-	entities["physician"] = physician
 
 	order, err := o.ToDB(ctx, site.ID, visit.ID, mrn.ID, physician.ID, db)
 	if err != nil {
-		return handleError("error creating order: "+err.Error(), r, entities)
+		return errors.New("error creating order: " + err.Error())
 	}
-	entities["order"] = order
 
 	procedure, err := e.Procedure.ToDB(ctx, site.ID, db)
 	if err != nil {
-		return handleError("error creating procedure: "+err.Error(), r, entities)
+		return errors.New("error creating procedure: " + err.Error())
 	}
-	entities["procedure"] = procedure
 
-	exam, err := e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
+	_, err = e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
 	if err != nil {
-		return handleError("error creating exam: "+err.Error(), r, entities)
+		return errors.New("error creating exam: " + err.Error())
 	}
-	entities["exam"] = exam
 
-	b, err := json.Marshal(entities)
-	if err != nil {
-		return handleError("error marshalling entities: "+err.Error(), r, entities)
-	}
-	r.Entities = b
-
-	r.Message = "success"
-
-	return r, nil
-}
-
-func handleError(errMsg string, r Response, entities map[string]interface{}) (Response, error) {
-	r.Message = errMsg
-
-	b, err := json.Marshal(entities)
-	if err != nil {
-		return r, err
-	}
-	r.Entities = b
-
-	return r, errors.New(errMsg)
+	return nil
 }
