@@ -31,15 +31,3 @@ jobs:
                 go vet ./...
                 go build ./...
                 make test-packages
-            - name: Install GoReleaser
-              if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: goreleaser/goreleaser-action@v6
-              with:
-                install-only: true
-                distribution: goreleaser
-                version: "~> v2"
-            - name: Gorelease dry-run
-              if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-              run: |
-                goreleaser release --skip=publish --snapshot --fail-fast --clean
-    
