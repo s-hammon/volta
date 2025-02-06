@@ -11,8 +11,6 @@ import (
 	"github.com/s-hammon/volta/internal/objects"
 )
 
-const ()
-
 type Report struct {
 	Base
 	Exam        Exam

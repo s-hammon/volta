@@ -1,33 +1,52 @@
 package api
 
 import (
-	"time"
+	"net/http"
 
 	"github.com/rs/zerolog/log"
 )
 
 type logMsg struct {
-	notifSize string
-	hl7Size   string
-	result    string
-	elapsed   time.Duration
+	NotifSize string  `json:"notif_size"`
+	Hl7Size   string  `json:"hl7_size"`
+	Result    string  `json:"result"`
+	Elapsed   float64 `json:"elapsed"`
 }
 
-func (l *logMsg) Log(result string) {
-	l.result = result
-	log.Info().
-		Str("notifSize", l.notifSize).
-		Str("hl7Size", l.hl7Size).
-		Str("result", l.result).
-		Dur("elapsed", l.elapsed).
-		Msg("message processed")
+type logWriter struct {
+	http.ResponseWriter
+	StatusCode int
+	Message    []byte
 }
 
-func (l *logMsg) Error(err error, sendingFac, ControlID string) {
-	l.result = err.Error()
-	log.Error().
-		Err(err).
-		Str("sendingFacility", sendingFac).
-		Str("controlID", ControlID).
-		Msg("could not process message")
+func (l *logWriter) WriteHeader(code int) {
+	l.StatusCode = code
+	l.ResponseWriter.WriteHeader(code)
+}
+
+func (l *logWriter) Write(b []byte) (int, error) {
+	l.Message = b
+	return l.ResponseWriter.Write(b)
+}
+
+func middlwareLogging(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		lw := &logWriter{w, http.StatusOK, nil}
+		next.ServeHTTP(lw, r)
+
+		msg := string(lw.Message)
+		if lw.StatusCode > 499 {
+			log.Error().
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Int("status", lw.StatusCode).
+				Msg(msg)
+		} else {
+			log.Info().
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Int("status", lw.StatusCode).
+				Msg(msg)
+		}
+	}
 }

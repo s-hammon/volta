@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Added `/healthz` healthcheck endpoint
+- Added middleware logging:
+
+```
+{
+    "level":"info",
+    "method":"POST",
+    "path":"/",
+    "status":201,
+    "message":{
+        "notif_size": "299",
+        "hl7_size": "10",
+        "result": "ORM processed successfully",
+        "elapsed": 357.931263
+    }
+}
+```
+
 ## [v0.1.0-alpha]
 
 - Added CHANGELOG.md ([Keep a Changelog](https://keepachangelog.com/en/1.0.0/)).
