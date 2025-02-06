@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
@@ -94,8 +95,9 @@ var serveCmd = &cobra.Command{
 		db := api.NewDB(pool)
 
 		srv := &http.Server{
-			Addr:    net.JoinHostPort(host, port),
-			Handler: api.New(db, client),
+			Addr:              net.JoinHostPort(host, port),
+			Handler:           api.New(db, client),
+			ReadHeaderTimeout: 3 * time.Second,
 		}
 
 		return srv.ListenAndServe()

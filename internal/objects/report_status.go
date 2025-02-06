@@ -6,7 +6,7 @@ const (
 	Addendum
 )
 
-type ReportStatus int
+type ReportStatus int16
 
 func NewReportStatus(s string) ReportStatus {
 	switch s {
@@ -19,10 +19,6 @@ func NewReportStatus(s string) ReportStatus {
 	default:
 		return Pending
 	}
-}
-
-func (r ReportStatus) Int16() int16 {
-	return int16(r)
 }
 
 func (r ReportStatus) String() string {

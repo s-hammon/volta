@@ -67,9 +67,13 @@ func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *databas
 		vs := DBtoVisit(vsDB)
 		if !vs.Equal(*v) {
 			vs.Coalesce(*v)
+			siteID := pgtype.Int4{}
+			if err = siteID.Scan(vs.Site.ID); err != nil {
+				return database.Visit{}, err
+			}
 			return db.UpdateVisit(ctx, database.UpdateVisitParams{
 				ID:          int64(vs.ID),
-				SiteID:      pgtype.Int4{Int32: int32(vs.Site.ID), Valid: true},
+				SiteID:      siteID,
 				MrnID:       pgtype.Int8{Int64: int64(vs.MRN.ID), Valid: true},
 				Number:      vs.VisitNo,
 				PatientType: vs.Type.Int16(),

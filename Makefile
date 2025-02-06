@@ -37,4 +37,9 @@ test-packages-short:
 artifact: build
 	@docker build -t ${PROJECT_NAME} .
 
-.PHONY: build clean up down status reset test artifact
+ready: test
+	go vet ./...
+	golangci-lint run ./...
+	gosec -terse ./...
+
+.PHONY: build clean up down status reset test test-packages test-packages-short artifact ready

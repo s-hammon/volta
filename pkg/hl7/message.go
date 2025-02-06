@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	json "github.com/json-iterator/go"
 )
@@ -73,6 +75,10 @@ func NewMessage(msg []byte, segDelim byte) (Message, error) {
 }
 
 func FromJSON(filename string) (Message, error) {
+	filename = filepath.Clean(filename)
+	if !strings.HasPrefix(filename, "/") {
+		panic(fmt.Errorf("unsafe input"))
+	}
 	msg, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err

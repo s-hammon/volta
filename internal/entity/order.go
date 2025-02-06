@@ -114,9 +114,13 @@ func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, provider
 		or := DBtoOrder(orDB)
 		if !or.Equal(*o) {
 			or.Coalesce(*o)
+			siteID := pgtype.Int4{}
+			if err := siteID.Scan(or.Site.ID); err != nil {
+				return database.Order{}, err
+			}
 			return db.UpdateOrder(ctx, database.UpdateOrderParams{
 				ID:                  int64(or.ID),
-				SiteID:              pgtype.Int4{Int32: int32(or.Site.ID), Valid: true},
+				SiteID:              siteID,
 				VisitID:             pgtype.Int8{Int64: int64(or.Visit.ID), Valid: true},
 				MrnID:               pgtype.Int8{Int64: int64(or.MRN.ID), Valid: true},
 				OrderingPhysicianID: pgtype.Int8{Int64: int64(or.Provider.ID), Valid: true},
