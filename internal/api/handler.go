@@ -125,5 +125,8 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(logBytes)
+	if _, err = w.Write(logBytes); err != nil {
+		log.Error().Err(err).Msg("could not write log message")
+		return
+	}
 }

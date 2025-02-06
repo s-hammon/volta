@@ -14,5 +14,8 @@ func respondJSON(w http.ResponseWriter, code int, data interface{}) {
 	}
 
 	w.WriteHeader(code)
-	w.Write(dat)
+	if _, err = w.Write(dat); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
