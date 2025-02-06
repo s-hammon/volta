@@ -16,12 +16,12 @@ import (
 const SegDelim = '\r'
 
 type HealthcareClient interface {
-	GetHL7V2Message(messagePath string) (hl7.Message, error)
+	GetHL7V2Message(string) (hl7.Message, error)
 }
 
 type Repository interface {
-	UpsertORM(ctx context.Context, orm models.ORM) error
-	InsertORU(ctx context.Context, oru models.ORU) error
+	UpsertORM(context.Context, models.ORM) error
+	InsertORU(context.Context, models.ORU) error
 }
 
 type API struct {
