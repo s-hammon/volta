@@ -16,44 +16,16 @@ import (
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
-var validORM = hl7.Message{
-	"MSH": map[string]interface{}{
-		"MSH.9": map[string]interface{}{
-			"1": "ORM",
-			"2": "O01",
-		},
-	},
-}
+var validORM = hl7.Message(`{"MSH": {"MSH.9": {"1": "ORM", "2": "O01"}}}`)
 var vORMEncKey = base64.StdEncoding.EncodeToString([]byte("validORM"))
 
-var validORU = hl7.Message{
-	"MSH": map[string]interface{}{
-		"MSH.9": map[string]interface{}{
-			"1": "ORU",
-			"2": "R01",
-		},
-	},
-}
+var validORU = hl7.Message(`{"MSH": {"MSH.9": {"1": "ORU", "2": "R01"}}}`)
 var vORUEncKey = base64.StdEncoding.EncodeToString([]byte("validORU"))
 
-var invalidORM = hl7.Message{
-	"MSH": map[string]interface{}{
-		"MSH.9": map[string]interface{}{
-			"1": "invalid",
-			"2": "O01",
-		},
-	},
-}
+var invalidORM = hl7.Message(`{"MSH": {"MSH.9": {"1": "invalid", "2": "O01"}}}`)
 var iORMEncKey = base64.StdEncoding.EncodeToString([]byte("invalidORM"))
 
-var invalidORU = hl7.Message{
-	"MSH": map[string]interface{}{
-		"MSH.9": map[string]interface{}{
-			"1": "invalid",
-			"2": "R01",
-		},
-	},
-}
+var invalidORU = hl7.Message(`{"MSH": {"MSH.9": {"1": "invalid", "2": "R01"}}}`)
 var iORUEncKey = base64.StdEncoding.EncodeToString([]byte("invalidORU"))
 
 type mockClient struct {

@@ -7,17 +7,17 @@ import (
 )
 
 type MessageModel struct {
-	FieldSeparator string `hl7:"MSH.1"`
-	EncodingChars  string `hl7:"MSH.2"`
-	SendingApp     string `hl7:"MSH.3"`
-	SendingFac     string `hl7:"MSH.4"`
-	ReceivingApp   string `hl7:"MSH.5"`
-	ReceivingFac   string `hl7:"MSH.6"`
-	DateTime       string `hl7:"MSH.7"`
-	Type           CM_MSG `hl7:"MSH.9"`
-	ControlID      string `hl7:"MSH.10"`
-	ProcessingID   string `hl7:"MSH.11"`
-	Version        string `hl7:"MSH.12"`
+	FieldSeparator string `json:"MSH.1"`
+	EncodingChars  string `json:"MSH.2"`
+	SendingApp     string `json:"MSH.3"`
+	SendingFac     string `json:"MSH.4"`
+	ReceivingApp   string `json:"MSH.5"`
+	ReceivingFac   string `json:"MSH.6"`
+	DateTime       string `json:"MSH.7"`
+	Type           CM_MSG `json:"MSH.9"`
+	ControlID      string `json:"MSH.10"`
+	ProcessingID   string `json:"MSH.11"`
+	Version        string `json:"MSH.12"`
 }
 
 func (m *MessageModel) ToEntity() entity.Message {

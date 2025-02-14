@@ -8,11 +8,11 @@ import (
 )
 
 type OrderModel struct {
-	OrderNo          string `hl7:"ORC.2"`
-	FillerOrderNo    string `hl7:"ORC.3"`
-	Status           string `hl7:"ORC.5"`
-	OrderDT          string `hl7:"ORC.9"`
-	OrderingProvider XCN    `hl7:"ORC.12"`
+	OrderNo          string `json:"ORC.2"`
+	FillerOrderNo    string `json:"ORC.3"`
+	Status           string `json:"ORC.5"`
+	OrderDT          string `json:"ORC.9"`
+	OrderingProvider XCN    `json:"ORC.12"`
 }
 
 func (o *OrderModel) ToEntity() entity.Order {

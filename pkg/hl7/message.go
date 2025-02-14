@@ -2,208 +2,288 @@ package hl7
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
-	json "github.com/json-iterator/go"
+	"strconv"
 )
+
+var delims struct {
+	field, repeat, component, subcomponent, escape byte
+}
+
+var repeatableSegments = map[string]struct{}{
+	"OBX": {}, "NTE": {}, "AL1": {}, "DG1": {},
+}
 
 const (
-	fieldDelimIdx = iota
-	repeatDelimIdx
-	componentDelimIdx
-	subcomponentDelimIdx
-	escapeDelimIdx
+	HeaderSegment = "MSH"
+	CR            = '\r'
 )
 
-type Message map[string]interface{}
+type MsgWriter struct {
+	buf *bytes.Buffer
+}
 
-func NewMessage(msg []byte, segDelim byte) (Message, error) {
-	segments := bytes.Split(msg, []byte{segDelim})
+func NewMsgWriter() *MsgWriter {
+	buf := pool.Get().(*bytes.Buffer)
+	buf.Reset()
+	return &MsgWriter{buf: buf}
+}
 
-	segBytes := segments[:0]
-	for _, seg := range segments {
-		if len(bytes.TrimSpace(seg)) > 0 {
-			segBytes = append(segBytes, seg)
-		}
+func (w *MsgWriter) Release() {
+	pool.Put(w.buf)
+}
+
+type Message []byte
+
+func NewMessage(msg []byte) (Message, error) {
+	if err := extractDelimiters(msg[3:8]); err != nil {
+		return nil, err
 	}
-	if len(segBytes) < 2 {
+
+	segments := bytes.Split(bytes.TrimSpace(msg), []byte{CR})
+	if len(segments) < 2 {
 		return nil, fmt.Errorf("couldn't split segments, unrecognized line ending")
 	}
 
-	msh := segBytes[0]
-	if len(msh) < 8 {
-		return nil, fmt.Errorf("invalid MSH segment")
-	}
-	delimiters := extractDelimiters(msh)
+	repeatSegments := getRepeatedSegments(segments)
+	w := NewMsgWriter()
+	defer w.Release()
 
-	message := getMsgMap()
-	var repeatSegments []map[string]interface{}
+	w.buf.WriteByte('{')
+	processedCounts := make(map[string]int)
 
-	for _, seg := range segBytes {
-		segFields := bytes.Split(seg, delimiters[0])
-		if len(segFields) < 2 {
-			putMsgMap(message)
-			return nil, fmt.Errorf("segment must have at least 2 fields: %s", string(seg))
+	for i := 0; i < len(segments); i++ {
+		seg := segments[i]
+		fields := bytes.Split(seg, []byte{delims.field})
+		if len(fields) < 2 {
+			return nil, errors.New("segment must have at least 2 fields")
 		}
 
-		segName := string(segFields[0])
-		fields := segFields[1:]
-		if segName == "MSH" {
-			fields = append([][]byte{delimiters[0]}, fields...)
-		}
-
-		parsed, err := parseSegment(segName, fields, delimiters)
-		if err != nil {
-			putMsgMap(message)
-			return nil, err
-		}
-		if segName == "OBX" {
-			repeatSegments = append(repeatSegments, parsed)
-			continue
-		}
-		message[segName] = parsed
-	}
-
-	if len(repeatSegments) > 0 {
-		message["OBX"] = repeatSegments
-	}
-
-	return message, nil
-}
-
-func FromJSON(filename string) (Message, error) {
-	filename = filepath.Clean(filename)
-	if !strings.HasPrefix(filename, "/") {
-		panic(fmt.Errorf("unsafe input"))
-	}
-	msg, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	// marshal to Message map
-	var m Message
-	if err := json.Unmarshal(msg, &m); err != nil {
-		return nil, err
-	}
-
-	return m, nil
-}
-
-func (m Message) Type() string {
-	msh, ok := m["MSH"].(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	typeField, ok := msh["MSH.9"].(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	msgType, ok := typeField["MSH.9.1"].(string)
-	if !ok {
-		return ""
-	}
-
-	return msgType
-}
-
-func parseSegment(name string, fields [][]byte, delimiters map[int][]byte) (map[string]interface{}, error) {
-	parsed := getMsgMap()
-
-	for i, field := range fields {
-		if len(field) == 0 {
-			continue
-		}
-
-		fName := fmt.Sprintf("%s.%d", name, i+1)
-		if name == "MSH" && i == 1 {
-			parsed[fName] = string(field)
-			continue
-		}
-
-		if bytes.Contains(field, delimiters[repeatDelimIdx]) {
-			repeats, err := parseRepeats(fName, field, delimiters)
-			if err != nil {
+		segName := string(fields[0])
+		if count, ok := repeatSegments[segName]; ok {
+			if processedCounts[segName] == 0 {
+				if i > 0 {
+					w.buf.WriteByte(',')
+				}
+				w.buf.WriteString(`"` + segName + `":[`)
+			} else {
+				w.buf.WriteByte(',')
+			}
+			if err := w.segmentToJSON(segName, fields[1:]); err != nil {
 				return nil, err
 			}
-			parsed[fName] = repeats
+			processedCounts[segName]++
+			if processedCounts[segName] == count {
+				w.buf.WriteByte(']')
+			}
 			continue
 		}
 
-		if err := parseObj(fName, field, componentDelimIdx, parsed, delimiters); err != nil {
-			return nil, err
+		if i > 0 {
+			w.buf.WriteByte(',')
+		}
+		w.buf.WriteString(`"` + segName + `":`)
+
+		if segName == HeaderSegment {
+			if err := w.handleMSH(seg); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := w.segmentToJSON(segName, fields[1:]); err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	return parsed, nil
+	w.buf.WriteByte('}')
+	return w.buf.Bytes(), nil
 }
 
-func parseRepeats(name string, field []byte, delimiters map[int][]byte) ([]map[string]interface{}, error) {
-	repeats := []map[string]interface{}{}
-	parts := bytes.Split(field, delimiters[repeatDelimIdx])
-	for _, part := range parts {
-		rMap := getMsgMap()
-		if err := parseObj(name, part, componentDelimIdx, rMap, delimiters); err != nil {
-			return nil, err
-		}
+func (w *MsgWriter) segmentToJSON(name string, fields [][]byte) error {
+	w.buf.WriteByte('{')
 
-		if parsed, ok := rMap[name].(map[string]interface{}); ok {
-			repeats = append(repeats, parsed)
-		}
-	}
-
-	return repeats, nil
-}
-
-func parseObj(name string, obj []byte, delimIdx int, parentMap map[string]interface{}, delimiters map[int][]byte) error {
-	if delimIdx > len(delimiters) {
-		return fmt.Errorf("delimiter index out of bounds")
-	}
-
-	subObjs := bytes.Split(obj, delimiters[delimIdx])
-	// base case
-	if len(subObjs) < 2 {
-		parentMap[name] = replaceEscapes(obj)
-		return nil
-	}
-
-	parsed := make(map[string]interface{}, len(subObjs))
-	for i, subObj := range subObjs {
-		if len(subObj) == 0 {
+	isFirst := true
+	for i, f := range fields {
+		if len(f) == 0 {
 			continue
 		}
 
-		subObjName := fmt.Sprintf("%s.%d", name, i+1)
-		if err := parseObj(subObjName, subObj, delimIdx+1, parsed, delimiters); err != nil {
-			return err
+		if !isFirst {
+			w.buf.WriteByte(',')
+		}
+		isFirst = false
+
+		fName := formatKey(name, i+1)
+		w.buf.WriteString(`"` + fName + `":`)
+
+		if bytes.IndexByte(f, delims.repeat) != -1 {
+			w.parseRepeatsToJSON(fName, f)
+		} else if bytes.IndexByte(f, delims.component) != -1 {
+			w.parseComponentsToJSON(fName, f)
+		} else {
+			w.buf.Write(strconv.AppendQuote(nil, replaceEscapes(f)))
 		}
 	}
 
-	parentMap[name] = parsed
+	w.buf.WriteByte('}')
 	return nil
 }
 
-func extractDelimiters(msh []byte) map[int][]byte {
-	return map[int][]byte{
-		fieldDelimIdx:        {msh[3]}, // field
-		repeatDelimIdx:       {msh[5]}, // repeat
-		componentDelimIdx:    {msh[4]}, // component
-		subcomponentDelimIdx: {msh[7]}, // subcomponent
-		escapeDelimIdx:       {msh[6]}, // escape
+func (w *MsgWriter) handleMSH(segment []byte) error {
+	if len(segment) < 8 {
+		return errors.New("invalid MSH segment")
 	}
+
+	w.buf.WriteByte('{')
+
+	fields := bytes.Split(segment, []byte{delims.field})
+	if len(fields) < 2 {
+		return errors.New("invalid MSH segment")
+	}
+
+	w.buf.WriteString(`"` + HeaderSegment + `.1":` + strconv.Quote(string(delims.field)) + `,`)
+	w.buf.WriteString(`"` + HeaderSegment + `.2":` + strconv.Quote(string(fields[1])))
+
+	for i := 2; i < len(fields); i++ {
+		if len(fields[i]) == 0 {
+			continue
+		}
+		if i > 2 {
+			w.buf.WriteByte(',')
+		}
+		fName := formatKey(HeaderSegment, i+1)
+		w.buf.WriteString(fmt.Sprintf("\"%s\":", fName))
+		if bytes.Contains(fields[i], []byte{delims.component}) {
+			w.parseComponentsToJSON(fName, fields[i])
+			continue
+		} else {
+			w.buf.WriteString(fmt.Sprintf("\"%s\"", replaceEscapes(fields[i])))
+		}
+
+	}
+
+	w.buf.WriteByte('}')
+	return nil
+}
+
+func (w *MsgWriter) parseComponentsToJSON(name string, field []byte) {
+	components := bytes.Split(field, []byte{delims.component})
+	w.buf.WriteByte('{')
+
+	for i, c := range components {
+		if len(c) == 0 {
+			continue
+		}
+		if i > 0 {
+			w.buf.WriteByte(',')
+		}
+		cName := formatKey(name, i+1)
+		w.buf.WriteString(fmt.Sprintf("\"%s\":\"%s\"", cName, replaceEscapes(c)))
+	}
+
+	w.buf.WriteByte('}')
+}
+
+func (w *MsgWriter) parseRepeatsToJSON(name string, field []byte) {
+	repeats := bytes.Split(field, []byte{delims.repeat})
+	w.buf.WriteByte('[')
+
+	for i, r := range repeats {
+		if i > 0 {
+			w.buf.WriteByte(',')
+		}
+		if bytes.Contains(r, []byte{delims.component}) {
+			w.parseComponentsToJSON(name, r)
+		} else {
+			w.buf.WriteString(fmt.Sprintf("\"%s\"", replaceEscapes(r)))
+		}
+	}
+
+	w.buf.WriteByte(']')
+}
+
+func extractDelimiters(d []byte) error {
+	if len(d) < 5 {
+		return errors.New("could not extract delimiters")
+	}
+
+	delims.field = d[0]
+	delims.component = d[1]
+	delims.repeat = d[2]
+	delims.escape = d[3]
+	delims.subcomponent = d[4]
+
+	return nil
+}
+
+func formatKey(name string, i int) string {
+	return name + "." + strconv.Itoa(i)
 }
 
 func replaceEscapes(s []byte) string {
-	s = bytes.ReplaceAll(s, []byte("\\F\\"), []byte("|"))
-	s = bytes.ReplaceAll(s, []byte("\\S\\"), []byte("^"))
-	s = bytes.ReplaceAll(s, []byte("\\R\\"), []byte("~"))
-	s = bytes.ReplaceAll(s, []byte("\\T\\"), []byte("&"))
-	s = bytes.ReplaceAll(s, []byte("\\E\\"), []byte("\\"))
-	s = bytes.ReplaceAll(s, []byte("\\X0D\\"), []byte("\r"))
-	s = bytes.ReplaceAll(s, []byte("\\X0A\\"), []byte("\n"))
+	if !bytes.Contains(s, []byte{'\\'}) {
+		return string(s)
+	}
 
-	return string(s)
+	result := make([]byte, 0, len(s))
+
+	i := 0
+	for i < len(s) {
+		if s[i] == '\\' && i+2 < len(s) {
+			switch {
+			case bytes.HasPrefix(s[i:], []byte("\\F\\")):
+				result = append(result, '|')
+				i += 3
+			case bytes.HasPrefix(s[i:], []byte("\\R\\")):
+				result = append(result, '~')
+				i += 3
+			case bytes.HasPrefix(s[i:], []byte("\\S\\")):
+				result = append(result, '^')
+				i += 3
+			case bytes.HasPrefix(s[i:], []byte("\\T\\")):
+				result = append(result, '&')
+				i += 3
+			case bytes.HasPrefix(s[i:], []byte("\\E\\")):
+				result = append(result, '\\')
+				i += 3
+			case bytes.HasPrefix(s[i:], []byte("\\X0D\\")):
+				result = append(result, '\r')
+				i += 5
+			case bytes.HasPrefix(s[i:], []byte("\\X0A\\")):
+				result = append(result, '\n')
+				i += 5
+			default:
+				result = append(result, s[i])
+				i++
+			}
+		} else {
+			result = append(result, s[i])
+			i++
+		}
+	}
+	return string(result)
+}
+
+func getRepeatedSegments(segments [][]byte) map[string]int {
+	segCounts := make(map[string]int)
+
+	for _, seg := range segments {
+		if len(seg) < 3 {
+			continue
+		}
+
+		name := string(seg[:3])
+		if _, ok := repeatableSegments[name]; ok {
+			segCounts[name]++
+		}
+	}
+
+	for k, v := range segCounts {
+		if v < 2 {
+			delete(segCounts, k)
+		}
+	}
+
+	return segCounts
 }

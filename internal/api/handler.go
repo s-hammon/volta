@@ -13,8 +13,6 @@ import (
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
-const SegDelim = '\r'
-
 type HealthcareClient interface {
 	GetHL7V2Message(string) (hl7.Message, error)
 }
@@ -75,7 +73,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 	switch m.Message.Attributes.Type {
 	case "ORM":
 		orm := models.ORM{}
-		if err = hl7.Unmarshal(msgMap, &orm); err != nil {
+		if err = json.Unmarshal(msgMap, &orm); err != nil {
 			logMsg.Result = err.Error()
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -90,7 +88,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	case "ORU":
 		oru := models.ORU{}
-		if err = hl7.Unmarshal(msgMap, &oru); err != nil {
+		if err = json.Unmarshal(msgMap, &oru); err != nil {
 			logMsg.Result = err.Error()
 			w.WriteHeader(http.StatusInternalServerError)
 			return

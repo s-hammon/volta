@@ -72,7 +72,7 @@ func (h *Hl7Client) GetHL7V2Message(messagePath string) (hl7.Message, error) {
 		return nil, fmt.Errorf("error decoding HL7 message: %w", err)
 	}
 
-	msgMap, err := hl7.NewMessage(raw, byte(SegDelim))
+	msgMap, err := hl7.NewMessage(raw)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing HL7 message: %w", err)
 	}
