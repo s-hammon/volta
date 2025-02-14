@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.1-alpha]
+
 - Added `/healthz` healthcheck endpoint
 - Added middleware logging:
 
@@ -26,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ```
 
 - Added `gosec` in CI
+- Changed hl7 package to use byte buffer instead of map for performance
+- Modified release workflow
 
 ## [v0.1.0-alpha]
 
@@ -36,3 +40,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/s-hammon/volta/compare/v0.1.0-alpha...HEAD
 [v0.1.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.1.0-alpha
+[v0.2.1-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.1-alpha
