@@ -2,6 +2,7 @@ package hl7
 
 import (
 	"bytes"
+	"os"
 	"reflect"
 	"runtime"
 	"testing"
@@ -16,6 +17,8 @@ var testSegDelim = byte('\r')
 var validHL7 = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{testSegDelim})
 var invalidLineEnding = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{'\t'})
 var invalidMSH = bytes.Join([][]byte{[]byte("MSH|"), validPID, validPV1}, []byte("\r"))
+
+var sampleFile = "test.hl7"
 
 func TestNewMessage(t *testing.T) {
 	got, err := NewMessage(validHL7, testSegDelim)
@@ -114,8 +117,14 @@ func TestNewMessageError(t *testing.T) {
 func BenchmarkNewMessage(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
+	raw, err := os.ReadFile(sampleFile)
+	if err != nil {
+		b.Fatalf("unexpected error: %v", err)
+	}
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := NewMessage(validHL7, testSegDelim)
+		_, err := NewMessage(raw, testSegDelim)
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
