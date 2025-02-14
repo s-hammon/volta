@@ -2,7 +2,6 @@ package hl7
 
 import (
 	"bytes"
-	"os"
 	"reflect"
 	"runtime"
 	"testing"
@@ -15,13 +14,14 @@ var validPID = []byte("PID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||198
 var testSegDelim = byte('\r')
 
 var validHL7 = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{testSegDelim})
+var validHL72 = []byte("MSH|^~\\&||GA0000||VAERS PROCESSOR|20010331605||ORU^R01|20010422GA03|T|2.3.1|||AL\rPID|||1234^^^^SR~1234-12^^^^LR~00725^^^^MR||Doe^John^Fitzgerald^JR^^^L||20001007|M||2106-3^White^HL70005|123 Peachtree St^APT 3B^Atlanta^GA^30210^^M^^GA067||(678) 555-1212^^PRN\rNK1|1|Jones^Jane^Lee^^RN|VAB^Vaccine administered by (Name)^HL70063\rNK1|2|Jones^Jane^Lee^^RN|FVP^Form completed by (Name)-Vaccine provider^HL70063|101 Main Street^^Atlanta^GA^38765^^O^^GA121||(404) 554-9097^^WPN\rORC|CN|||||||||||1234567^Welby^Marcus^J^Jr^Dr.^MD^L|||||||||Peachtree Clinic|101 Main Street^^Atlanta^GA^38765^^O^^GA121|(404) 554-9097^^WPN|101 Main Street^^Atlanta^GA^38765^^O^^GA121\rOBR|1|||^CDC VAERS-1 (FDA) Report|||20010316\rOBX|1|NM|21612-7^Reported Patient Age^LN||05|mo^month^ANSI\rOBX|1|TS|30947-6^Date form completed^LN||20010316\rOBX|2|FT|30948-4^Vaccination adverse events and treatment, if any^LN|1|fever of 106F, with vomiting, seizures, persistent crying lasting over 3 hours, loss of appetite\rOBX|3|CE|30949-2^Vaccination adverse event outcome^LN|1|E^required emergency room/doctor visit^NIP005\rOBX|4|CE|30949-2^Vaccination adverse event outcome^LN|1|H^required hospitalization^NIP005\rOBX|5|NM|30950-0^Number of days hospitalized due to vaccination adverse event^LN|1|02|d^day^ANSI\rOBX|6|CE|30951-8^Patient recovered^LN||Y^Yes^ HL70239\rOBX|7|TS|30952-6^Date of vaccination^LN||20010216\rOBX|8|TS|30953-4^Adverse event onset date and time^LN||200102180900\rOBX|9|FT|30954-2^Relevant diagnostic tests/lab data^LN||Electrolytes, CBC, Blood culture")
 var invalidLineEnding = bytes.Join([][]byte{validMSH, validPID, validPV1}, []byte{'\t'})
 var invalidMSH = bytes.Join([][]byte{[]byte("MSH|"), validPID, validPV1}, []byte("\r"))
 
 var sampleFile = "test.hl7"
 
 func TestNewMessage(t *testing.T) {
-	got, err := NewMessage(validHL7, testSegDelim)
+	got, err := NewMessage(validHL7)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestNewMessageError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := NewMessage(tt.msg, testSegDelim); err == nil {
+			if got, err := NewMessage(tt.msg); err == nil {
 				t.Errorf("expected error, got nil\nresults: %v", got)
 			}
 		})
@@ -117,14 +117,8 @@ func TestNewMessageError(t *testing.T) {
 func BenchmarkNewMessage(b *testing.B) {
 	runtime.GOMAXPROCS(1)
 
-	raw, err := os.ReadFile(sampleFile)
-	if err != nil {
-		b.Fatalf("unexpected error: %v", err)
-	}
-
-	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := NewMessage(raw, testSegDelim)
+		_, err := NewMessage(validHL72)
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
