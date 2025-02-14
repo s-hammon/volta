@@ -6,9 +6,9 @@ import (
 )
 
 type VisitModel struct {
-	VisitNo          string `hl7:"PV1.19"`
-	Class            string `hl7:"PV1.2"`
-	AssignedLocation PL     `hl7:"PV1.3"`
+	VisitNo          string `json:"PV1.19"`
+	Class            string `json:"PV1.2"`
+	AssignedLocation PL     `json:"PV1.3"`
 }
 
 func (v *VisitModel) ToEntity(siteCode string, mrn CX) entity.Visit {

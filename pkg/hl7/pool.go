@@ -1,22 +1,12 @@
 package hl7
 
-import "sync"
-
-type msgData struct {
-	Data map[string]interface{}
-}
+import (
+	"bytes"
+	"sync"
+)
 
 var pool = sync.Pool{
 	New: func() interface{} {
-		return &msgData{Data: make(map[string]interface{})}
+		return new(bytes.Buffer)
 	},
-}
-
-func getMsgMap() *msgData {
-	return pool.Get().(*msgData)
-}
-
-func putMsgMap(m *msgData) {
-	m.Data = make(map[string]interface{})
-	pool.Put(m)
 }

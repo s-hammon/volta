@@ -9,11 +9,11 @@ import (
 )
 
 type ORM struct {
-	MSH MessageModel `hl7:"MSH"`
-	PID PatientModel `hl7:"PID"`
-	PV1 VisitModel   `hl7:"PV1"`
-	ORC OrderModel   `hl7:"ORC"`
-	OBR ExamModel    `hl7:"OBR"`
+	MSH MessageModel `json:"MSH"`
+	PID PatientModel `json:"PID"`
+	PV1 VisitModel   `json:"PV1"`
+	ORC OrderModel   `json:"ORC"`
+	OBR ExamModel    `json:"OBR"`
 }
 
 func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
