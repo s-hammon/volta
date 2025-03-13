@@ -23,14 +23,16 @@ type Repository interface {
 }
 
 type API struct {
-	DB     Repository
-	Client HealthcareClient
+	DB        Repository
+	Client    HealthcareClient
+	debugMode bool
 }
 
-func New(db Repository, client HealthcareClient) http.Handler {
+func New(db Repository, client HealthcareClient, debugMode bool) http.Handler {
 	a := &API{
-		DB:     db,
-		Client: client,
+		DB:        db,
+		Client:    client,
+		debugMode: debugMode,
 	}
 
 	mux := http.NewServeMux()
@@ -69,6 +71,14 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logMsg.Hl7Size = strconv.Itoa(len(msgMap))
+
+	if a.debugMode {
+		log.Debug().
+			Str("messagePath", string(m.Message.Data)).
+			Str("hl7Message", string(msgMap)).
+			Msg("received message")
+		return
+	}
 
 	switch m.Message.Attributes.Type {
 	case "ORM":

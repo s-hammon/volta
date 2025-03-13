@@ -37,6 +37,7 @@ func (p *PatientModel) ToEntity() entity.Patient {
 func tryParseDOB(dob string) time.Time {
 	// try to parse dob a few different ways
 	// if none work, use current time
+	// TODO: move these to var
 	formats := []string{
 		"20060102",
 		"2006-01-02",

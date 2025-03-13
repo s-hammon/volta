@@ -121,7 +121,7 @@ func TestHandleMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			api := New(repo, client)
+			api := New(repo, client, false)
 
 			req := newPostMsgRequest(tt.data)
 			w := httptest.NewRecorder()
@@ -130,6 +130,10 @@ func TestHandleMessage(t *testing.T) {
 			assertStatus(t, w.Code, tt.want)
 		})
 	}
+}
+
+func TestHandleMessageDebugMode(t *testing.T) {
+
 }
 
 func newPostMsgRequest(data string) *http.Request {
@@ -150,7 +154,7 @@ func BenchmarkHandleMessage(b *testing.B) {
 	repo := &mockRepo{}
 	client := newMockClient(map[string]hl7.Message{"validORM": validORM})
 
-	api := New(repo, client)
+	api := New(repo, client, false)
 	data := fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORM"}}}`, vORMEncKey)
 	b.ResetTimer()
 

@@ -7,12 +7,13 @@ import (
 	"strconv"
 )
 
+// TODO: refactor to uint8 enums
 var delims struct {
 	field, repeat, component, subcomponent, escape byte
 }
 
 var repeatableSegments = map[string]struct{}{
-	"OBX": {}, "NTE": {}, "AL1": {}, "DG1": {},
+	"OBX": {}, "NTE": {}, "AL1": {}, "DG1": {}, "IN1": {},
 }
 
 const (

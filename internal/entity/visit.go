@@ -19,7 +19,6 @@ type Visit struct {
 func DBtoVisit(visit database.GetVisitBySiteIdNumberRow) Visit {
 	return Visit{
 		Base: Base{
-			// TODO: make this a little SAFER
 			ID:        int(visit.ID),
 			CreatedAt: visit.CreatedAt.Time,
 			UpdatedAt: visit.UpdatedAt.Time,
@@ -45,6 +44,7 @@ func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *databas
 		return database.Visit{}, err
 	}
 
+	// TODO: if v.VisitNo == "", use the accession
 	res, err := db.CreateVisit(ctx, database.CreateVisitParams{
 		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
 		MrnID:       mID,

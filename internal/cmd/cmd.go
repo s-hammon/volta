@@ -15,10 +15,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: include YAML config file to parse & pass to service.
 var (
-	dbURL string
-	host  string
-	port  string
+	dbURL     string
+	host      string
+	port      string
+	debugMode bool
 
 	db *pgxpool.Pool
 
@@ -28,10 +30,12 @@ var (
 
 func init() {
 	ctx, cancel = context.WithCancel(context.Background())
+	// TODO: init config
 
 	serveCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", "host for service (default: localhost)")
 	serveCmd.PersistentFlags().StringVarP(&port, "port", "p", "8080", "port to listen on (default: 8080)")
-	serveCmd.PersistentFlags().StringVarP(&dbURL, "db-url", "d", "", "database URL (required)")
+	serveCmd.PersistentFlags().StringVarP(&dbURL, "db-url", "d", "", "database URL (required unless using debug mode)")
+	serveCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "D", false, "enable debug mode; results are just logged to stdout, not written to the database (cannot use with -d)")
 }
 
 func Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -68,16 +72,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		port, err := cmd.Flags().GetString("port")
-		if err != nil {
-			return err
-		}
-
-		dbURL, err := cmd.Flags().GetString("db-url")
-		if err != nil {
-			return err
-		}
-		if dbURL == "" {
+		if (dbURL == "" && !debugMode) || (dbURL != "" && debugMode) {
 			return cmd.Usage()
 		}
 
@@ -88,15 +83,19 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		pool, err := pgxpool.New(ctx, dbURL)
-		if err != nil {
-			return err
+		var db api.DB
+		if !debugMode {
+			pool, err := pgxpool.New(ctx, dbURL)
+			if err != nil {
+				return err
+			}
+			log.Info().Msg("connected to database")
+			db = api.NewDB(pool)
 		}
-		db := api.NewDB(pool)
 
 		srv := &http.Server{
 			Addr:              net.JoinHostPort(host, port),
-			Handler:           api.New(db, client),
+			Handler:           api.New(db, client, debugMode),
 			ReadHeaderTimeout: 3 * time.Second,
 		}
 

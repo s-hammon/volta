@@ -11,9 +11,9 @@ type ExamModel struct {
 	Service       CE     `json:"OBR.4"`
 	Priority      string `json:"OBR.5"`
 	RequestDT     string `json:"OBR.6"`
-	ObservationDT string `json:"OBR.7"`
+	ObservationDT string `json:"OBR.7"` // TODO: change to OBR.22
 	StatusDT      string `json:"OBR.22"`
-	Status        string `json:"OBR.25"`
+	Status        string `json:"OBR.25"` // TODO: make sure we're using for report type (F - final, A - addendum, P - preliminary)
 }
 
 func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {
@@ -40,6 +40,7 @@ func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam
 		dt = time.Now()
 	}
 
+	// TODO: status to uint8 enum
 	switch status {
 	case "SC":
 		exam.Scheduled = dt
