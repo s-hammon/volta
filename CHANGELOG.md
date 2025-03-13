@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Changed path of PubSub message type from "Attributes.type" to "Attributes.msgType"
+- Fixed & modified logging for JSON response 
+
 ## [v0.2.2-alpha]
 
 - Added `--debug/-D` flag for service

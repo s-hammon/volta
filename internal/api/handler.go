@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -40,18 +39,16 @@ func New(db Repository, client HealthcareClient, debugMode bool) http.Handler {
 	mux.HandleFunc("POST /", a.handleMessage)
 	mux.HandleFunc("GET /healthz", handleReadiness)
 
-	loggedMux := middlwareLogging(mux)
+	loggedMux := middlewareLogging(mux)
 
 	return loggedMux
 }
 
 func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	var logMsg logMsg
+	logMsg := NewLogMsg()
 
 	if r.Body == nil {
-		logMsg.Result = "empty request body"
-		w.WriteHeader(http.StatusBadRequest)
+		logMsg.RespondJSON(w, http.StatusBadRequest, "empty request body")
 		return
 	}
 	defer r.Body.Close()
@@ -59,82 +56,60 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
-		logMsg.Result = err.Error()
-		w.WriteHeader(http.StatusBadRequest)
+		logMsg.RespondJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	msgMap, err := a.Client.GetHL7V2Message(string(m.Message.Data))
 	if err != nil {
-		logMsg.Result = err.Error()
-		w.WriteHeader(http.StatusInternalServerError)
+		logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	logMsg.Hl7Size = strconv.Itoa(len(msgMap))
 
 	if a.debugMode {
-		log.Debug().
-			Str("messagePath", string(m.Message.Data)).
-			Str("hl7Message", string(msgMap)).
-			Msg("received message")
+		logMsg.RespondJSON(w, http.StatusOK, "received message")
 		return
 	}
 
+	var msg string
 	switch m.Message.Attributes.Type {
 	case "ORM":
 		orm := models.ORM{}
 		if err = json.Unmarshal(msgMap, &orm); err != nil {
-			logMsg.Result = err.Error()
-			w.WriteHeader(http.StatusInternalServerError)
+			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		if err = a.DB.UpsertORM(context.Background(), orm); err != nil {
-			logMsg.Result = err.Error()
-			w.WriteHeader(http.StatusInternalServerError)
+			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		logMsg.Result = "ORM processed successfully"
+		msg = "ORM processed successfully"
 
 	case "ORU":
 		oru := models.ORU{}
 		if err = json.Unmarshal(msgMap, &oru); err != nil {
-			logMsg.Result = err.Error()
-			w.WriteHeader(http.StatusInternalServerError)
+			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
 		if err = a.DB.InsertORU(context.Background(), oru); err != nil {
-			logMsg.Result = err.Error()
-			w.WriteHeader(http.StatusInternalServerError)
+			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		msg = "ORU processed successfully"
 
-		logMsg.Result = "ORU processed successfully"
 	case "ADT":
 		log.Warn().
 			Str("messagePath", string(m.Message.Data)).
 			Msg("ADT message type not implemented")
-		w.WriteHeader(http.StatusNotImplemented)
+		logMsg.RespondJSON(w, http.StatusNotImplemented, "ADT message type not implemented")
 		return
 	default:
-		logMsg.Result = "unsupported message type"
-		w.WriteHeader(http.StatusBadRequest)
+		logMsg.RespondJSON(w, http.StatusBadRequest, "unsupported message type")
 		return
 	}
 
-	logMsg.Elapsed = time.Since(start).Seconds() * 1000 // milliseconds
-
-	logBytes, err := json.Marshal(logMsg)
-	if err != nil {
-		log.Error().Err(err).Msg("could not marshal log message")
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if _, err = w.Write(logBytes); err != nil {
-		log.Error().Err(err).Msg("could not write log message")
-		return
-	}
+	logMsg.RespondJSON(w, http.StatusCreated, msg)
 }

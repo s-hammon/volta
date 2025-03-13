@@ -76,12 +76,12 @@ func TestHandleMessage(t *testing.T) {
 	}{
 		{
 			name: "inserting ORM",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORM"}}}`, vORMEncKey),
+			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORM"}}}`, vORMEncKey),
 			want: http.StatusCreated,
 		},
 		{
 			name: "inserting ORU",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORU"}}}`, vORUEncKey),
+			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORU"}}}`, vORUEncKey),
 			want: http.StatusCreated,
 		},
 		{
@@ -91,22 +91,22 @@ func TestHandleMessage(t *testing.T) {
 		},
 		{
 			name: "invalid message type",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "invalid"}}}`, vORMEncKey),
+			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "invalid"}}}`, vORMEncKey),
 			want: http.StatusBadRequest,
 		},
 		{
 			name: "message not found",
-			data: `{"message": {"data": "notFound", "attributes": {"type": "ORM"}}}`,
+			data: `{"message": {"data": "notFound", "attributes": {"msgType": "ORM"}}}`,
 			want: http.StatusInternalServerError,
 		},
 		{
 			name: "error getting ORM",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORM"}}}`, iORMEncKey),
+			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORM"}}}`, iORMEncKey),
 			want: http.StatusInternalServerError,
 		},
 		{
 			name: "error getting ORU",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORU"}}}`, iORUEncKey),
+			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORU"}}}`, iORUEncKey),
 			want: http.StatusInternalServerError,
 		},
 	}

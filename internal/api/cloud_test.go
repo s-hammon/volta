@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var mockPubSubMessage = []byte(`{"Message": {"Data": "cHJvamVjdHMvUFJPSkVDVF9JRC9sb2NhdGlvbnMvTE9DQVRJT05fSUQvZGF0YXNldHMvREFUQVNFVF9JRC9obDdWMlN0b3Jlcy9ITDdWMlNUT1JFX0lEL21lc3NhZ2VzL01FU1NBR0VfSUQK", "Attributes": {"Type": "ORM"}}, "Subscription": "test"}`)
+var mockPubSubMessage = []byte(`{"Message": {"Data": "cHJvamVjdHMvUFJPSkVDVF9JRC9sb2NhdGlvbnMvTE9DQVRJT05fSUQvZGF0YXNldHMvREFUQVNFVF9JRC9obDdWMlN0b3Jlcy9ITDdWMlNUT1JFX0lEL21lc3NhZ2VzL01FU1NBR0VfSUQK", "Attributes": {"msgType": "ORM"}}, "Subscription": "test"}`)
 
 func TestNewPubSubMessage(t *testing.T) {
 	buf := bytes.NewReader(mockPubSubMessage)

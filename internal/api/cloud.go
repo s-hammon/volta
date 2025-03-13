@@ -25,7 +25,7 @@ type message struct {
 }
 
 type attributes struct {
-	Type string `json:"type"`
+	Type string `json:"msgType"`
 }
 
 func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
@@ -43,7 +43,7 @@ func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 		return nil, errors.New("empty message data")
 	}
 	if !slices.Contains([]string{"ORM", "ORU", "ADT"}, m.Message.Attributes.Type) {
-		return nil, errors.New("unknown message type")
+		return nil, fmt.Errorf("invalid message type: %s", m.Message.Attributes.Type)
 	}
 
 	return &m, nil

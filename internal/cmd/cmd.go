@@ -91,6 +91,8 @@ var serveCmd = &cobra.Command{
 			}
 			log.Info().Msg("connected to database")
 			db = api.NewDB(pool)
+		} else {
+			log.Info().Msg("debug mode enabled; printing messages to stdout")
 		}
 
 		srv := &http.Server{
