@@ -2,3 +2,4 @@
 *.txt
 .env
 /bin
+.vscode/

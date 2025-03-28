@@ -13,19 +13,17 @@ import (
 
 const createReport = `-- name: CreateReport :one
 INSERT INTO reports (
-    exam_id,
     radiologist_id,
     body,
     impression,
     report_status,
     submitted_dt
 )
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, created_at, updated_at, exam_id, radiologist_id, body, impression, report_status, submitted_dt
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
 `
 
 type CreateReportParams struct {
-	ExamID        pgtype.Int8
 	RadiologistID pgtype.Int8
 	Body          string
 	Impression    string
@@ -35,7 +33,6 @@ type CreateReportParams struct {
 
 func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Report, error) {
 	row := q.db.QueryRow(ctx, createReport,
-		arg.ExamID,
 		arg.RadiologistID,
 		arg.Body,
 		arg.Impression,
@@ -47,7 +44,44 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.ExamID,
+		&i.RadiologistID,
+		&i.Body,
+		&i.Impression,
+		&i.ReportStatus,
+		&i.SubmittedDt,
+	)
+	return i, err
+}
+
+const getReportByUniqueFields = `-- name: GetReportByUniqueFields :one
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
+FROM reports
+WHERE
+    radiologist_id = $1
+    AND impression = $2
+    AND report_status = $3
+    AND submitted_dt = $4
+`
+
+type GetReportByUniqueFieldsParams struct {
+	RadiologistID pgtype.Int8
+	Impression    string
+	ReportStatus  string
+	SubmittedDt   pgtype.Timestamp
+}
+
+func (q *Queries) GetReportByUniqueFields(ctx context.Context, arg GetReportByUniqueFieldsParams) (Report, error) {
+	row := q.db.QueryRow(ctx, getReportByUniqueFields,
+		arg.RadiologistID,
+		arg.Impression,
+		arg.ReportStatus,
+		arg.SubmittedDt,
+	)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.RadiologistID,
 		&i.Body,
 		&i.Impression,

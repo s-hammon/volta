@@ -9,20 +9,22 @@ import (
 )
 
 type Exam struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
-	OutsideSystemID pgtype.Int4
-	OrderID         pgtype.Int8
-	VisitID         pgtype.Int8
-	MrnID           pgtype.Int8
-	SiteID          pgtype.Int4
-	ProcedureID     pgtype.Int4
-	Accession       string
-	CurrentStatus   string
-	ScheduleDt      pgtype.Timestamp
-	BeginExamDt     pgtype.Timestamp
-	EndExamDt       pgtype.Timestamp
+	ID               int64
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	OutsideSystemID  pgtype.Int4
+	OrderID          pgtype.Int8
+	VisitID          pgtype.Int8
+	MrnID            pgtype.Int8
+	SiteID           pgtype.Int4
+	ProcedureID      pgtype.Int4
+	FinalReportID    pgtype.Int8
+	AddendumReportID pgtype.Int8
+	Accession        string
+	CurrentStatus    string
+	ScheduleDt       pgtype.Timestamp
+	BeginExamDt      pgtype.Timestamp
+	EndExamDt        pgtype.Timestamp
 }
 
 type Message struct {
@@ -129,7 +131,6 @@ type Report struct {
 	ID            int64
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
-	ExamID        pgtype.Int8
 	RadiologistID pgtype.Int8
 	Body          string
 	Impression    string

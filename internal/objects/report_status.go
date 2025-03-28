@@ -1,12 +1,12 @@
 package objects
 
-const (
-	Pending ReportStatus = iota + 1
-	Final
-	Addendum
-)
+type ReportStatus string
 
-type ReportStatus int16
+const (
+	Pending  ReportStatus = "P"
+	Final    ReportStatus = "F"
+	Addendum ReportStatus = "A"
+)
 
 func NewReportStatus(s string) ReportStatus {
 	switch s {
@@ -22,14 +22,5 @@ func NewReportStatus(s string) ReportStatus {
 }
 
 func (r ReportStatus) String() string {
-	switch r {
-	case Pending:
-		return "P"
-	case Final:
-		return "F"
-	case Addendum:
-		return "A"
-	default:
-		return "P"
-	}
+	return string(r)
 }

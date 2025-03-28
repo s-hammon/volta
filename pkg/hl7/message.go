@@ -12,10 +12,6 @@ var delims struct {
 	field, repeat, component, subcomponent, escape byte
 }
 
-var repeatableSegments = map[string]struct{}{
-	"OBX": {}, "NTE": {}, "AL1": {}, "DG1": {}, "IN1": {},
-}
-
 const (
 	HeaderSegment = "MSH"
 	CR            = '\r'
@@ -172,11 +168,14 @@ func (w *MsgWriter) parseComponentsToJSON(name string, field []byte) {
 	components := bytes.Split(field, []byte{delims.component})
 	w.buf.WriteByte('{')
 
+	isFirst := true
 	for i, c := range components {
 		if len(c) == 0 {
 			continue
 		}
-		if i > 0 {
+		if isFirst {
+			isFirst = false
+		} else {
 			w.buf.WriteByte(',')
 		}
 		cName := formatKey(name, i+1)
@@ -275,9 +274,10 @@ func getRepeatedSegments(segments [][]byte) map[string]int {
 		}
 
 		name := string(seg[:3])
-		if _, ok := repeatableSegments[name]; ok {
-			segCounts[name]++
+		if _, ok := segCounts[name]; !ok {
+			segCounts[name] = 0
 		}
+		segCounts[name]++
 	}
 
 	for k, v := range segCounts {

@@ -56,3 +56,19 @@ SET
     end_exam_dt = $11
 WHERE id = $1
 RETURNING *;
+
+-- name: UpdateExamFinalReport :one
+UPDATE exams
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    final_report_id = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateExamAddendumReport :one
+UPDATE exams
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    addendum_report_id = $2
+WHERE id = $1
+RETURNING *;

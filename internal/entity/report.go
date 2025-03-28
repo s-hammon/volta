@@ -2,8 +2,6 @@ package entity
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,7 +11,6 @@ import (
 
 type Report struct {
 	Base
-	Exam        Exam
 	Radiologist Physician
 	Body        string
 	Impression  string
@@ -28,22 +25,15 @@ func (r *Report) ToDB(ctx context.Context, db *database.Queries) (database.Repor
 	}
 
 	res, err := db.CreateReport(ctx, database.CreateReportParams{
-		ExamID:        pgtype.Int8{Int64: int64(r.Exam.ID), Valid: true},
 		RadiologistID: pgtype.Int8{Int64: int64(r.Radiologist.ID), Valid: true},
 		Body:          r.Body,
 		Impression:    r.Impression,
 		ReportStatus:  r.Status.String(),
 		SubmittedDt:   submitDT,
 	})
-	if err == nil {
-		return res, nil
+	if err != nil {
+		return database.Report{}, err
 	}
 
-	if extractErrCode(err) == "23505" {
-		// throw error--can only have one report per exam & status
-		errMsg := fmt.Sprintf("report already exists for exam %v", r.Exam.ID)
-		return database.Report{}, errors.New(errMsg)
-	}
-
-	return database.Report{}, err
+	return res, nil
 }

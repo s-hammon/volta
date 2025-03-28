@@ -25,7 +25,7 @@ INSERT INTO exams (
     end_exam_dt
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
 `
 
 type CreateExamParams struct {
@@ -65,6 +65,8 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, e
 		&i.MrnID,
 		&i.SiteID,
 		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
 		&i.Accession,
 		&i.CurrentStatus,
 		&i.ScheduleDt,
@@ -76,7 +78,7 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, e
 
 const getExamBySiteIDAccession = `-- name: GetExamBySiteIDAccession :one
 SELECT
-    e.id, e.created_at, e.updated_at, e.outside_system_id, e.order_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt,
+    e.id, e.created_at, e.updated_at, e.outside_system_id, e.order_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.final_report_id, e.addendum_report_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt,
     m.created_at AS mrn_created_at,
     m.updated_at AS mrn_updated_at,
     m.mrn AS mrn_value,
@@ -116,6 +118,8 @@ type GetExamBySiteIDAccessionRow struct {
 	MrnID                pgtype.Int8
 	SiteID               pgtype.Int4
 	ProcedureID          pgtype.Int4
+	FinalReportID        pgtype.Int8
+	AddendumReportID     pgtype.Int8
 	Accession            string
 	CurrentStatus        string
 	ScheduleDt           pgtype.Timestamp
@@ -151,6 +155,8 @@ func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySit
 		&i.MrnID,
 		&i.SiteID,
 		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
 		&i.Accession,
 		&i.CurrentStatus,
 		&i.ScheduleDt,
@@ -190,7 +196,7 @@ SET
     begin_exam_dt = $10,
     end_exam_dt = $11
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
 `
 
 type UpdateExamParams struct {
@@ -232,6 +238,84 @@ func (q *Queries) UpdateExam(ctx context.Context, arg UpdateExamParams) (Exam, e
 		&i.MrnID,
 		&i.SiteID,
 		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
+		&i.Accession,
+		&i.CurrentStatus,
+		&i.ScheduleDt,
+		&i.BeginExamDt,
+		&i.EndExamDt,
+	)
+	return i, err
+}
+
+const updateExamAddendumReport = `-- name: UpdateExamAddendumReport :one
+UPDATE exams
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    addendum_report_id = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+`
+
+type UpdateExamAddendumReportParams struct {
+	ID               int64
+	AddendumReportID pgtype.Int8
+}
+
+func (q *Queries) UpdateExamAddendumReport(ctx context.Context, arg UpdateExamAddendumReportParams) (Exam, error) {
+	row := q.db.QueryRow(ctx, updateExamAddendumReport, arg.ID, arg.AddendumReportID)
+	var i Exam
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.OrderID,
+		&i.VisitID,
+		&i.MrnID,
+		&i.SiteID,
+		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
+		&i.Accession,
+		&i.CurrentStatus,
+		&i.ScheduleDt,
+		&i.BeginExamDt,
+		&i.EndExamDt,
+	)
+	return i, err
+}
+
+const updateExamFinalReport = `-- name: UpdateExamFinalReport :one
+UPDATE exams
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    final_report_id = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+`
+
+type UpdateExamFinalReportParams struct {
+	ID            int64
+	FinalReportID pgtype.Int8
+}
+
+func (q *Queries) UpdateExamFinalReport(ctx context.Context, arg UpdateExamFinalReportParams) (Exam, error) {
+	row := q.db.QueryRow(ctx, updateExamFinalReport, arg.ID, arg.FinalReportID)
+	var i Exam
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.OrderID,
+		&i.VisitID,
+		&i.MrnID,
+		&i.SiteID,
+		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
 		&i.Accession,
 		&i.CurrentStatus,
 		&i.ScheduleDt,

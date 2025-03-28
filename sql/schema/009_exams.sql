@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS exams (
     mrn_id BIGINT REFERENCES mrns(id) ON DELETE CASCADE,
     site_id INT REFERENCES sites(id) ON DELETE CASCADE,
     procedure_id INT REFERENCES procedures(id) ON DELETE CASCADE,
+    final_report_id BIGINT REFERENCES reports(id) ON DELETE CASCADE,
+    addendum_report_id BIGINT REFERENCES reports(id) ON DELETE CASCADE,
     accession TEXT NOT NULL,
     current_status TEXT NOT NULL,
     schedule_dt TIMESTAMP,
