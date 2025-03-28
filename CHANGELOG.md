@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Coming in **v0.3.0-alpha:**
+## [v0.3.0-alpha]
+
 - Changed path of PubSub message type from "Attributes.type" to "Attributes.msgType"
 - Fixed & modified logging for JSON response 
 - Changed HL7 parsing logic to handle any repeating segment
@@ -15,9 +16,16 @@ Coming in **v0.3.0-alpha:**
     * ORUs may come with a second, third, etc. ORC/OBR group
     * Dictation handles all in one report
     * Each group is still handled as their own exam
-- `reports` model no longer has FK reference to `exam.id`; `exam` model now has `final_report_id` and `addendum_report_id` FK reference
+
+- **Schema change**
+
+  ![updated data model](assets/diagrams/relationships.real.large.png)
+
+    * `reports` model no longer has FK reference to `exam.id`; `exam` model now has `final_report_id` and `addendum_report_id` FK reference
     * This is because one report may be assigned to multiple exams (see above)
     * No significant instance of >2 reports (1 final, 1 addendum) assigned to an exam to warrant a bridge table
+
+
 - Development: built-in integration testing for schema changes
 
 ## [v0.2.2-alpha]
@@ -59,3 +67,4 @@ Coming in **v0.3.0-alpha:**
 [v0.1.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.1.0-alpha
 [v0.2.1-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.1-alpha
 [v0.2.2-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.2-alpha
+[v0.3.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.0-alpha
