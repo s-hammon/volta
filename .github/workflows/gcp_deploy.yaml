@@ -10,6 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - run: export "${{ secrets.GCP_SA_KEY }}" >> config
+
       - id: gcp-auth
         uses: google-github-actions/auth@v2
         with:
@@ -20,11 +22,16 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Setup Proxy Database
-        uses: mattes/gce-cloudsql-proxy-action@v1
-        with:
-          creds: ${{ secrets.GCP_SA_KEY }}
-          instance: ${{ secrets.INSTANCE_CONNECTION_NAME }}
-          port: 5432
+        run: |
+          docker run -d \
+            -p 127.0.0.1:5432:5432 \
+            -v ./config:/config \
+            gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2 \
+            --address 0.0.0.0 \
+            --credentials-file /config \
+            ${INSTANCE_CONNECTION_NAME}
+        env:
+          INSTANCE_CONNECTION_NAME: ${{ secrents.INSTANCE_CONNECTION_NAME }}
       
       - name: Install Go
         uses: actions/setup-go@v5
@@ -36,7 +43,7 @@ jobs:
 
       - name: Apply Migrations
         run: |
-          goose -dir sql/schema postgres "postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@127.0.0.1:5432/${{ secrets.DB_NAME}}?sslmode=disable" up
+          goose -dir sql/schema postgres "postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}?sslmode=disable" up
         env:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
