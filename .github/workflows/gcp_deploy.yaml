@@ -38,7 +38,7 @@ jobs:
 
       - name: Apply Migrations
         run: |
-          goose -dir sql/schema postgres postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@tcp(127.0.0.1:3306/${{ secrets.DB_NAME}}) up
+          goose -dir sql/schema postgres "postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@tcp(127.0.0.1:3306/${{ secrets.DB_NAME}})" up
         env:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
