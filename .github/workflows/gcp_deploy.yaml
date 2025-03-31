@@ -1,0 +1,45 @@
+name: Deploy Volta to GCP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.0'
+
+      - name: Install Cloud SQL Proxy
+        run: |
+          wget https://storage.googleapis.com/cloud-sql-proxy/cloud-sql-proxy.linux.amd64 -O cloud-sql-proxy
+          chmod +x cloud-sql-proxy
+
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Run Cloud SQL Proxy
+        run: |
+          ./cloud-sql-proxy --private-ip ${{ secrets.GCP_SA_KEY }} ${{ secrets.INSTANCE_CONNECTION_NAME }} &
+
+      - name: Install Goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+
+      - name: Apply Migrations
+        run: |
+          goose -dir sql/schema postgres postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@tcp(127.0.0.1:3306/${{ secrets.DB_NAME}}) up
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME}}
+
+      - name: Cleanup Proxy
+        run: pkill cloud-sql-proxy
+        
