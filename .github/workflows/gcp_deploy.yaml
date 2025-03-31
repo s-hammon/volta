@@ -24,10 +24,10 @@ jobs:
       - name: Setup Proxy Database
         run: |
           docker run -d \
-            -v ${{ secrets.GCP_SA_KEY }}:/config \
+            -v $(GOOGLE_APPLICATION_CREDENTIALS):/config \
             -p 127.0.0.1:3306:3306 \
             gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.15.2 \
-            --credential_file /config ${{ secrets.INSTANCE_CONNECTION_NAME}}
+            /cloud_sql_proxy -instances=${{ secrets.INSTANCE_CONNECTION_NAME }}  -credential_file=/config
       
       - name: Install Go
         uses: actions/setup-go@v5
