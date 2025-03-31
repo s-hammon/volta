@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: export "${{ secrets.GCP_SA_KEY }}" >> config
+      - run: echo '${{ secrets.GCP_SA_KEY }}' >> config
 
       - id: gcp-auth
         uses: google-github-actions/auth@v2
