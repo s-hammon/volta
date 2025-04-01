@@ -1,12 +1,4 @@
 steps:
-  - name: gcr.io/cloudsql-docker/gce-proxy:latest
-    id: "start-proxy"
-    entrypoint: /cloud_sql_proxy
-    args:
-      - "-instances=silver-pact-448614-t7:us-central1:volta-db=tcp:5432"
-      - "-credential_file=./volta-sa.json"
-    waitFor: ["-"]
-
   - name: golang:1.23
     id: "run-goose"
     entrypoint: bash
@@ -14,8 +6,10 @@ steps:
       - "-c"
       - |
         go install github.com/pressly/goose/v3/cmd/goose@latest
-        goose postgres "host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" up
-    dir: /sql/schema
+        goose postgres "host=10.70.80.3 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" up
+    dir: sql/schema
+    env:
+      - "PGPASSWORD=postgres"
 
 options:
   logging: CLOUD_LOGGING_ONLY
