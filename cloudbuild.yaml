@@ -1,0 +1,28 @@
+steps:
+  - name: golang:1.23
+    id: "run-goose"
+    entrypoint: bash
+    args:
+      - "-c"
+      - |
+        go install github.com/pressly/goose/v3/cmd/goose@latest
+        goose postgres "host=10.70.80.3 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" up
+    dir: sql/schema
+    env:
+      - "PGPASSWORD=postgres"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: projects/silver-pact-448614-t7/locations/us-central1/workerPools/cd-build-pool
+
+# availableSecrets:
+#   secretManager:
+#     - versionName: projects/silver-pact-448614-t7/secrets/DB_USER/versions/1
+#       env: 'DB_USER'
+#     - versionName: projects/silver-pact-448614-t7/secrets/DB_PASSWORD/versions/1
+#       env: 'DB_PASSWORD'
+#     - versionName: projects/silver-pact-448614-t7/secrets/DB_NAME/versions/1
+#       env: 'DB_NAME'
+#     - versionName: projects/silver-pact-448614-t7/secrets/DB_HOST/versions/1
+#       env: 'DB_HOST'
