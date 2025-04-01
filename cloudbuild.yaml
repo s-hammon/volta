@@ -6,12 +6,28 @@ steps:
       - "-c"
       - |
         go install github.com/pressly/goose/v3/cmd/goose@latest
-        goose postgres "host=10.70.80.3 port=5432 user=postgres password=postgres dbname=postgres sslmode=disable" up
+        goose postgres "host=$DB_HOST port=5432 user=$DB_USER dbname=$DB_NAME sslmode=disable" up
     dir: sql/schema
     env:
-      - "PGPASSWORD=postgres"
+      - "PGPASSWORD=$DB_PASSWORD"
 
 options:
   logging: CLOUD_LOGGING_ONLY
   pool:
-    name: projects/silver-pact-448614-t7/locations/us-central1/workerPools/cd-build-pool
+    name: projects/$_PROJECT_ID/locations/$_PROJECT_LOCATION/workerPools/$_WORKER_POOL
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$_PROJECT_ID/secrets/DB_USER/versions/latest
+      env: DB_USER
+    - versionName: projects/$_PROJECT_ID/secrets/DB_PASSWORD/versions/latest
+      env: DB_PASSWORD
+    - versionName: projects/$_PROJECT_ID/secrets/DB_NAME/versions/latest
+      env: DB_NAME
+    - versionName: projects/$_PROJECT_ID/secrets/DB_HOST/versions/latest
+      env: DB_HOST
+
+substitutions:
+  _PROJECT_ID: ""
+  _PROJECT_LOCATION: ""
+  _WORKER_POOL: ""
