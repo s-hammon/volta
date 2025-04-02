@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.1-alpha]
+
+Updated `go mod` and introduced CI/CD pipelines w/ GCP.
+
 ## [v0.3.0-alpha]
 
 - Changed path of PubSub message type from "Attributes.type" to "Attributes.msgType"
@@ -68,3 +72,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.2.1-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.1-alpha
 [v0.2.2-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.2-alpha
 [v0.3.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.0-alpha
+[v0.3.1-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.1-alpha
