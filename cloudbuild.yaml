@@ -3,17 +3,17 @@ steps:
     id: "run-goose"
     entrypoint: bash
     args:
-      - "-c"
+      - -c
       - |
         go install github.com/pressly/goose/v3/cmd/goose@latest
         goose postgres "host=$$DB_HOST port=5432 user=$$DB_USER dbname=$$DB_NAME sslmode=disable" up
     dir: sql/schema
     env:
-      - "PGPASSWORD=$$DB_PASSWORD"
-      - "DB_PASSWORD=$$DB_PASSWORD"
-      - "DB_USER=$$DB_USER"
-      - "DB_NAME=$$DB_NAME"
-      - "DB_HOST=$$DB_HOST"
+      - DB_USER=$$DB_USER
+      - DB_PASSWORD=$$DB_PASSWORD
+      - DB_NAME=$$DB_NAME
+      - DB_HOST=$$DB_HOST
+      - PGPASSWORD=$$DB_PASSWORD
 
 availableSecrets:
   secretManager:
