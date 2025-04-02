@@ -22,7 +22,7 @@ while IFS= read -r LINE; do
     if [[ "${LINE}" == "##"* ]] && [[ "${CAPTURE}" -eq 1 ]]; then
         break
     fi
-    if [[ "${LINE}" == "[Unreleased]"* ]]; then
+    if [[ "${LINE}" =~ ^##\s*\[Unreleased\] ]]; then
         break
     fi
     if [[ "${LINE}" == "## [${version}]"* ]] && [[ "${CAPTURE}" -eq 0 ]]; then
