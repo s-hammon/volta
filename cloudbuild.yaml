@@ -24,4 +24,3 @@ availableSecrets:
 
 substitutions:
   _GCP_PROJECT_ID: ""
-  _GCP_LOCATION: ""
