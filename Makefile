@@ -37,6 +37,9 @@ test-packages-short:
 artifact: build
 	@docker build -t ${PROJECT_NAME} .
 
+prod-build: build 
+	@scripts/build-prod.sh $(ARGS)
+
 ready: test
 	go vet ./...
 	golangci-lint run ./...

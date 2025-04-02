@@ -1,4 +1,4 @@
-name: Releaser
+name: release
 on:
     push:
         tags:

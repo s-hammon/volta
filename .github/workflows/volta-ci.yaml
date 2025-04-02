@@ -1,4 +1,4 @@
-name: Volta CI
+name: volta-ci
 
 on:
     push:

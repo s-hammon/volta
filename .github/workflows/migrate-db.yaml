@@ -1,4 +1,4 @@
-name: Migrate Database with Goose
+name: migrate-db
 
 on:
   workflow_dispatch:
