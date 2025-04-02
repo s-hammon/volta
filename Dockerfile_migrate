@@ -8,8 +8,9 @@ ENV PATH="/usr/bin:${PATH}"
 # verify goose installation
 RUN goose --version || (echo "goose did not install correctly" && exit 1)
 
-ARG SCHEMA_DIR=/sql/schema
-COPY ./sql/schema ${SCHEMA_DIR}
-WORKDIR ${SCHEMA_DIR}
+ARG GOOSE_MIGRATION_DIR=/sql/schema
+COPY ./sql/schema ${GOOSE_MIGRATION_DIR}
+
+ENV GOOSE_MIGRATION_DIR=${GOOSE_MIGRATION_DIR}
 
 ENTRYPOINT [ "goose" ]

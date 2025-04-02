@@ -3,11 +3,13 @@ steps:
     id: "run-goose"
     entrypoint: bash
     args:
-        - "-c"
-        - |
-          goose postgres "host=$$DB_HOST port=5432 user=$$DB_USER password=$$DB_PASSWORD dbname=$$DB_NAME sslmode=disable" up
-    dir: /sql/schema
+      - "-c"
+      - |
+        export GOOSE_DRIVER=postgres
+        export GOOSE_DBSTRING="host=$$DB_HOST port=5432 user=$$DB_USER password=$$DB_PASSWORD dbname=$$DB_NAME sslmode=disable"
+        goose up
     secretEnv: [DB_USER, DB_PASSWORD, DB_NAME, DB_HOST]
+    timeout: 10s
 
 availableSecrets:
   secretManager:
