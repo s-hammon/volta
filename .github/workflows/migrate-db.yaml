@@ -23,6 +23,5 @@ jobs:
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml . \
-            --worker-pool=${{ secrets.GCP_WORKER_POOL }} \
-            --substitutions=_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},\
-                _PROJECT_LOCATION=${{ secrets.GCP_PROJECT_LOCATION }},\
+            --worker-pool=projects/${{ secrets.GCP_PROJECT_ID }}/locations/${{ secrets.GCP_PROJECT_LOCATION }}/workerPools/$_WORKER_POOL \
+            --pack=env=PROJECT_ID={{ secrets.GCP_PROJECT_ID }},PROJECT_LOCATION={{ secrets.GCP_PROJECT_LOCATION}}
