@@ -6,24 +6,19 @@ steps:
       - -c
       - |
         go install github.com/pressly/goose/v3/cmd/goose@latest
-        goose postgres "host=$DB_HOST port=5432 user=$DB_USER dbname=$DB_NAME sslmode=disable" up
+        goose postgres "host=$$DB_HOST port=5432 user=$$DB_USER dbname=$$DB_NAME sslmode=disable" up
     dir: sql/schema
     env:
-      - DB_USER=$$DB_USER
-      - DB_NAME=$$DB_NAME
-      - DB_HOST=$$DB_HOST
       - PGPASSWORD=$$DB_PASSWORD
+    secretEnv: [DB_USER, DB_PASSWORD, DB_NAME, DB_HOST]
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$_GCP_PROJECT_ID/secrets/DB_USER/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/DB_USER/versions/latest
       env: DB_USER
-    - versionName: projects/$_GCP_PROJECT_ID/secrets/DB_PASSWORD/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/DB_PASSWORD/versions/latest
       env: DB_PASSWORD
-    - versionName: projects/$_GCP_PROJECT_ID/secrets/DB_NAME/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/DB_NAME/versions/latest
       env: DB_NAME
-    - versionName: projects/$_GCP_PROJECT_ID/secrets/DB_HOST/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/DB_HOST/versions/latest
       env: DB_HOST
-
-substitutions:
-  _GCP_PROJECT_ID: ""
