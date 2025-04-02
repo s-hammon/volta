@@ -6,7 +6,7 @@ steps:
       - "-c"
       - |
         go install github.com/pressly/goose/v3/cmd/goose@latest
-        goose postgres "host=$DB_HOST port=5432 user=$DB_USER dbname=$DB_NAME sslmode=disable" up
+        goose postgres "host=$$DB_HOST port=5432 user=$$DB_USER dbname=$$DB_NAME sslmode=disable" up
     dir: sql/schema
     env:
       - "PGPASSWORD=$DB_PASSWORD"
