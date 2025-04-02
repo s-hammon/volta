@@ -23,6 +23,6 @@ jobs:
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml . \
-            --regoins=${{ secrets.GCP_PROJECT_LOCATION }} \
+            --region=${{ secrets.GCP_PROJECT_LOCATION }} \
             --worker-pool=projects/${{ secrets.GCP_PROJECT_ID }}/locations/${{ secrets.GCP_PROJECT_LOCATION }}/workerPools/${{ secrets.GCP_WORKER_POOL }} \
             --substitutions=_GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }},_GCP_LOCATION=${{ secrets.GCP_PROJECT_LOCATION }}
