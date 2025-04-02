@@ -1,0 +1,15 @@
+FROM debian:stable-slim
+
+RUN apt-get update && apt-get install -y curl
+RUN curl -fsSL https://raw.githubusercontent.com/pressly/goose/master/install.sh | sh
+
+ENV PATH="/usr/bin:${PATH}" 
+
+# verify goose installation
+RUN goose --version || (echo "goose did not install correctly" && exit 1)
+
+ARG SCHEMA_DIR=/sql/schema
+COPY ./sql/schema ${SCHEMA_DIR}
+WORKDIR ${SCHEMA_DIR}
+
+ENTRYPOINT [ "goose" ]
