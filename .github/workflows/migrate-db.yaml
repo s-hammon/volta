@@ -25,4 +25,3 @@ jobs:
             --config=cloudbuild.yaml . \
             --region=${{ secrets.GCP_PROJECT_LOCATION }} \
             --worker-pool=projects/${{ secrets.GCP_PROJECT_ID }}/locations/${{ secrets.GCP_PROJECT_LOCATION }}/workerPools/${{ secrets.GCP_WORKER_POOL }} \
-            --substitutions=PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
