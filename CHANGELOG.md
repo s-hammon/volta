@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.2-alpha]
+
+Added `--sql-proxy-driver` flag to specify a driver to use with a Cloud SQL proxy. This is only valid for Cloud SQL, and assumes default hostname/port configurations for the drivers available on Cloud SQL (MySQL, PostgreSQL, SQL Server).
+
 ## [v0.3.1-alpha]
 
 Updated `go mod` and introduced CI/CD pipelines w/ GCP.
@@ -73,3 +77,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.2.2-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.2.2-alpha
 [v0.3.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.0-alpha
 [v0.3.1-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.1-alpha
+[v0.3.2-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.2-alpha
