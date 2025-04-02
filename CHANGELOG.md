@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.3-alpha]
+
+Fixed logic preventing `--sql-proxy-driver` from executing
+
 ## [v0.3.2-alpha]
 
 Added `--sql-proxy-driver` flag to specify a driver to use with a Cloud SQL proxy. This is only valid for Cloud SQL, and assumes default hostname/port configurations for the drivers available on Cloud SQL (MySQL, PostgreSQL, SQL Server).
