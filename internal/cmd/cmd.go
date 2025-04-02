@@ -75,20 +75,23 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
+		if sqlProxyDriver != "" {
+			switch sqlProxyDriver {
+			case "postgres":
+				proxyConfig, err := getPostgresConfig()
+				if err != nil {
+					return err
+				}
+				dbURL = proxyConfig.String()
+			case "":
+				// do nothing
+			default:
+				return fmt.Errorf("unsupported SQL proxy driver: %s", sqlProxyDriver)
+			}
+		}
+
 		if (dbURL == "" && !debugMode) || (dbURL != "" && debugMode) {
 			return cmd.Usage()
-		}
-		switch sqlProxyDriver {
-		case "postgres":
-			proxyConfig, err := getPostgresConfig()
-			if err != nil {
-				return err
-			}
-			dbURL = proxyConfig.String()
-		case "":
-			// do nothing
-		default:
-			return fmt.Errorf("unsupported SQL proxy driver: %s", sqlProxyDriver)
 		}
 
 		log.Info().Str("host", host).Str("port", port).Msg("service configuration")
