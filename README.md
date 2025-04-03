@@ -1,7 +1,7 @@
 # Volta
 
 [![license](https://img.shields.io/github/license/s-hammon/volta)](https://github.com/s-hammon/volta/blob/master/LICENSE)
-[![Volta CI](https://github.com/s-hammon/volta/actions/workflows/ci.yaml/badge.svg)](https://github.com/s-hammon/volta/actions/workflows/ci.yaml)
+[![Volta CI](https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml/badge.svg)](https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml)
 [![Go report
 Card](https://goreportcard.com/badge/github.com/s-hammon/volta)](https://goreportcard.com/report/github.com/s-hammon/volta)
 
