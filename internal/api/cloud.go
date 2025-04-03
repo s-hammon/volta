@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	json "github.com/json-iterator/go"
+	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/pkg/hl7"
 	"google.golang.org/api/healthcare/v1"
 	"google.golang.org/api/option"
@@ -31,6 +32,7 @@ type attributes struct {
 func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 	data, err := io.ReadAll(body)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to read request body")
 		return nil, err
 	}
 
@@ -39,10 +41,12 @@ func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 		return nil, err
 	}
 
-	if m.Message.Data == nil {
+	if len(m.Message.Data) == 0 {
+		log.Error().Msg("empty message data")
 		return nil, errors.New("empty message data")
 	}
 	if !slices.Contains([]string{"ORM", "ORU", "ADT"}, m.Message.Attributes.Type) {
+		log.Error().Msg("invalid message type:" + m.Message.Attributes.Type)
 		return nil, fmt.Errorf("invalid message type: %s", m.Message.Attributes.Type)
 	}
 

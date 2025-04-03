@@ -18,7 +18,6 @@ fi
 CAPTURE=0
 items=""
 
-echo "Looking for version ${version}"
 while IFS= read -r LINE; do
     if [[ "${LINE}" == "##"* ]] && [[ "${CAPTURE}" -eq 1 ]]; then
         break
