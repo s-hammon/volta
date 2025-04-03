@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.7-alpha]
+
+will (hopefully) start obtaining logs from Cloud
+
+## [v0.3.6-alpha]
+
+continue to diagnose issues
+
 ## [v0.3.5-alpha]
 
 edited handlers
@@ -94,3 +102,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.3.3-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.3-alpha
 [v0.3.4-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.4-alpha
 [v0.3.5-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.5-alpha
+[v0.3.6-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.5-alpha
