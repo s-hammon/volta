@@ -80,11 +80,10 @@ var serveCmd = &cobra.Command{
 			case "postgres":
 				proxyConfig, err := getPostgresConfig()
 				if err != nil {
+					log.Error().Err(err).Msg("failed to load DB secrets from environment")
 					return err
 				}
 				dbURL = proxyConfig.String()
-			case "":
-				// do nothing
 			default:
 				return fmt.Errorf("unsupported SQL proxy driver: %s", sqlProxyDriver)
 			}

@@ -34,9 +34,6 @@ test-packages-short:
 	go test -test.short -json $$(go list ./... | grep -v -e /bin -e /cmd -e /vendor -e /internal/api/models) |\
 		tparse --follow -sort=elapsed
 
-artifact: build
-	@docker build -t ${PROJECT_NAME} .
-
 prod-build: build 
 	@scripts/build-prod.sh $(ARGS)
 
