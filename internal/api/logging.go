@@ -8,6 +8,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	SUCCESS      = "success"
+	CLIENT_ERROR = "client error"
+	SERVER_ERROR = "server error"
+	PANIC_ERROR  = "panic recovered"
+)
+
 type logMsg struct {
 	NotifSize string  `json:"notif_size,omitempty"`
 	Hl7Size   string  `json:"hl7_size,omitempty"`
@@ -77,7 +84,7 @@ func middlewareLogging(next http.Handler) http.HandlerFunc {
 					Str("method", r.Method).
 					Str("path", r.URL.Path).
 					Interface("recover", rec).
-					Msg("panic recovered")
+					Msg(PANIC_ERROR)
 				http.Error(lw, "internal server error", http.StatusInternalServerError)
 			}
 
@@ -87,14 +94,23 @@ func middlewareLogging(next http.Handler) http.HandlerFunc {
 					Str("path", r.URL.Path).
 					Int("status", lw.StatusCode).
 					RawJSON("response", lw.Message).
-					Msg("error response")
+					Msg(SERVER_ERROR)
 			} else {
+				message := ""
+				switch {
+				case lw.StatusCode < 400:
+					message = SUCCESS
+				case lw.StatusCode < 500:
+					message = CLIENT_ERROR
+				default:
+					message = SERVER_ERROR
+				}
 				log.Info().
 					Str("method", r.Method).
 					Str("path", r.URL.Path).
 					Int("status", lw.StatusCode).
 					RawJSON("response", lw.Message).
-					Msg("successful response")
+					Msg(message)
 			}
 		}()
 
