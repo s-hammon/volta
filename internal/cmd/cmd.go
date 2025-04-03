@@ -72,7 +72,7 @@ var serveCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		host, err := cmd.Flags().GetString("host")
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get host flag")
+			log.Info().Err(err).Msg("failed to get host flag")
 			return err
 		}
 
@@ -81,7 +81,7 @@ var serveCmd = &cobra.Command{
 			case "postgres":
 				proxyConfig, err := getPostgresConfig()
 				if err != nil {
-					log.Error().Err(err).Msg("failed to load DB secrets from environment")
+					log.Info().Err(err).Msg("failed to load DB secrets from environment")
 					return err
 				}
 				dbURL = proxyConfig.String()
@@ -98,7 +98,7 @@ var serveCmd = &cobra.Command{
 
 		client, err := api.NewHl7Client(cmd.Context())
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create HL7 client")
+			log.Info().Err(err).Msg("failed to create HL7 client")
 			return err
 		}
 
@@ -106,7 +106,7 @@ var serveCmd = &cobra.Command{
 		if !debugMode {
 			pool, err := pgxpool.New(ctx, dbURL)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to connect to database")
+				log.Info().Err(err).Msg("failed to connect to database")
 				return err
 			}
 			log.Info().Msg("connected to database")
