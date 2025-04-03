@@ -32,19 +32,23 @@ func (l *logMsg) RespondJSON(w http.ResponseWriter, code int, result string) {
 
 	dat, err := json.Marshal(l)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err = w.Write([]byte(`{"error": "error marshalling log message"}`)); err != nil {
-			log.Error().Err(err).Msg("error writing response")
-		}
+		log.Error().Err(err).Msg("couldn't marshal log message")
+		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
+
 	if _, err := w.Write(dat); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		log.Error().Err(err).Msg("couldn't write JSON response")
 	}
+
+	log.Info().
+		Int("status", code).
+		Str("result", l.Result).
+		Float64("elapsed", l.Elapsed).
+		Msg("response sent")
 }
 
 type logWriter struct {
@@ -66,20 +70,34 @@ func (l *logWriter) Write(b []byte) (int, error) {
 func middlewareLogging(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		lw := &logWriter{w, http.StatusOK, nil}
-		next.ServeHTTP(lw, r)
 
-		if lw.StatusCode > 499 {
-			log.Error().
-				Str("method", r.Method).
-				Str("path", r.URL.Path).
-				Int("status", lw.StatusCode).
-				Interface("response", lw.Message)
-		} else {
-			log.Info().
-				Str("method", r.Method).
-				Str("path", r.URL.Path).
-				Int("status", lw.StatusCode).
-				Interface("response", lw.Message)
-		}
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Error().
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Interface("recover", rec).
+					Msg("panic recovered")
+				http.Error(lw, "internal server error", http.StatusInternalServerError)
+			}
+
+			if lw.StatusCode > 499 {
+				log.Error().
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Int("status", lw.StatusCode).
+					RawJSON("response", lw.Message).
+					Msg("error response")
+			} else {
+				log.Info().
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Int("status", lw.StatusCode).
+					RawJSON("response", lw.Message).
+					Msg("successful response")
+			}
+		}()
+
+		next.ServeHTTP(lw, r)
 	}
 }
