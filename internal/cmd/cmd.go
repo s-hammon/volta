@@ -37,7 +37,7 @@ func init() {
 
 	serveCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", "host for service (default: localhost)")
 	serveCmd.PersistentFlags().StringVarP(&port, "port", "p", "8080", "port to listen on (default: 8080)")
-	serveCmd.PersistentFlags().StringVarP(&dbURL, "db-url", "d", "", "database URL (required unless using debug mode)")
+	serveCmd.PersistentFlags().StringVarP(&dbURL, "db-url", "d", "", "database URL (required unless DATABASE_URL env var is set or using debug mode)")
 	serveCmd.PersistentFlags().StringVar(&sqlProxyDriver, "sql-proxy-driver", "", "if using Cloud SQL proxy, specify the driver (e.g., 'postgres'). DB_USER, DB_PASSWORD, and DB_NAME must be set. Will overwrite db-url if specified.")
 	serveCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "D", false, "enable debug mode; results are just logged to stdout, not written to the database (cannot use with -d)")
 }
@@ -91,6 +91,9 @@ var serveCmd = &cobra.Command{
 			}
 		}
 
+		if dbURL == "" {
+			dbURL = os.Getenv("DATABASE_URL")
+		}
 		if (dbURL == "" && !debugMode) || (dbURL != "" && debugMode) {
 			return cmd.Usage()
 		}
