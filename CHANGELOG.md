@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.4.3-alpha]
+
+Lots of changes as we get things working on the cloud.
+
 ## [v0.3.7-alpha]
 
 will (hopefully) start obtaining logs from Cloud
