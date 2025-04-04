@@ -132,7 +132,7 @@ func TestHandleMessage(t *testing.T) {
 	client := newMockClient(msg)
 
 	repo := NewMockRepo()
-	// for each key in encodedKeys, run a test in parallel
+
 	for i, record := range records {
 		t.Run(fmt.Sprintf("message-%d", i), func(t *testing.T) {
 			psMessage := &pubSubMessage{
