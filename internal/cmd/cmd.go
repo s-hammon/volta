@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
@@ -130,7 +131,7 @@ func initLogger(cmd *cobra.Command, args []string) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.DurationFieldInteger = true
 
-	log.Logger = zerolog.New(cmd.OutOrStdout())
+	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 }
 
 func cleanup() {

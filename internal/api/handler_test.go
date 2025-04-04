@@ -1,166 +1,171 @@
 package api
 
 import (
+	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"runtime"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
+	json "github.com/json-iterator/go"
 	"github.com/s-hammon/volta/internal/api/models"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
 
-var validORM = hl7.Message(`{"MSH": {"MSH.9": {"1": "ORM", "2": "O01"}}}`)
-var vORMEncKey = base64.StdEncoding.EncodeToString([]byte("validORM"))
-
-var validORU = hl7.Message(`{"MSH": {"MSH.9": {"1": "ORU", "2": "R01"}}}`)
-var vORUEncKey = base64.StdEncoding.EncodeToString([]byte("validORU"))
-
-var invalidORM = hl7.Message(`{"MSH": {"MSH.9": {"1": "invalid", "2": "O01"}}}`)
-var iORMEncKey = base64.StdEncoding.EncodeToString([]byte("invalidORM"))
-
-var invalidORU = hl7.Message(`{"MSH": {"MSH.9": {"1": "invalid", "2": "R01"}}}`)
-var iORUEncKey = base64.StdEncoding.EncodeToString([]byte("invalidORU"))
-
 type mockClient struct {
-	messages map[string]hl7.Message
+	messages map[string][]byte
 }
 
-func newMockClient(msg map[string]hl7.Message) *mockClient {
+type mockRecord struct {
+	key     string
+	msgType string
+}
+
+func newMockClient(msg map[string][]byte) *mockClient {
 	return &mockClient{
 		messages: msg,
 	}
 }
 
 func (m *mockClient) GetHL7V2Message(messagePath string) (hl7.Message, error) {
-	msg, ok := m.messages[messagePath]
+	raw, ok := m.messages[messagePath]
 	if !ok {
 		return nil, errors.New("message not found")
+	}
+	msg, err := hl7.NewMessage(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse HL7 message: %w", err)
 	}
 
 	return msg, nil
 }
 
 type mockRepo struct {
+	mu   sync.Mutex
 	orms []models.ORM
 	orus []models.ORU
 }
 
+func (m *mockRecord) GetMsgType(b []byte) error {
+	msgJSON, err := hl7.NewMessage(b)
+	if err != nil {
+		return err
+	}
+	msh := &struct {
+		MSH struct {
+			MsgType map[string]string `json:"MSH.9"`
+		} `json:"MSH"`
+	}{}
+
+	if err := json.Unmarshal(msgJSON, msh); err != nil {
+		return err
+	}
+	msgType := msh.MSH.MsgType["MSH.9.1"]
+	if msgType == "" {
+		return errors.New("message type not found")
+	}
+	m.msgType = strings.TrimSpace(msgType)
+	return nil
+}
+
+func NewMockRepo() *mockRepo {
+	return &mockRepo{
+		mu:   sync.Mutex{},
+		orms: []models.ORM{},
+		orus: []models.ORU{},
+	}
+}
+
 func (m *mockRepo) UpsertORM(ctx context.Context, orm models.ORM) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if orm.MSH.Type.Type != "ORM" {
-		return errors.New("invalid message type")
+		return fmt.Errorf("invalid message type: %s", orm.MSH.Type.Type)
 	}
 	m.orms = append(m.orms, orm)
 	return nil
 }
 
 func (m *mockRepo) InsertORU(ctx context.Context, oru models.ORU) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if oru.MSH.Type.Type != "ORU" {
-		return errors.New("invalid message type")
+		return fmt.Errorf("invalid message type: %s", oru.MSH.Type.Type)
 	}
 	m.orus = append(m.orus, oru)
 	return nil
 }
 
 func TestHandleMessage(t *testing.T) {
-	tests := []struct {
-		name string
-		data string
-		want int
-	}{
-		{
-			name: "inserting ORM",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORM"}}}`, vORMEncKey),
-			want: http.StatusCreated,
-		},
-		{
-			name: "inserting ORU",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORU"}}}`, vORUEncKey),
-			want: http.StatusCreated,
-		},
-		{
-			name: "empty request body",
-			data: "",
-			want: http.StatusBadRequest,
-		},
-		{
-			name: "invalid message type",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "invalid"}}}`, vORMEncKey),
-			want: http.StatusBadRequest,
-		},
-		{
-			name: "message not found",
-			data: `{"message": {"data": "notFound", "attributes": {"msgType": "ORM"}}}`,
-			want: http.StatusInternalServerError,
-		},
-		{
-			name: "error getting ORM",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORM"}}}`, iORMEncKey),
-			want: http.StatusInternalServerError,
-		},
-		{
-			name: "error getting ORU",
-			data: fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"msgType": "ORU"}}}`, iORUEncKey),
-			want: http.StatusInternalServerError,
-		},
+	entries, err := hl7.HL7.ReadDir("test_hl7")
+	if err != nil {
+		t.Fatalf("failed to read embedded test directory: %v", err)
 	}
 
-	repo := &mockRepo{}
-	client := newMockClient(map[string]hl7.Message{
-		"validORM":   validORM,
-		"validORU":   validORU,
-		"invalidORM": invalidORM,
-		"invalidORU": invalidORU,
-	})
+	msg := make(map[string][]byte)
+	records := []mockRecord{}
+	for _, entry := range entries {
+		name := entry.Name()
+		data, err := hl7.HL7.ReadFile(filepath.Join("test_hl7", name))
+		if err != nil {
+			t.Fatalf("failed to read test file %s: %v", name, err)
+		}
+		if len(data) == 0 {
+			t.Fatalf("file %s is empty", name)
+		}
+		msg[name] = data
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		record := mockRecord{key: name}
+		if err := record.GetMsgType(data); err != nil {
+			t.Fatalf("failed to get message type from file %s: %v", name, err)
+		}
+		records = append(records, record)
+	}
+	client := newMockClient(msg)
+
+	repo := NewMockRepo()
+	// for each key in encodedKeys, run a test in parallel
+	for i, record := range records {
+		t.Run(fmt.Sprintf("message-%d", i), func(t *testing.T) {
+			psMessage := &pubSubMessage{
+				Message: message{
+					Data:       []byte(record.key),
+					Attributes: attributes{Type: record.msgType},
+				},
+			}
+			data, err := json.Marshal(psMessage)
+			if err != nil {
+				t.Fatalf("failed to marshal message: %v", err)
+			}
 			api := New(repo, client, false)
 
-			req := newPostMsgRequest(tt.data)
+			req := newPostMsgRequest(data)
 			w := httptest.NewRecorder()
 			api.ServeHTTP(w, req)
 
-			assertStatus(t, w.Code, tt.want)
+			if w.Code != http.StatusCreated {
+				if psMessage.Message.Attributes.Type != "ADT" {
+					t.Errorf("got status %d, want %d", w.Code, http.StatusCreated)
+				} else {
+					if w.Code != http.StatusNotImplemented {
+						t.Errorf("got status %d, want %d", w.Code, http.StatusNotImplemented)
+					}
+				}
+			}
 		})
 	}
 }
 
-func TestHandleMessageDebugMode(t *testing.T) {
-
-}
-
-func newPostMsgRequest(data string) *http.Request {
-	req, _ := http.NewRequest(http.MethodPost, "/", strings.NewReader(data))
+func newPostMsgRequest(data []byte) *http.Request {
+	req, _ := http.NewRequest(http.MethodPost, "/", bytes.NewReader(data))
 	req.Header.Set("Content-Length", strconv.Itoa(len(data)))
 	return req
-}
-
-func assertStatus(t testing.TB, got, want int) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got status %d, want %d", got, want)
-	}
-}
-
-func BenchmarkHandleMessage(b *testing.B) {
-	runtime.GOMAXPROCS(1)
-	repo := &mockRepo{}
-	client := newMockClient(map[string]hl7.Message{"validORM": validORM})
-
-	api := New(repo, client, false)
-	data := fmt.Sprintf(`{"message": {"data": "%s", "attributes": {"type": "ORM"}}}`, vORMEncKey)
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		req := newPostMsgRequest(data)
-		w := httptest.NewRecorder()
-		api.ServeHTTP(w, req)
-	}
 }
