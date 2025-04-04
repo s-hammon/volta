@@ -14,6 +14,9 @@ import (
 const createMrn = `-- name: CreateMrn :one
 INSERT INTO mrns (site_id, patient_id, mrn)
 VALUES ($1, $2, $3)
+ON CONFLICT (site_id, patient_id) DO UPDATE
+SET mrn = EXCLUDED.mrn
+WHERE mrns.mrn IS DISTINCT FROM EXCLUDED.mrn
 RETURNING id, created_at, updated_at, patient_id, mrn, site_id
 `
 

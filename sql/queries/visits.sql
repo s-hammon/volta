@@ -13,6 +13,17 @@ VALUES (
     $4,
     $5
 )
+ON CONFLICT (site_id, mrn_id, number) DO UPDATE
+SET outside_system_id = EXCLUDED.outside_system_id,
+    site_id = EXCLUDED.site_id,
+    mrn_id = EXCLUDED.mrn_id,
+    number = EXCLUDED.number,
+    patient_type = EXCLUDED.patient_type
+WHERE visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
+    OR visits.site_id IS DISTINCT FROM EXCLUDED.site_id
+    OR visits.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+    OR visits.number IS DISTINCT FROM EXCLUDED.number
+    OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
 RETURNING *;
 
 -- name: GetVisitBySiteIdNumber :one

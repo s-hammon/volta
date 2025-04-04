@@ -84,53 +84,15 @@ func DBtoOrder(order database.GetOrderBySiteIDNumberRow) Order {
 }
 
 func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, providerID int64, db *database.Queries) (database.Order, error) {
-	var arrival pgtype.Timestamp
-	if err := arrival.Scan(o.Date); err != nil {
-		return database.Order{}, err
-	}
-
-	res, err := db.CreateOrder(ctx, database.CreateOrderParams{
+	return db.CreateOrder(ctx, database.CreateOrderParams{
 		SiteID:              pgtype.Int4{Int32: siteID, Valid: true},
 		VisitID:             pgtype.Int8{Int64: visitID, Valid: true},
 		MrnID:               pgtype.Int8{Int64: mrnID, Valid: true},
 		OrderingPhysicianID: pgtype.Int8{Int64: providerID, Valid: true},
-		Arrival:             arrival,
+		Arrival:             pgtype.Timestamp{Time: o.Date, Valid: true},
 		Number:              o.Number,
 		CurrentStatus:       o.CurrentStatus,
 	})
-	if err == nil {
-		return res, nil
-	}
-
-	if extractErrCode(err) == "23505" {
-		orDB, err := db.GetOrderBySiteIDNumber(ctx, database.GetOrderBySiteIDNumberParams{
-			SiteID: pgtype.Int4{Int32: siteID, Valid: true},
-			Number: o.Number,
-		})
-		if err == nil {
-			return res, nil
-		}
-
-		or := DBtoOrder(orDB)
-		if !or.Equal(*o) {
-			or.Coalesce(*o)
-			siteID := pgtype.Int4{}
-			if err := siteID.Scan(or.Site.ID); err != nil {
-				return database.Order{}, err
-			}
-			return db.UpdateOrder(ctx, database.UpdateOrderParams{
-				ID:                  int64(or.ID),
-				SiteID:              siteID,
-				VisitID:             pgtype.Int8{Int64: int64(or.Visit.ID), Valid: true},
-				MrnID:               pgtype.Int8{Int64: int64(or.MRN.ID), Valid: true},
-				OrderingPhysicianID: pgtype.Int8{Int64: int64(or.Provider.ID), Valid: true},
-				Arrival:             pgtype.Timestamp{Time: or.Date, Valid: true},
-				CurrentStatus:       or.CurrentStatus,
-			})
-		}
-	}
-
-	return database.Order{}, err
 }
 
 func (o *Order) Equal(other Order) bool {

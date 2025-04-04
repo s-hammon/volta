@@ -12,6 +12,25 @@ INSERT INTO exams (
     end_exam_dt
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+ON CONFLICT (site_id, accession) DO UPDATE
+SET order_id = EXCLUDED.order_id,
+    visit_id = EXCLUDED.visit_id,
+    mrn_id = EXCLUDED.mrn_id,
+    site_id = EXCLUDED.site_id,
+    procedure_id = EXCLUDED.procedure_id,
+    current_status = EXCLUDED.current_status,
+    schedule_dt = EXCLUDED.schedule_dt,
+    begin_exam_dt = EXCLUDED.begin_exam_dt,
+    end_exam_dt = EXCLUDED.end_exam_dt
+WHERE exams.order_id IS DISTINCT FROM EXCLUDED.order_id
+    OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
+    OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+    OR exams.site_id IS DISTINCT FROM EXCLUDED.site_id
+    OR exams.procedure_id IS DISTINCT FROM EXCLUDED.procedure_id
+    OR exams.current_status IS DISTINCT FROM EXCLUDED.current_status
+    OR exams.schedule_dt IS DISTINCT FROM EXCLUDED.schedule_dt
+    OR exams.begin_exam_dt IS DISTINCT FROM EXCLUDED.begin_exam_dt
+    OR exams.end_exam_dt IS DISTINCT FROM EXCLUDED.end_exam_dt
 RETURNING *;
 
 -- name: GetExamBySiteIDAccession :one

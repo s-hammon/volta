@@ -39,49 +39,13 @@ func DBtoVisit(visit database.GetVisitBySiteIdNumberRow) Visit {
 }
 
 func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *database.Queries) (database.Visit, error) {
-	var mID pgtype.Int8
-	if err := mID.Scan(mrnID); err != nil {
-		return database.Visit{}, err
-	}
-
 	// TODO: if v.VisitNo == "", use the accession
-	res, err := db.CreateVisit(ctx, database.CreateVisitParams{
+	return db.CreateVisit(ctx, database.CreateVisitParams{
 		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
-		MrnID:       mID,
+		MrnID:       pgtype.Int8{Int64: mrnID, Valid: true},
 		Number:      v.VisitNo,
 		PatientType: v.Type.Int16(),
 	})
-	if err == nil {
-		return res, nil
-	}
-
-	if extractErrCode(err) == "23505" {
-		vsDB, err := db.GetVisitBySiteIdNumber(ctx, database.GetVisitBySiteIdNumberParams{
-			SiteID: pgtype.Int4{Int32: siteID, Valid: true},
-			Number: v.VisitNo,
-		})
-		if err != nil {
-			return database.Visit{}, err
-		}
-
-		vs := DBtoVisit(vsDB)
-		if !vs.Equal(*v) {
-			vs.Coalesce(*v)
-			siteID := pgtype.Int4{}
-			if err = siteID.Scan(vs.Site.ID); err != nil {
-				return database.Visit{}, err
-			}
-			return db.UpdateVisit(ctx, database.UpdateVisitParams{
-				ID:          int64(vs.ID),
-				SiteID:      siteID,
-				MrnID:       pgtype.Int8{Int64: int64(vs.MRN.ID), Valid: true},
-				Number:      vs.VisitNo,
-				PatientType: vs.Type.Int16(),
-			})
-		}
-	}
-
-	return database.Visit{}, err
 }
 
 func (v *Visit) Equal(other Visit) bool {

@@ -65,7 +65,7 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 }
 
 func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (database.Exam, error) {
-	res, err := db.CreateExam(ctx, database.CreateExamParams{
+	return db.CreateExam(ctx, database.CreateExamParams{
 		OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
 		VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
 		MrnID:         pgtype.Int8{Int64: int64(mrnID), Valid: true},
@@ -77,39 +77,6 @@ func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, 
 		BeginExamDt:   pgtype.Timestamp{Time: e.Begin, Valid: true},
 		EndExamDt:     pgtype.Timestamp{Time: e.End, Valid: true},
 	})
-	if err == nil {
-		return res, nil
-	}
-
-	if extractErrCode(err) == "23505" {
-		exDB, err := db.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-			SiteID:    pgtype.Int4{Int32: int32(siteID), Valid: true},
-			Accession: e.Accession,
-		})
-		if err != nil {
-			return database.Exam{}, err
-		}
-
-		ex := DBtoExam(exDB)
-		if !ex.Equal(*e) {
-			ex.Coalesce(*e)
-			return db.UpdateExam(ctx, database.UpdateExamParams{
-				ID:            int64(ex.ID),
-				OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
-				VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
-				MrnID:         pgtype.Int8{Int64: int64(mrnID), Valid: true},
-				SiteID:        pgtype.Int4{Int32: int32(siteID), Valid: true},
-				ProcedureID:   pgtype.Int4{Int32: int32(procedureID), Valid: true},
-				Accession:     ex.Accession,
-				CurrentStatus: currentStatus,
-				ScheduleDt:    pgtype.Timestamp{Time: ex.Scheduled, Valid: true},
-				BeginExamDt:   pgtype.Timestamp{Time: ex.Begin, Valid: true},
-				EndExamDt:     pgtype.Timestamp{Time: ex.End, Valid: true},
-			})
-		}
-	}
-
-	return database.Exam{}, err
 }
 
 func (e *Exam) Equal(other Exam) bool {

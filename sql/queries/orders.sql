@@ -19,6 +19,23 @@ VALUES (
     $7,
     $8
 )
+ON CONFLICT (site_id, number) DO UPDATE
+SET outside_system_id = EXCLUDED.outside_system_id,
+    site_id = EXCLUDED.site_id,
+    visit_id = EXCLUDED.visit_id,
+    mrn_id = EXCLUDED.mrn_id,
+    ordering_physician_id = EXCLUDED.ordering_physician_id,
+    arrival = EXCLUDED.arrival,
+    number = EXCLUDED.number,
+    current_status = EXCLUDED.current_status
+WHERE orders.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
+    OR orders.site_id IS DISTINCT FROM EXCLUDED.site_id
+    OR orders.visit_id IS DISTINCT FROM EXCLUDED.visit_id
+    OR orders.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+    OR orders.ordering_physician_id IS DISTINCT FROM EXCLUDED.ordering_physician_id
+    OR orders.arrival IS DISTINCT FROM EXCLUDED.arrival
+    OR orders.number IS DISTINCT FROM EXCLUDED.number
+    OR orders.current_status IS DISTINCT FROM EXCLUDED.current_status
 RETURNING *;
 
 -- name: GetOrderBySiteIDNumber :one
