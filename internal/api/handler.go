@@ -2,10 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/rs/zerolog/log"
 
 	json "github.com/json-iterator/go"
 	"github.com/s-hammon/volta/internal/api/models"
@@ -72,44 +71,42 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var msg string
-	switch m.Message.Attributes.Type {
-	case "ORM":
-		orm := models.ORM{}
-		if err = json.Unmarshal(msgMap, &orm); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if err = a.DB.UpsertORM(context.Background(), orm); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		msg = "ORM processed successfully"
-
-	case "ORU":
-		oru := models.ORU{}
-		if err = json.Unmarshal(msgMap, &oru); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if err = a.DB.InsertORU(context.Background(), oru); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		msg = "ORU processed successfully"
-
-	case "ADT":
-		log.Warn().
-			Str("messagePath", string(m.Message.Data)).
-			Msg("ADT message type not implemented")
-		logMsg.RespondJSON(w, http.StatusNotImplemented, "ADT message type not implemented")
-		return
-	default:
-		logMsg.RespondJSON(w, http.StatusBadRequest, "unsupported message type")
+	msg, err := HandleByMsgType(a.DB, m.Message.Attributes.Type, msgMap)
+	if err != nil {
+		logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	logMsg.RespondJSON(w, http.StatusCreated, msg)
+}
+
+func HandleByMsgType(db Repository, msgType string, msgMap hl7.Message) (msg string, err error) {
+	switch msgType {
+	case "ORM":
+		orm := models.ORM{}
+		if err = json.Unmarshal(msgMap, &orm); err != nil {
+			return "error unmarshaling HL7", err
+		}
+		if err = db.UpsertORM(context.Background(), orm); err != nil {
+			return "error writing to database", err
+		}
+		msg = "ORM message processed"
+	case "ORU":
+		oru := models.ORU{}
+		if err = json.Unmarshal(msgMap, &oru); err != nil {
+			return "error unmarshaling HL7", err
+		}
+		if err = db.InsertORU(context.Background(), oru); err != nil {
+			return "error writing to database", err
+		}
+		msg = "ORU message processed"
+	case "ADT":
+		err = fmt.Errorf("ADT message type not implemented")
+		return "ADT message type not implemented", err
+	default:
+		err = fmt.Errorf("unsupported message type")
+		return "unsupported message type", err
+	}
+
+	return msg, nil
 }

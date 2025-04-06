@@ -33,6 +33,10 @@ WHERE exams.order_id IS DISTINCT FROM EXCLUDED.order_id
     OR exams.end_exam_dt IS DISTINCT FROM EXCLUDED.end_exam_dt
 RETURNING *;
 
+-- name: GetAllExams :many
+SELECT *
+FROM exams;
+
 -- name: GetExamBySiteIDAccession :one
 SELECT
     e.*,

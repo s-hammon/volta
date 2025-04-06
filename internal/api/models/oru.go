@@ -57,7 +57,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 	}
 
 	examIDs := make([]int64, len(oe))
-	for _, orderEntity := range oe {
+	for i, orderEntity := range oe {
 		order, err := orderEntity.order.ToDB(ctx, site.ID, visit.ID, mrn.ID, physician.ID, db)
 		if err != nil {
 			return errors.New("error creating order: " + err.Error())
@@ -72,17 +72,18 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 		if err != nil {
 			return errors.New("error creating exam: " + err.Error())
 		}
-		examIDs = append(examIDs, exam.ID)
+		examIDs[i] = exam.ID
 	}
 
 	reportModel := oru.getReport(physician)
-	if _, err = db.CreateReport(ctx, database.CreateReportParams{
+	report, err := db.CreateReport(ctx, database.CreateReportParams{
 		RadiologistID: pgtype.Int8{Int64: int64(physician.ID), Valid: true},
 		Body:          reportModel.Body,
 		Impression:    reportModel.Impression,
 		ReportStatus:  reportModel.Status.String(),
 		SubmittedDt:   pgtype.Timestamp{Time: reportModel.SubmittedDT, Valid: true},
-	}); err != nil {
+	})
+	if err != nil {
 		return errors.New("error creating report: " + err.Error())
 	}
 
@@ -91,7 +92,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 		for _, examID := range examIDs {
 			if _, err := db.UpdateExamFinalReport(ctx, database.UpdateExamFinalReportParams{
 				ID:            int64(examID),
-				FinalReportID: pgtype.Int8{Int64: examID, Valid: true},
+				FinalReportID: pgtype.Int8{Int64: report.ID, Valid: true},
 			}); err != nil {
 				return errors.New("error updating exam with final report: " + err.Error())
 			}
@@ -172,15 +173,17 @@ func (oru *ORU) groupOrders() ([]orderGroup, error) {
 	groups := make([]orderGroup, len(oru.ORC))
 	for i, o := range oru.ORC {
 		groups[i] = orderGroup{Order: o}
+		// TODO: vet this logic
+		acc := coalesce(o.OrderNo, o.FillerOrderNo)
 		for _, e := range oru.OBR {
-			if o.OrderNo == e.Accession {
+			if acc == e.Accession {
 				groups[i].Exam = e
 				break
 			}
 		}
 		// make sure we indeed found an exam for this order
 		if groups[i].Exam == (ExamModel{}) {
-			return nil, errors.New("no exam found for order number " + o.OrderNo)
+			return nil, errors.New("no exam found for order number " + acc)
 		}
 	}
 
@@ -201,4 +204,12 @@ func newOrderEntities(visitSiteCode string, mrn CX, orderGroups ...orderGroup) [
 	}
 
 	return entities
+}
+
+// if a is empty, return b
+func coalesce(a, b string) string {
+	if a == "" {
+		return b
+	}
+	return a
 }
