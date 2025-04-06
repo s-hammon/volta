@@ -95,6 +95,48 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, e
 	return i, err
 }
 
+const getAllExams = `-- name: GetAllExams :many
+SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+FROM exams
+`
+
+func (q *Queries) GetAllExams(ctx context.Context) ([]Exam, error) {
+	rows, err := q.db.Query(ctx, getAllExams)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Exam
+	for rows.Next() {
+		var i Exam
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OutsideSystemID,
+			&i.OrderID,
+			&i.VisitID,
+			&i.MrnID,
+			&i.SiteID,
+			&i.ProcedureID,
+			&i.FinalReportID,
+			&i.AddendumReportID,
+			&i.Accession,
+			&i.CurrentStatus,
+			&i.ScheduleDt,
+			&i.BeginExamDt,
+			&i.EndExamDt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExamBySiteIDAccession = `-- name: GetExamBySiteIDAccession :one
 SELECT
     e.id, e.created_at, e.updated_at, e.outside_system_id, e.order_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.final_report_id, e.addendum_report_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt,

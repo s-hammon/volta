@@ -219,7 +219,7 @@ func parseSubComponentsToJSON(buf *bytes.Buffer, name string, component []byte) 
 			buf.WriteByte(',')
 		}
 		sName := formatKey(name, i+1)
-		buf.WriteString(fmt.Sprintf("\"%s\":\"%s\"", sName, replaceEscapes(s)))
+		fmt.Fprintf(buf, `"%s":"%s"`, sName, replaceEscapes(s))
 	}
 
 	buf.WriteByte('}')
@@ -236,7 +236,7 @@ func parseRepeatsToJSON(buf *bytes.Buffer, name string, field []byte) {
 		if bytes.Contains(r, []byte{componentDelim}) {
 			parseComponentsToJSON(buf, name, r)
 		} else {
-			buf.WriteString(fmt.Sprintf("\"%s\"", replaceEscapes(r)))
+			fmt.Fprintf(buf, `"%s"`, replaceEscapes(r))
 		}
 	}
 

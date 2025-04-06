@@ -98,7 +98,7 @@ func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, provider
 func (o *Order) Equal(other Order) bool {
 	return o.Number == other.Number &&
 		o.CurrentStatus == other.CurrentStatus &&
-		o.Date == other.Date &&
+		o.Date.Equal(other.Date) &&
 		o.Site.Equal(other.Site) &&
 		o.Visit.Equal(other.Visit) &&
 		o.MRN.Equal(other.MRN) &&

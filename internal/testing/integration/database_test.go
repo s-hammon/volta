@@ -13,6 +13,10 @@ import (
 	"github.com/s-hammon/volta/internal/testing/testdb"
 )
 
+const (
+	migrationsDir = "../../../sql/schema"
+)
+
 func TestPostgres(t *testing.T) {
 	t.Parallel()
 
@@ -25,7 +29,7 @@ func TestPostgres(t *testing.T) {
 		t.Fatalf("failed to ping postgres: %v", err)
 	}
 
-	testDatabase(t, database.DialectPostgres, db, "../../../sql/schema")
+	testDatabase(t, database.DialectPostgres, db)
 }
 
 type collected struct {
@@ -58,7 +62,7 @@ func collectMigrations(t *testing.T, dir string) []collected {
 	return all
 }
 
-func testDatabase(t *testing.T, dialect database.Dialect, db *sql.DB, migrationsDir string) {
+func testDatabase(t *testing.T, dialect database.Dialect, db *sql.DB) {
 	t.Helper()
 
 	ctx := context.Background()

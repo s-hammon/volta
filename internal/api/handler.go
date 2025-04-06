@@ -2,10 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/rs/zerolog/log"
 
 	json "github.com/json-iterator/go"
 	"github.com/s-hammon/volta/internal/api/models"
@@ -51,7 +50,12 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		logMsg.RespondJSON(w, http.StatusBadRequest, "empty request body")
 		return
 	}
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}()
 	logMsg.NotifSize = r.Header.Get("Content-Length")
 
 	m, err := NewPubSubMessage(r.Body)
@@ -72,44 +76,42 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var msg string
-	switch m.Message.Attributes.Type {
-	case "ORM":
-		orm := models.ORM{}
-		if err = json.Unmarshal(msgMap, &orm); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if err = a.DB.UpsertORM(context.Background(), orm); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		msg = "ORM processed successfully"
-
-	case "ORU":
-		oru := models.ORU{}
-		if err = json.Unmarshal(msgMap, &oru); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if err = a.DB.InsertORU(context.Background(), oru); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		msg = "ORU processed successfully"
-
-	case "ADT":
-		log.Warn().
-			Str("messagePath", string(m.Message.Data)).
-			Msg("ADT message type not implemented")
-		logMsg.RespondJSON(w, http.StatusNotImplemented, "ADT message type not implemented")
-		return
-	default:
-		logMsg.RespondJSON(w, http.StatusBadRequest, "unsupported message type")
+	msg, code, err := HandleByMsgType(a.DB, m.Message.Attributes.Type, msgMap)
+	if err != nil {
+		logMsg.RespondJSON(w, code, err.Error())
 		return
 	}
 
-	logMsg.RespondJSON(w, http.StatusCreated, msg)
+	logMsg.RespondJSON(w, code, msg)
+}
+
+func HandleByMsgType(db Repository, msgType string, msgMap hl7.Message) (msg string, code int, err error) {
+	switch msgType {
+	case "ORM":
+		orm := models.ORM{}
+		if err = json.Unmarshal(msgMap, &orm); err != nil {
+			return "error unmarshaling HL7", http.StatusInternalServerError, err
+		}
+		if err = db.UpsertORM(context.Background(), orm); err != nil {
+			return "error writing to database", http.StatusInternalServerError, err
+		}
+		msg = "ORM message processed"
+	case "ORU":
+		oru := models.ORU{}
+		if err = json.Unmarshal(msgMap, &oru); err != nil {
+			return "error unmarshaling HL7", http.StatusInternalServerError, err
+		}
+		if err = db.InsertORU(context.Background(), oru); err != nil {
+			return "error writing to database", http.StatusInternalServerError, err
+		}
+		msg = "ORU message processed"
+	case "ADT":
+		err = fmt.Errorf("ADT message type not implemented")
+		return "ADT message type not implemented", http.StatusNotImplemented, err
+	default:
+		err = fmt.Errorf("unsupported message type")
+		return "unsupported message type", http.StatusInternalServerError, err
+	}
+
+	return msg, http.StatusCreated, nil
 }

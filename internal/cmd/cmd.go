@@ -113,6 +113,10 @@ var serveCmd = &cobra.Command{
 				log.Info().Err(err).Msg("failed to connect to database")
 				return err
 			}
+			if err := pool.Ping(ctx); err != nil {
+				log.Info().Err(err).Msg("couldn't reach database")
+				return err
+			}
 			log.Info().Msg("connected to database")
 			db = api.NewDB(pool)
 		} else {

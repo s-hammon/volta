@@ -9,6 +9,11 @@ INSERT INTO reports (
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: GetAllReports :many
+
+SELECT *
+FROM reports;
+
 -- name: GetReportByUniqueFields :one
 SELECT *
 FROM reports

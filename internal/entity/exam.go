@@ -85,10 +85,10 @@ func (e *Exam) Equal(other Exam) bool {
 		e.Procedure.Equal(other.Procedure) &&
 		e.Site.Equal(other.Site) &&
 		e.Priority == other.Priority &&
-		e.Scheduled == other.Scheduled &&
-		e.Begin == other.Begin &&
-		e.End == other.End &&
-		e.Cancelled == other.Cancelled
+		e.Scheduled.Equal(other.Scheduled) &&
+		e.Begin.Equal(other.Begin) &&
+		e.End.Equal(other.End) &&
+		e.Cancelled.Equal(other.Cancelled)
 }
 
 func (e *Exam) Coalesce(other Exam) {
