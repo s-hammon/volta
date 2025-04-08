@@ -12,44 +12,53 @@ import (
 )
 
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders (
-    outside_system_id,
-    site_id,
-    visit_id,
-    mrn_id,
-    ordering_physician_id,
-    arrival,
-    number,
-    current_status
+WITH upsert AS (
+    INSERT INTO orders (
+        outside_system_id,
+        site_id,
+        visit_id,
+        mrn_id,
+        ordering_physician_id,
+        arrival,
+        number,
+        current_status
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8
+    )
+    ON CONFLICT (site_id, number) DO UPDATE
+    SET outside_system_id = EXCLUDED.outside_system_id,
+        site_id = EXCLUDED.site_id,
+        visit_id = EXCLUDED.visit_id,
+        mrn_id = EXCLUDED.mrn_id,
+        ordering_physician_id = EXCLUDED.ordering_physician_id,
+        arrival = EXCLUDED.arrival,
+        number = EXCLUDED.number,
+        current_status = EXCLUDED.current_status
+    WHERE orders.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
+        OR orders.site_id IS DISTINCT FROM EXCLUDED.site_id
+        OR orders.visit_id IS DISTINCT FROM EXCLUDED.visit_id
+        OR orders.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+        OR orders.ordering_physician_id IS DISTINCT FROM EXCLUDED.ordering_physician_id
+        OR orders.arrival IS DISTINCT FROM EXCLUDED.arrival
+        OR orders.number IS DISTINCT FROM EXCLUDED.number
+        OR orders.current_status IS DISTINCT FROM EXCLUDED.current_status
+    RETURNING id, created_at, updated_at, outside_system_id, site_id, visit_id, mrn_id, ordering_physician_id, arrival, number, current_status
 )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
-)
-ON CONFLICT (site_id, number) DO UPDATE
-SET outside_system_id = EXCLUDED.outside_system_id,
-    site_id = EXCLUDED.site_id,
-    visit_id = EXCLUDED.visit_id,
-    mrn_id = EXCLUDED.mrn_id,
-    ordering_physician_id = EXCLUDED.ordering_physician_id,
-    arrival = EXCLUDED.arrival,
-    number = EXCLUDED.number,
-    current_status = EXCLUDED.current_status
-WHERE orders.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
-    OR orders.site_id IS DISTINCT FROM EXCLUDED.site_id
-    OR orders.visit_id IS DISTINCT FROM EXCLUDED.visit_id
-    OR orders.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
-    OR orders.ordering_physician_id IS DISTINCT FROM EXCLUDED.ordering_physician_id
-    OR orders.arrival IS DISTINCT FROM EXCLUDED.arrival
-    OR orders.number IS DISTINCT FROM EXCLUDED.number
-    OR orders.current_status IS DISTINCT FROM EXCLUDED.current_status
-RETURNING id, created_at, updated_at, outside_system_id, site_id, visit_id, mrn_id, ordering_physician_id, arrival, number, current_status
+SELECT id, created_at, updated_at, outside_system_id, site_id, visit_id, mrn_id, ordering_physician_id, arrival, number, current_status FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, outside_system_id, site_id, visit_id, mrn_id, ordering_physician_id, arrival, number, current_status FROM orders
+WHERE
+    site_id = $2
+    AND number = $7
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateOrderParams struct {
@@ -63,7 +72,21 @@ type CreateOrderParams struct {
 	CurrentStatus       string
 }
 
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
+type CreateOrderRow struct {
+	ID                  int64
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
+	OutsideSystemID     pgtype.Int4
+	SiteID              pgtype.Int4
+	VisitID             pgtype.Int8
+	MrnID               pgtype.Int8
+	OrderingPhysicianID pgtype.Int8
+	Arrival             pgtype.Timestamp
+	Number              string
+	CurrentStatus       string
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (CreateOrderRow, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.OutsideSystemID,
 		arg.SiteID,
@@ -74,7 +97,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.Number,
 		arg.CurrentStatus,
 	)
-	var i Order
+	var i CreateOrderRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -87,6 +110,123 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.Arrival,
 		&i.Number,
 		&i.CurrentStatus,
+	)
+	return i, err
+}
+
+const getOrderById = `-- name: GetOrderById :one
+SELECT
+    o.id, o.created_at, o.updated_at, o.outside_system_id, o.site_id, o.visit_id, o.mrn_id, o.ordering_physician_id, o.arrival, o.number, o.current_status,
+    s.created_at as site_created_at,
+    s.updated_at as site_updated_at,
+    s.code as site_code,
+    s.name as site_name,
+    s.address as site_address,
+    s.is_cms as site_is_cms,
+    v.created_at as visit_created_at,
+    v.updated_at as visit_updated_at,
+    v.outside_system_id as visit_outside_system_id,
+    v.number as visit_number,
+    v.patient_type as visit_patient_type,
+    m.created_at as mrn_created_at,
+    m.updated_at as mrn_updated_at,
+    m.mrn as mrn_value,
+    p.created_at as physician_created_at,
+    p.updated_at as physician_updated_at,
+    p.first_name as physician_first_name,
+    p.last_name as physician_last_name,
+    p.middle_name as physician_middle_name,
+    p.suffix as physician_suffix,
+    p.prefix as physician_prefix,
+    p.degree as physician_degree,
+    p.npi as physician_npi,
+    p.specialty as physician_specialty
+FROM orders as o
+LEFT JOIN sites as s ON o.site_id = s.id
+LEFT JOIN visits as v ON o.visit_id = v.id
+LEFT JOIN mrns as m ON o.mrn_id = m.id
+LEFT JOIN physicians as p ON o.ordering_physician_id = p.id
+WHERE
+    o.id = $1
+`
+
+type GetOrderByIdRow struct {
+	ID                   int64
+	CreatedAt            pgtype.Timestamp
+	UpdatedAt            pgtype.Timestamp
+	OutsideSystemID      pgtype.Int4
+	SiteID               pgtype.Int4
+	VisitID              pgtype.Int8
+	MrnID                pgtype.Int8
+	OrderingPhysicianID  pgtype.Int8
+	Arrival              pgtype.Timestamp
+	Number               string
+	CurrentStatus        string
+	SiteCreatedAt        pgtype.Timestamp
+	SiteUpdatedAt        pgtype.Timestamp
+	SiteCode             pgtype.Text
+	SiteName             pgtype.Text
+	SiteAddress          pgtype.Text
+	SiteIsCms            pgtype.Bool
+	VisitCreatedAt       pgtype.Timestamp
+	VisitUpdatedAt       pgtype.Timestamp
+	VisitOutsideSystemID pgtype.Int4
+	VisitNumber          pgtype.Text
+	VisitPatientType     pgtype.Int2
+	MrnCreatedAt         pgtype.Timestamp
+	MrnUpdatedAt         pgtype.Timestamp
+	MrnValue             pgtype.Text
+	PhysicianCreatedAt   pgtype.Timestamp
+	PhysicianUpdatedAt   pgtype.Timestamp
+	PhysicianFirstName   pgtype.Text
+	PhysicianLastName    pgtype.Text
+	PhysicianMiddleName  pgtype.Text
+	PhysicianSuffix      pgtype.Text
+	PhysicianPrefix      pgtype.Text
+	PhysicianDegree      pgtype.Text
+	PhysicianNpi         pgtype.Text
+	PhysicianSpecialty   pgtype.Text
+}
+
+func (q *Queries) GetOrderById(ctx context.Context, id int64) (GetOrderByIdRow, error) {
+	row := q.db.QueryRow(ctx, getOrderById, id)
+	var i GetOrderByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.SiteID,
+		&i.VisitID,
+		&i.MrnID,
+		&i.OrderingPhysicianID,
+		&i.Arrival,
+		&i.Number,
+		&i.CurrentStatus,
+		&i.SiteCreatedAt,
+		&i.SiteUpdatedAt,
+		&i.SiteCode,
+		&i.SiteName,
+		&i.SiteAddress,
+		&i.SiteIsCms,
+		&i.VisitCreatedAt,
+		&i.VisitUpdatedAt,
+		&i.VisitOutsideSystemID,
+		&i.VisitNumber,
+		&i.VisitPatientType,
+		&i.MrnCreatedAt,
+		&i.MrnUpdatedAt,
+		&i.MrnValue,
+		&i.PhysicianCreatedAt,
+		&i.PhysicianUpdatedAt,
+		&i.PhysicianFirstName,
+		&i.PhysicianLastName,
+		&i.PhysicianMiddleName,
+		&i.PhysicianSuffix,
+		&i.PhysicianPrefix,
+		&i.PhysicianDegree,
+		&i.PhysicianNpi,
+		&i.PhysicianSpecialty,
 	)
 	return i, err
 }

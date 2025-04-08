@@ -12,12 +12,21 @@ import (
 )
 
 const createMrn = `-- name: CreateMrn :one
-INSERT INTO mrns (site_id, patient_id, mrn)
-VALUES ($1, $2, $3)
-ON CONFLICT (site_id, patient_id) DO UPDATE
-SET mrn = EXCLUDED.mrn
-WHERE mrns.mrn IS DISTINCT FROM EXCLUDED.mrn
-RETURNING id, created_at, updated_at, patient_id, mrn, site_id
+WITH upsert AS (
+    INSERT INTO mrns (site_id, patient_id, mrn)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (site_id, patient_id) DO UPDATE
+    SET mrn = EXCLUDED.mrn
+    WHERE mrns.mrn IS DISTINCT FROM EXCLUDED.mrn
+    RETURNING id, created_at, updated_at, patient_id, mrn, site_id
+)
+SELECT id, created_at, updated_at, patient_id, mrn, site_id FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, patient_id, mrn, site_id FROM mrns
+WHERE
+    site_id = $1
+    AND patient_id = $2
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateMrnParams struct {
@@ -26,8 +35,37 @@ type CreateMrnParams struct {
 	Mrn       string
 }
 
-func (q *Queries) CreateMrn(ctx context.Context, arg CreateMrnParams) (Mrn, error) {
+type CreateMrnRow struct {
+	ID        int64
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	PatientID pgtype.Int8
+	Mrn       string
+	SiteID    int32
+}
+
+func (q *Queries) CreateMrn(ctx context.Context, arg CreateMrnParams) (CreateMrnRow, error) {
 	row := q.db.QueryRow(ctx, createMrn, arg.SiteID, arg.PatientID, arg.Mrn)
+	var i CreateMrnRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PatientID,
+		&i.Mrn,
+		&i.SiteID,
+	)
+	return i, err
+}
+
+const getMrnById = `-- name: GetMrnById :one
+SELECT id, created_at, updated_at, patient_id, mrn, site_id
+FROM mrns
+WHERE id = $1
+`
+
+func (q *Queries) GetMrnById(ctx context.Context, id int64) (Mrn, error) {
+	row := q.db.QueryRow(ctx, getMrnById, id)
 	var i Mrn
 	err := row.Scan(
 		&i.ID,

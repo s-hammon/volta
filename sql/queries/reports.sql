@@ -9,8 +9,11 @@ INSERT INTO reports (
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
--- name: GetAllReports :many
+-- name: GetReportById :one
+SELECT * FROM reports
+WHERE id = $1;
 
+-- name: GetAllReports :many
 SELECT *
 FROM reports;
 

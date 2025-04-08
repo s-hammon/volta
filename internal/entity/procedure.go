@@ -17,12 +17,16 @@ type Procedure struct {
 	Modality    objects.Modality
 }
 
-func (p *Procedure) ToDB(ctx context.Context, siteID int32, db *database.Queries) (database.Procedure, error) {
-	return db.CreateProcedure(ctx, database.CreateProcedureParams{
+func (p *Procedure) ToDB(ctx context.Context, siteID int32, db *database.Queries) (int32, error) {
+	procedure, err := db.CreateProcedure(ctx, database.CreateProcedureParams{
 		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
 		Code:        p.Code,
 		Description: p.Description,
 	})
+	if err != nil {
+		return 0, err
+	}
+	return procedure.ID, nil
 }
 
 func (p *Procedure) Equal(other Procedure) bool {

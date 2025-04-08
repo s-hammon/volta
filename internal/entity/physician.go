@@ -35,8 +35,8 @@ func DBtoPhysician(physician database.Physician) Physician {
 	}
 }
 
-func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (database.Physician, error) {
-	return db.CreatePhysician(ctx, database.CreatePhysicianParams{
+func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
+	phys, err := db.CreatePhysician(ctx, database.CreatePhysicianParams{
 		FirstName:  p.Name.First,
 		LastName:   p.Name.Last,
 		MiddleName: pgtype.Text{String: p.Name.Middle, Valid: true},
@@ -46,6 +46,10 @@ func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (database.Ph
 		Npi:        p.NPI,
 		Specialty:  pgtype.Text{String: p.Specialty.String(), Valid: true},
 	})
+	if err != nil {
+		return 0, err
+	}
+	return phys.ID, nil
 }
 
 func (p *Physician) Equal(other Physician) bool {

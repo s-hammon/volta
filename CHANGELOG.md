@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.0-alpha]
+
+- Changed models & included integration testing
+- Slight optimizations in `pkg/hl7`
+- Removed the `--sql-proxy-driver` flag
+
 ## [v0.4.3-alpha]
 
 Lots of changes as we get things working on the cloud.

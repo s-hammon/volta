@@ -1,56 +1,69 @@
 -- name: CreatePatient :one
-INSERT INTO patients (
-    first_name,
-    last_name,
-    middle_name,
-    suffix,
-    prefix,
-    degree,
-    dob,
-    sex,
-    ssn,
-    home_phone,
-    work_phone,
-    cell_phone
+WITH upsert AS (
+    INSERT INTO patients (
+        first_name,
+        last_name,
+        middle_name,
+        suffix,
+        prefix,
+        degree,
+        dob,
+        sex,
+        ssn,
+        home_phone,
+        work_phone,
+        cell_phone
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12
+    )
+    ON CONFLICT (ssn) DO UPDATE
+    SET first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        middle_name = EXCLUDED.middle_name,
+        suffix = EXCLUDED.suffix,
+        prefix = EXCLUDED.prefix,
+        degree = EXCLUDED.degree,
+        dob = EXCLUDED.dob,
+        sex = EXCLUDED.sex,
+        home_phone = EXCLUDED.home_phone,
+        work_phone = EXCLUDED.work_phone,
+        cell_phone = EXCLUDED.cell_phone
+    WHERE patients.first_name IS DISTINCT FROM EXCLUDED.first_name
+        OR patients.last_name IS DISTINCT FROM EXCLUDED.last_name
+        OR patients.middle_name IS DISTINCT FROM EXCLUDED.middle_name
+        OR patients.suffix IS DISTINCT FROM EXCLUDED.suffix
+        OR patients.prefix IS DISTINCT FROM EXCLUDED.prefix
+        OR patients.degree IS DISTINCT FROM EXCLUDED.degree
+        OR patients.dob IS DISTINCT FROM EXCLUDED.dob
+        OR patients.sex IS DISTINCT FROM EXCLUDED.sex
+        OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
+        OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
+        OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
+    RETURNING *
 )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12
-)
-ON CONFLICT (ssn) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    middle_name = EXCLUDED.middle_name,
-    suffix = EXCLUDED.suffix,
-    prefix = EXCLUDED.prefix,
-    degree = EXCLUDED.degree,
-    dob = EXCLUDED.dob,
-    sex = EXCLUDED.sex,
-    home_phone = EXCLUDED.home_phone,
-    work_phone = EXCLUDED.work_phone,
-    cell_phone = EXCLUDED.cell_phone
-WHERE patients.first_name IS DISTINCT FROM EXCLUDED.first_name
-    OR patients.last_name IS DISTINCT FROM EXCLUDED.last_name
-    OR patients.middle_name IS DISTINCT FROM EXCLUDED.middle_name
-    OR patients.suffix IS DISTINCT FROM EXCLUDED.suffix
-    OR patients.prefix IS DISTINCT FROM EXCLUDED.prefix
-    OR patients.degree IS DISTINCT FROM EXCLUDED.degree
-    OR patients.dob IS DISTINCT FROM EXCLUDED.dob
-    OR patients.sex IS DISTINCT FROM EXCLUDED.sex
-    OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
-    OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
-    OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
-RETURNING *;
+SELECT * FROM upsert
+UNION ALL
+SELECT * FROM patients
+WHERE
+    ssn = $9
+    AND NOT EXISTS (SELECT 1 FROM upsert);
+
+-- name: GetPatientById :one
+SELECT *
+FROM patients
+WHERE id = $1;
 
 -- name: GetPatientByNameSSN :one
 SELECT *

@@ -12,44 +12,54 @@ import (
 )
 
 const createPhysician = `-- name: CreatePhysician :one
-INSERT INTO physicians (
-    first_name,
-    last_name,
-    middle_name,
-    suffix,
-    prefix,
-    degree,
-    npi,
-    specialty
+WITH upsert AS (
+    INSERT INTO physicians (
+        first_name,
+        last_name,
+        middle_name,
+        suffix,
+        prefix,
+        degree,
+        npi,
+        specialty
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8
+    )
+    ON CONFLICT (first_name, last_name, npi) DO UPDATE
+    SET first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        middle_name = EXCLUDED.middle_name,
+        suffix = EXCLUDED.suffix,
+        prefix = EXCLUDED.prefix,
+        degree = EXCLUDED.degree,
+        npi = EXCLUDED.npi,
+        specialty = EXCLUDED.specialty
+    WHERE physicians.first_name IS DISTINCT FROM EXCLUDED.first_name
+        OR physicians.last_name IS DISTINCT FROM EXCLUDED.last_name
+        OR physicians.middle_name IS DISTINCT FROM EXCLUDED.middle_name
+        OR physicians.suffix IS DISTINCT FROM EXCLUDED.suffix
+        OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
+        OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
+        OR physicians.npi IS DISTINCT FROM EXCLUDED.npi
+        OR physicians.specialty IS DISTINCT FROM EXCLUDED.specialty
+    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
 )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
-)
-ON CONFLICT (first_name, last_name, npi) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    middle_name = EXCLUDED.middle_name,
-    suffix = EXCLUDED.suffix,
-    prefix = EXCLUDED.prefix,
-    degree = EXCLUDED.degree,
-    npi = EXCLUDED.npi,
-    specialty = EXCLUDED.specialty
-WHERE physicians.first_name IS DISTINCT FROM EXCLUDED.first_name
-    OR physicians.last_name IS DISTINCT FROM EXCLUDED.last_name
-    OR physicians.middle_name IS DISTINCT FROM EXCLUDED.middle_name
-    OR physicians.suffix IS DISTINCT FROM EXCLUDED.suffix
-    OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
-    OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
-    OR physicians.npi IS DISTINCT FROM EXCLUDED.npi
-    OR physicians.specialty IS DISTINCT FROM EXCLUDED.specialty
-RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty FROM physicians
+WHERE
+    first_name = $1
+    AND last_name = $2
+    AND npi = $7
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreatePhysicianParams struct {
@@ -63,7 +73,21 @@ type CreatePhysicianParams struct {
 	Specialty  pgtype.Text
 }
 
-func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (Physician, error) {
+type CreatePhysicianRow struct {
+	ID         int64
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+	FirstName  string
+	LastName   string
+	MiddleName pgtype.Text
+	Suffix     pgtype.Text
+	Prefix     pgtype.Text
+	Degree     pgtype.Text
+	Npi        string
+	Specialty  pgtype.Text
+}
+
+func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (CreatePhysicianRow, error) {
 	row := q.db.QueryRow(ctx, createPhysician,
 		arg.FirstName,
 		arg.LastName,
@@ -74,6 +98,31 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 		arg.Npi,
 		arg.Specialty,
 	)
+	var i CreatePhysicianRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.MiddleName,
+		&i.Suffix,
+		&i.Prefix,
+		&i.Degree,
+		&i.Npi,
+		&i.Specialty,
+	)
+	return i, err
+}
+
+const getPhysicianById = `-- name: GetPhysicianById :one
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+FROM physicians
+WHERE id = $1
+`
+
+func (q *Queries) GetPhysicianById(ctx context.Context, id int64) (Physician, error) {
+	row := q.db.QueryRow(ctx, getPhysicianById, id)
 	var i Physician
 	err := row.Scan(
 		&i.ID,

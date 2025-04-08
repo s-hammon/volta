@@ -2,7 +2,9 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,64 +22,104 @@ type ORU struct {
 	OBX []ReportModel `json:"OBX"`
 }
 
+func (oru *ORU) UnmarshalJSON(data []byte) error {
+	type Alias ORU
+	aux := &struct {
+		ORC json.RawMessage `json:"ORC"`
+		OBR json.RawMessage `json:"OBR"`
+		OBX json.RawMessage `json:"OBX"`
+		*Alias
+	}{
+		Alias: (*Alias)(oru),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.ORC != nil {
+		orc, err := normalizeToSlice[OrderModel](aux.ORC)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal ORC: %w", err)
+		}
+		oru.ORC = orc
+	}
+	if aux.OBR != nil {
+		obr, err := normalizeToSlice[ExamModel](aux.OBR)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal ORC: %w", err)
+		}
+		oru.OBR = obr
+	}
+	if aux.OBX != nil {
+		obx, err := normalizeToSlice[ReportModel](aux.OBX)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal ORC: %w", err)
+		}
+		oru.OBX = obx
+	}
+
+	return nil
+}
+
 func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 	p := oru.PID.ToEntity()
 	m := oru.MSH.ToEntity()
 	v := oru.PV1.ToEntity(m.SendingFac, oru.PID.MRN)
 
-	orderGroups, err := oru.groupOrders()
+	orderGroups, err := oru.GroupOrders()
 	if err != nil {
 		return errors.New("error grouping orders and exams: " + err.Error())
 	}
-	oe := newOrderEntities(v.Site.Code, oru.PID.MRN, orderGroups...)
+	oe := NewOrderEntities(v.Site.Code, oru.PID.MRN, orderGroups...)
 
-	site, err := v.Site.ToDB(ctx, db)
+	siteID, err := v.Site.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating site: " + err.Error())
 	}
 
-	patient, err := p.ToDB(ctx, db)
+	patientID, err := p.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating patient: " + err.Error())
 	}
 
-	mrn, err := v.MRN.ToDB(ctx, site.ID, patient.ID, db)
+	mrnID, err := v.MRN.ToDB(ctx, siteID, patientID, db)
 	if err != nil {
 		return errors.New("error creating mrn: " + err.Error())
 	}
 
-	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
+	visitID, err := v.ToDB(ctx, siteID, mrnID, db)
 	if err != nil {
 		return errors.New("error creating visit: " + err.Error())
 	}
 
-	physician, err := oe[0].order.Provider.ToDB(ctx, db)
+	physicianID, err := oe[0].order.Provider.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating physician: " + err.Error())
 	}
 
 	examIDs := make([]int64, len(oe))
 	for i, orderEntity := range oe {
-		order, err := orderEntity.order.ToDB(ctx, site.ID, visit.ID, mrn.ID, physician.ID, db)
+		orderID, orderStatus, err := orderEntity.order.ToDB(ctx, siteID, visitID, mrnID, physicianID, db)
 		if err != nil {
 			return errors.New("error creating order: " + err.Error())
 		}
 
-		procedure, err := orderEntity.exam.Procedure.ToDB(ctx, site.ID, db)
+		procedureID, err := orderEntity.exam.Procedure.ToDB(ctx, siteID, db)
 		if err != nil {
 			return errors.New("error creating procedure: " + err.Error())
 		}
 
-		exam, err := orderEntity.exam.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
+		examID, err := orderEntity.exam.ToDB(ctx, orderID, visitID, mrnID, siteID, procedureID, orderStatus, db)
 		if err != nil {
 			return errors.New("error creating exam: " + err.Error())
 		}
-		examIDs[i] = exam.ID
+		examIDs[i] = examID
 	}
 
-	reportModel := oru.getReport(physician)
+	reportModel := oru.GetReport()
 	report, err := db.CreateReport(ctx, database.CreateReportParams{
-		RadiologistID: pgtype.Int8{Int64: int64(physician.ID), Valid: true},
+		RadiologistID: pgtype.Int8{Int64: int64(physicianID), Valid: true},
 		Body:          reportModel.Body,
 		Impression:    reportModel.Impression,
 		ReportStatus:  reportModel.Status.String(),
@@ -111,45 +153,22 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 	return nil
 }
 
-func (oru *ORU) getReport(radiologist database.Physician) entity.Report {
+func (oru *ORU) GetReport() entity.Report {
 	body := ""
-
 	for _, obx := range oru.OBX {
 		if obx.ObservationValue != "" {
 			body += obx.ObservationValue + "\n"
 		}
 	}
-
 	observation := ""
 	if len(oru.OBX) > 0 {
 		observation = oru.OBX[0].ObservationValue
 	}
-
 	submitDT, err := time.Parse("20060102150405", oru.OBR[0].ObservationDT) // TODO: audit this, seems like times are all over the place in HL7
 	if err != nil {
 		submitDT = time.Now()
 	}
-
-	radModel := entity.Physician{
-		Base: entity.Base{
-			ID:        int(radiologist.ID),
-			CreatedAt: radiologist.CreatedAt.Time,
-			UpdatedAt: radiologist.UpdatedAt.Time,
-		},
-		Name: objects.Name{
-			Last:   radiologist.LastName,
-			First:  radiologist.FirstName,
-			Middle: radiologist.MiddleName.String,
-			Suffix: radiologist.Suffix.String,
-			Prefix: radiologist.Prefix.String,
-			Degree: radiologist.Degree.String,
-		},
-		NPI:       radiologist.Npi,
-		Specialty: objects.Specialty(radiologist.Specialty.String),
-	}
-
 	return entity.Report{
-		Radiologist: radModel,
 		Body:        body,
 		Impression:  observation,
 		Status:      objects.NewReportStatus(oru.OBR[0].Status), // TODO: also audit this
@@ -162,7 +181,7 @@ type orderGroup struct {
 	Exam  ExamModel
 }
 
-func (oru *ORU) groupOrders() ([]orderGroup, error) {
+func (oru *ORU) GroupOrders() ([]orderGroup, error) {
 	if len(oru.ORC) == 0 || len(oru.OBR) == 0 {
 		return nil, errors.New("no orders or exams to group")
 	}
@@ -195,7 +214,7 @@ type orderEntity struct {
 	exam  entity.Exam
 }
 
-func newOrderEntities(visitSiteCode string, mrn CX, orderGroups ...orderGroup) []orderEntity {
+func NewOrderEntities(visitSiteCode string, mrn CX, orderGroups ...orderGroup) []orderEntity {
 	entities := make([]orderEntity, len(orderGroups))
 	for i, group := range orderGroups {
 		o := group.Order.ToEntity()
@@ -206,10 +225,32 @@ func newOrderEntities(visitSiteCode string, mrn CX, orderGroups ...orderGroup) [
 	return entities
 }
 
+func (oe *orderEntity) GetOrder() entity.Order {
+	return oe.order
+}
+
+func (oe *orderEntity) GetExam() entity.Exam {
+	return oe.exam
+}
+
 // if a is empty, return b
 func coalesce(a, b string) string {
 	if a == "" {
 		return b
 	}
 	return a
+}
+
+func normalizeToSlice[T any](raw json.RawMessage) ([]T, error) {
+	var slice []T
+	if err := json.Unmarshal(raw, &slice); err == nil {
+		return slice, nil
+	}
+
+	var single T
+	if err := json.Unmarshal(raw, &single); err != nil {
+		return nil, err
+	}
+
+	return []T{single}, nil
 }

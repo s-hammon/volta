@@ -54,7 +54,6 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 }
 
 const getAllReports = `-- name: GetAllReports :many
-
 SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
 FROM reports
 `
@@ -86,6 +85,27 @@ func (q *Queries) GetAllReports(ctx context.Context) ([]Report, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getReportById = `-- name: GetReportById :one
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+WHERE id = $1
+`
+
+func (q *Queries) GetReportById(ctx context.Context, id int64) (Report, error) {
+	row := q.db.QueryRow(ctx, getReportById, id)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RadiologistID,
+		&i.Body,
+		&i.Impression,
+		&i.ReportStatus,
+		&i.SubmittedDt,
+	)
+	return i, err
 }
 
 const getReportByUniqueFields = `-- name: GetReportByUniqueFields :one

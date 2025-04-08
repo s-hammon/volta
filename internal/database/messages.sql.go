@@ -80,3 +80,32 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	)
 	return i, err
 }
+
+const getMessageByID = `-- name: GetMessageByID :one
+SELECT id, created_at, updated_at, field_separator, encoding_characters, sending_application, sending_facility, receiving_application, receiving_facility, received_at, message_type, trigger_event, control_id, processing_id, version_id
+FROM messages
+WHERE id = $1
+`
+
+func (q *Queries) GetMessageByID(ctx context.Context, id int64) (Message, error) {
+	row := q.db.QueryRow(ctx, getMessageByID, id)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FieldSeparator,
+		&i.EncodingCharacters,
+		&i.SendingApplication,
+		&i.SendingFacility,
+		&i.ReceivingApplication,
+		&i.ReceivingFacility,
+		&i.ReceivedAt,
+		&i.MessageType,
+		&i.TriggerEvent,
+		&i.ControlID,
+		&i.ProcessingID,
+		&i.VersionID,
+	)
+	return i, err
+}

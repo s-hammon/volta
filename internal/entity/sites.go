@@ -29,12 +29,16 @@ func DBtoSite(site database.Site) Site {
 	}
 }
 
-func (s *Site) ToDB(ctx context.Context, db *database.Queries) (database.Site, error) {
-	return db.CreateSite(ctx, database.CreateSiteParams{
+func (s *Site) ToDB(ctx context.Context, db *database.Queries) (int32, error) {
+	res, err := db.CreateSite(ctx, database.CreateSiteParams{
 		Code:    s.Code,
 		Name:    s.Name,
 		Address: s.Address,
 	})
+	if err != nil {
+		return 0, err
+	}
+	return res.ID, nil
 }
 
 func (s *Site) Equal(other Site) bool {

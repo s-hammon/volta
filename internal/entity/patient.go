@@ -44,8 +44,8 @@ func DBtoPatient(patient database.Patient) Patient {
 	}
 }
 
-func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (database.Patient, error) {
-	return db.CreatePatient(ctx, database.CreatePatientParams{
+func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
+	patient, err := db.CreatePatient(ctx, database.CreatePatientParams{
 		FirstName:  p.Name.First,
 		LastName:   p.Name.Last,
 		MiddleName: pgtype.Text{String: p.Name.Middle, Valid: true},
@@ -56,6 +56,10 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (database.Pati
 		Sex:        p.Sex,
 		Ssn:        pgtype.Text{String: p.SSN.String(), Valid: true},
 	})
+	if err != nil {
+		return 0, err
+	}
+	return patient.ID, nil
 }
 
 func (p *Patient) String() string {
@@ -89,12 +93,16 @@ type MRN struct {
 	AssigningAuthority string
 }
 
-func (m *MRN) ToDB(ctx context.Context, siteID int32, patientID int64, db *database.Queries) (database.Mrn, error) {
-	return db.CreateMrn(ctx, database.CreateMrnParams{
+func (m *MRN) ToDB(ctx context.Context, siteID int32, patientID int64, db *database.Queries) (int64, error) {
+	mrn, err := db.CreateMrn(ctx, database.CreateMrnParams{
 		SiteID:    siteID,
 		PatientID: pgtype.Int8{Int64: patientID, Valid: true},
 		Mrn:       m.Value,
 	})
+	if err != nil {
+		return 0, err
+	}
+	return mrn.ID, nil
 }
 
 func (m *MRN) Equal(other MRN) bool {

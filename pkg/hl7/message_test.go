@@ -19,7 +19,7 @@ var invalidMSH = bytes.Join([][]byte{[]byte("MSH"), validPID, validPV1}, []byte{
 var firstNotMSH = bytes.Join([][]byte{validPID, validMSH}, []byte{CR})
 var invalidSegmentName = []byte("ID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||19800101|M|||123 Main St^^Metropolis^NY^10001")
 
-func BenchmarkNewMessage(b *testing.B) {
+func BenchmarkNewMessageAll(b *testing.B) {
 	entries, err := HL7.ReadDir("test_hl7")
 	if err != nil {
 		b.Fatalf("failed to read embedded test directory: %v", err)
@@ -47,6 +47,33 @@ func BenchmarkNewMessage(b *testing.B) {
 			}
 		}
 	})
+}
+
+func BenchmarkNewMessageEach(b *testing.B) {
+	entries, err := HL7.ReadDir("test_hl7")
+	if err != nil {
+		b.Fatalf("failed to read embedded test directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		data, err := HL7.ReadFile(filepath.Join("test_hl7", entry.Name()))
+		if err != nil {
+			b.Fatalf("failed to read test file %s: %v", entry.Name(), err)
+		}
+		if len(data) == 0 {
+			b.Fatalf("file %s is empty", entry.Name())
+		}
+
+		b.Run(entry.Name(), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if _, err := NewMessage(data); err != nil {
+					b.Fatalf("unexpected error in parsing: %v", err)
+				}
+			}
+		})
+	}
 }
 
 func TestHL7Files(t *testing.T) {

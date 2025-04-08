@@ -12,39 +12,52 @@ import (
 )
 
 const createExam = `-- name: CreateExam :one
-INSERT INTO exams (
-    order_id,
-    visit_id,
-    mrn_id,
-    site_id,
-    procedure_id,
-    accession,
-    current_status,
-    schedule_dt,
-    begin_exam_dt,
-    end_exam_dt
+WITH upsert as (
+    INSERT INTO exams (
+        order_id,
+        visit_id,
+        mrn_id,
+        site_id,
+        procedure_id,
+        accession,
+        current_status,
+        schedule_dt,
+        begin_exam_dt,
+        end_exam_dt
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    ON CONFLICT (site_id, accession) DO UPDATE
+    SET order_id = EXCLUDED.order_id,
+        visit_id = EXCLUDED.visit_id,
+        mrn_id = EXCLUDED.mrn_id,
+        site_id = EXCLUDED.site_id,
+        procedure_id = EXCLUDED.procedure_id,
+        current_status = EXCLUDED.current_status,
+        schedule_dt = EXCLUDED.schedule_dt,
+        begin_exam_dt = EXCLUDED.begin_exam_dt,
+        end_exam_dt = EXCLUDED.end_exam_dt
+    WHERE exams.order_id IS DISTINCT FROM EXCLUDED.order_id
+        OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
+        OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+        OR exams.site_id IS DISTINCT FROM EXCLUDED.site_id
+        OR exams.procedure_id IS DISTINCT FROM EXCLUDED.procedure_id
+        OR exams.current_status IS DISTINCT FROM EXCLUDED.current_status
+        OR exams.schedule_dt IS DISTINCT FROM EXCLUDED.schedule_dt
+        OR exams.begin_exam_dt IS DISTINCT FROM EXCLUDED.begin_exam_dt
+        OR exams.end_exam_dt IS DISTINCT FROM EXCLUDED.end_exam_dt
+    RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-ON CONFLICT (site_id, accession) DO UPDATE
-SET order_id = EXCLUDED.order_id,
-    visit_id = EXCLUDED.visit_id,
-    mrn_id = EXCLUDED.mrn_id,
-    site_id = EXCLUDED.site_id,
-    procedure_id = EXCLUDED.procedure_id,
-    current_status = EXCLUDED.current_status,
-    schedule_dt = EXCLUDED.schedule_dt,
-    begin_exam_dt = EXCLUDED.begin_exam_dt,
-    end_exam_dt = EXCLUDED.end_exam_dt
-WHERE exams.order_id IS DISTINCT FROM EXCLUDED.order_id
-    OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
-    OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
-    OR exams.site_id IS DISTINCT FROM EXCLUDED.site_id
-    OR exams.procedure_id IS DISTINCT FROM EXCLUDED.procedure_id
-    OR exams.current_status IS DISTINCT FROM EXCLUDED.current_status
-    OR exams.schedule_dt IS DISTINCT FROM EXCLUDED.schedule_dt
-    OR exams.begin_exam_dt IS DISTINCT FROM EXCLUDED.begin_exam_dt
-    OR exams.end_exam_dt IS DISTINCT FROM EXCLUDED.end_exam_dt
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
+SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM UPSERT
+UNION ALL
+SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM exams
+WHERE
+    order_id = $1
+    AND visit_id = $2
+    AND mrn_id = $3
+    AND site_id = $4
+    AND procedure_id = $5
+    AND accession = $6
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateExamParams struct {
@@ -60,7 +73,26 @@ type CreateExamParams struct {
 	EndExamDt     pgtype.Timestamp
 }
 
-func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, error) {
+type CreateExamRow struct {
+	ID               int64
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	OutsideSystemID  pgtype.Int4
+	OrderID          pgtype.Int8
+	VisitID          pgtype.Int8
+	MrnID            pgtype.Int8
+	SiteID           pgtype.Int4
+	ProcedureID      pgtype.Int4
+	FinalReportID    pgtype.Int8
+	AddendumReportID pgtype.Int8
+	Accession        string
+	CurrentStatus    string
+	ScheduleDt       pgtype.Timestamp
+	BeginExamDt      pgtype.Timestamp
+	EndExamDt        pgtype.Timestamp
+}
+
+func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateExamRow, error) {
 	row := q.db.QueryRow(ctx, createExam,
 		arg.OrderID,
 		arg.VisitID,
@@ -73,7 +105,7 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (Exam, e
 		arg.BeginExamDt,
 		arg.EndExamDt,
 	)
-	var i Exam
+	var i CreateExamRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -135,6 +167,35 @@ func (q *Queries) GetAllExams(ctx context.Context) ([]Exam, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getExamById = `-- name: GetExamById :one
+SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM exams
+WHERE id = $1
+`
+
+func (q *Queries) GetExamById(ctx context.Context, id int64) (Exam, error) {
+	row := q.db.QueryRow(ctx, getExamById, id)
+	var i Exam
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.OrderID,
+		&i.VisitID,
+		&i.MrnID,
+		&i.SiteID,
+		&i.ProcedureID,
+		&i.FinalReportID,
+		&i.AddendumReportID,
+		&i.Accession,
+		&i.CurrentStatus,
+		&i.ScheduleDt,
+		&i.BeginExamDt,
+		&i.EndExamDt,
+	)
+	return i, err
 }
 
 const getExamBySiteIDAccession = `-- name: GetExamBySiteIDAccession :one

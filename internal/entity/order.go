@@ -83,8 +83,8 @@ func DBtoOrder(order database.GetOrderBySiteIDNumberRow) Order {
 	}
 }
 
-func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, providerID int64, db *database.Queries) (database.Order, error) {
-	return db.CreateOrder(ctx, database.CreateOrderParams{
+func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, providerID int64, db *database.Queries) (int64, string, error) {
+	order, err := db.CreateOrder(ctx, database.CreateOrderParams{
 		SiteID:              pgtype.Int4{Int32: siteID, Valid: true},
 		VisitID:             pgtype.Int8{Int64: visitID, Valid: true},
 		MrnID:               pgtype.Int8{Int64: mrnID, Valid: true},
@@ -93,6 +93,10 @@ func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, provider
 		Number:              o.Number,
 		CurrentStatus:       o.CurrentStatus,
 	})
+	if err != nil {
+		return 0, "", err
+	}
+	return order.ID, order.CurrentStatus, nil
 }
 
 func (o *Order) Equal(other Order) bool {

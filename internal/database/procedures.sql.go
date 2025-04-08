@@ -12,16 +12,25 @@ import (
 )
 
 const createProcedure = `-- name: CreateProcedure :one
-INSERT INTO procedures (site_id, code, description, specialty, modality)
-VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (site_id, code) DO UPDATE
-SET description = EXCLUDED.description,
-    specialty = EXCLUDED.specialty,
-    modality = EXCLUDED.modality
-WHERE procedures.description IS DISTINCT FROM EXCLUDED.description
-    OR procedures.specialty IS DISTINCT FROM EXCLUDED.specialty
-    OR procedures.modality IS DISTINCT FROM EXCLUDED.modality
-RETURNING id, created_at, updated_at, site_id, code, description, specialty, modality
+WITH upsert AS (
+    INSERT INTO procedures (site_id, code, description, specialty, modality)
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (site_id, code) DO UPDATE
+    SET description = EXCLUDED.description,
+        specialty = EXCLUDED.specialty,
+        modality = EXCLUDED.modality
+    WHERE procedures.description IS DISTINCT FROM EXCLUDED.description
+        OR procedures.specialty IS DISTINCT FROM EXCLUDED.specialty
+        OR procedures.modality IS DISTINCT FROM EXCLUDED.modality
+    RETURNING id, created_at, updated_at, site_id, code, description, specialty, modality
+)
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality FROM procedures
+WHERE
+    site_id = $1
+    AND code = $2
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateProcedureParams struct {
@@ -32,7 +41,18 @@ type CreateProcedureParams struct {
 	Modality    pgtype.Text
 }
 
-func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (Procedure, error) {
+type CreateProcedureRow struct {
+	ID          int32
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+	SiteID      pgtype.Int4
+	Code        string
+	Description string
+	Specialty   pgtype.Text
+	Modality    pgtype.Text
+}
+
+func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (CreateProcedureRow, error) {
 	row := q.db.QueryRow(ctx, createProcedure,
 		arg.SiteID,
 		arg.Code,
@@ -40,6 +60,28 @@ func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams
 		arg.Specialty,
 		arg.Modality,
 	)
+	var i CreateProcedureRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteID,
+		&i.Code,
+		&i.Description,
+		&i.Specialty,
+		&i.Modality,
+	)
+	return i, err
+}
+
+const getProcedureById = `-- name: GetProcedureById :one
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality
+FROM procedures
+WHERE id = $1
+`
+
+func (q *Queries) GetProcedureById(ctx context.Context, id int32) (Procedure, error) {
+	row := q.db.QueryRow(ctx, getProcedureById, id)
 	var i Procedure
 	err := row.Scan(
 		&i.ID,

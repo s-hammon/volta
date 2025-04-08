@@ -19,11 +19,10 @@ import (
 
 // TODO: include YAML config file to parse & pass to service.
 var (
-	dbURL          string
-	host           string
-	port           string
-	debugMode      bool
-	sqlProxyDriver string
+	dbURL     string
+	host      string
+	port      string
+	debugMode bool
 
 	db *pgxpool.Pool
 
@@ -38,7 +37,6 @@ func init() {
 	serveCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", "host for service (default: localhost)")
 	serveCmd.PersistentFlags().StringVarP(&port, "port", "p", "8080", "port to listen on (default: 8080)")
 	serveCmd.PersistentFlags().StringVarP(&dbURL, "db-url", "d", "", "database URL (required unless DATABASE_URL env var is set or using debug mode)")
-	serveCmd.PersistentFlags().StringVar(&sqlProxyDriver, "sql-proxy-driver", "", "if using Cloud SQL proxy, specify the driver (e.g., 'postgres'). DB_USER, DB_PASSWORD, and DB_NAME must be set. Will overwrite db-url if specified.")
 	serveCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "D", false, "enable debug mode; results are just logged to stdout, not written to the database (cannot use with -d)")
 }
 
@@ -75,20 +73,6 @@ var serveCmd = &cobra.Command{
 		if err != nil {
 			log.Info().Err(err).Msg("failed to get host flag")
 			return err
-		}
-
-		if sqlProxyDriver != "" {
-			switch sqlProxyDriver {
-			case "postgres":
-				proxyConfig, err := getPostgresConfig()
-				if err != nil {
-					log.Info().Err(err).Msg("failed to load DB secrets from environment")
-					return err
-				}
-				dbURL = proxyConfig.String()
-			default:
-				return fmt.Errorf("unsupported SQL proxy driver: %s", sqlProxyDriver)
-			}
 		}
 
 		if dbURL == "" {

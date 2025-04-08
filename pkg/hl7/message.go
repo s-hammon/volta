@@ -138,7 +138,7 @@ func segmentToJSON(buf *bytes.Buffer, name string, fields [][]byte) error {
 		} else if bytes.IndexByte(f, componentDelim) != -1 {
 			parseComponentsToJSON(buf, fName, f)
 		} else {
-			buf.Write(strconv.AppendQuote(nil, replaceEscapes(f)))
+			writeEscaped(buf, f)
 		}
 	}
 
@@ -168,7 +168,7 @@ func (w *MsgWriter) handleMSH(segment []byte) error {
 			parseComponentsToJSON(w.buf, fName, fields[i])
 			continue
 		} else {
-			w.buf.WriteString(strconv.Quote(replaceEscapes(fields[i])))
+			writeEscaped(w.buf, fields[i])
 		}
 
 	}
@@ -197,7 +197,7 @@ func parseComponentsToJSON(buf *bytes.Buffer, name string, field []byte) {
 		if bytes.IndexByte(c, subComponentDelim) != -1 {
 			parseSubComponentsToJSON(buf, cName, c)
 		} else {
-			buf.Write(strconv.AppendQuote(nil, replaceEscapes(c)))
+			writeEscaped(buf, c)
 		}
 	}
 
@@ -219,7 +219,10 @@ func parseSubComponentsToJSON(buf *bytes.Buffer, name string, component []byte) 
 			buf.WriteByte(',')
 		}
 		sName := formatKey(name, i+1)
-		fmt.Fprintf(buf, `"%s":"%s"`, sName, replaceEscapes(s))
+		buf.WriteByte('"')
+		buf.WriteString(sName)
+		buf.WriteString(`":`)
+		writeEscaped(buf, s)
 	}
 
 	buf.WriteByte('}')
@@ -236,7 +239,7 @@ func parseRepeatsToJSON(buf *bytes.Buffer, name string, field []byte) {
 		if bytes.Contains(r, []byte{componentDelim}) {
 			parseComponentsToJSON(buf, name, r)
 		} else {
-			fmt.Fprintf(buf, `"%s"`, replaceEscapes(r))
+			writeEscaped(buf, r)
 		}
 	}
 
@@ -255,48 +258,48 @@ func formatKey(name string, i int) string {
 	return name + "." + strconv.Itoa(i)
 }
 
-func replaceEscapes(s []byte) string {
-	if !bytes.Contains(s, []byte{'\\'}) {
-		return string(s)
+func replaceEscapes(b []byte) []byte {
+	if !bytes.Contains(b, []byte{'\\'}) {
+		return b
 	}
 
-	result := make([]byte, 0, len(s))
+	result := make([]byte, 0, len(b))
 
 	i := 0
-	for i < len(s) {
-		if s[i] == '\\' && i+2 < len(s) {
+	for i < len(b) {
+		if b[i] == '\\' && i+2 < len(b) {
 			switch {
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, 'F', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, 'F', escapeDelim}):
 				result = append(result, '|')
 				i += 3
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, 'R', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, 'R', escapeDelim}):
 				result = append(result, '~')
 				i += 3
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, 'S', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, 'S', escapeDelim}):
 				result = append(result, '^')
 				i += 3
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, 'T', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, 'T', escapeDelim}):
 				result = append(result, '&')
 				i += 3
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, 'E', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, 'E', escapeDelim}):
 				result = append(result, '\\')
 				i += 3
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, '\x0D', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, '\x0D', escapeDelim}):
 				result = append(result, '\r')
 				i += 5
-			case bytes.HasPrefix(s[i:], []byte{escapeDelim, '\x0A', escapeDelim}):
+			case bytes.HasPrefix(b[i:], []byte{escapeDelim, '\x0A', escapeDelim}):
 				result = append(result, '\n')
 				i += 5
 			default:
-				result = append(result, s[i])
+				result = append(result, b[i])
 				i++
 			}
 		} else {
-			result = append(result, s[i])
+			result = append(result, b[i])
 			i++
 		}
 	}
-	return string(result)
+	return result
 }
 
 func getRepeatedSegments(segments [][]byte) map[string]int {
@@ -321,4 +324,25 @@ func getRepeatedSegments(segments [][]byte) map[string]int {
 	}
 
 	return segCounts
+}
+
+func writeEscaped(buf *bytes.Buffer, raw []byte) {
+	decoded := replaceEscapes(raw)
+
+	buf.WriteByte('"')
+	for i := range decoded {
+		switch decoded[i] {
+		case '\\':
+			buf.WriteString(`\\`)
+		case '"':
+			buf.WriteString(`\"`)
+		case '\r':
+			buf.WriteString(`\r`)
+		case '\n':
+			buf.WriteString(`\n`)
+		default:
+			buf.WriteByte(decoded[i])
+		}
+	}
+	buf.WriteByte('"')
 }

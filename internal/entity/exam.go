@@ -14,7 +14,6 @@ type Exam struct {
 	MRN         MRN
 	Procedure   Procedure
 	Site        Site
-	Priority    string
 	Scheduled   time.Time
 	Begin       time.Time
 	End         time.Time
@@ -64,8 +63,8 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 	}
 }
 
-func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (database.Exam, error) {
-	return db.CreateExam(ctx, database.CreateExamParams{
+func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (int64, error) {
+	exam, err := db.CreateExam(ctx, database.CreateExamParams{
 		OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
 		VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
 		MrnID:         pgtype.Int8{Int64: int64(mrnID), Valid: true},
@@ -77,6 +76,10 @@ func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, 
 		BeginExamDt:   pgtype.Timestamp{Time: e.Begin, Valid: true},
 		EndExamDt:     pgtype.Timestamp{Time: e.End, Valid: true},
 	})
+	if err != nil {
+		return 0, err
+	}
+	return exam.ID, nil
 }
 
 func (e *Exam) Equal(other Exam) bool {
@@ -84,7 +87,6 @@ func (e *Exam) Equal(other Exam) bool {
 		e.MRN.Equal(other.MRN) &&
 		e.Procedure.Equal(other.Procedure) &&
 		e.Site.Equal(other.Site) &&
-		e.Priority == other.Priority &&
 		e.Scheduled.Equal(other.Scheduled) &&
 		e.Begin.Equal(other.Begin) &&
 		e.End.Equal(other.End) &&
@@ -94,9 +96,6 @@ func (e *Exam) Equal(other Exam) bool {
 func (e *Exam) Coalesce(other Exam) {
 	if other.Accession != "" && e.Accession != other.Accession {
 		e.Accession = other.Accession
-	}
-	if other.Priority != "" && e.Priority != other.Priority {
-		e.Priority = other.Priority
 	}
 	if !other.Scheduled.IsZero() && !e.Scheduled.Equal(other.Scheduled) {
 		e.Scheduled = other.Scheduled

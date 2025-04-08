@@ -12,32 +12,42 @@ import (
 )
 
 const createVisit = `-- name: CreateVisit :one
-INSERT INTO visits (
-    outside_system_id,
-    site_id,
-    mrn_id,
-    number,
-    patient_type
+WITH upsert AS (
+    INSERT INTO visits (
+        outside_system_id,
+        site_id,
+        mrn_id,
+        number,
+        patient_type
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5
+    )
+    ON CONFLICT (site_id, mrn_id, number) DO UPDATE
+    SET outside_system_id = EXCLUDED.outside_system_id,
+        site_id = EXCLUDED.site_id,
+        mrn_id = EXCLUDED.mrn_id,
+        number = EXCLUDED.number,
+        patient_type = EXCLUDED.patient_type
+    WHERE visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
+        OR visits.site_id IS DISTINCT FROM EXCLUDED.site_id
+        OR visits.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
+        OR visits.number IS DISTINCT FROM EXCLUDED.number
+        OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
+    RETURNING id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type
 )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5
-)
-ON CONFLICT (site_id, mrn_id, number) DO UPDATE
-SET outside_system_id = EXCLUDED.outside_system_id,
-    site_id = EXCLUDED.site_id,
-    mrn_id = EXCLUDED.mrn_id,
-    number = EXCLUDED.number,
-    patient_type = EXCLUDED.patient_type
-WHERE visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
-    OR visits.site_id IS DISTINCT FROM EXCLUDED.site_id
-    OR visits.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
-    OR visits.number IS DISTINCT FROM EXCLUDED.number
-    OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
-RETURNING id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type
+SELECT id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type FROM visits
+WHERE
+    site_id = $2
+    AND mrn_id = $3
+    AND number = $4
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateVisitParams struct {
@@ -48,7 +58,18 @@ type CreateVisitParams struct {
 	PatientType     int16
 }
 
-func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (Visit, error) {
+type CreateVisitRow struct {
+	ID              int64
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+	OutsideSystemID pgtype.Int4
+	SiteID          pgtype.Int4
+	MrnID           pgtype.Int8
+	Number          string
+	PatientType     int16
+}
+
+func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (CreateVisitRow, error) {
 	row := q.db.QueryRow(ctx, createVisit,
 		arg.OutsideSystemID,
 		arg.SiteID,
@@ -56,7 +77,7 @@ func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (Visit
 		arg.Number,
 		arg.PatientType,
 	)
-	var i Visit
+	var i CreateVisitRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -66,6 +87,69 @@ func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (Visit
 		&i.MrnID,
 		&i.Number,
 		&i.PatientType,
+	)
+	return i, err
+}
+
+const getVisitById = `-- name: GetVisitById :one
+SELECT
+    v.id, v.created_at, v.updated_at, v.outside_system_id, v.site_id, v.mrn_id, v.number, v.patient_type,
+    s.created_at as site_created_at,
+    s.updated_at as site_updated_at,
+    s.code as site_code,
+    s.name as site_name,
+    s.address as site_address,
+    s.is_cms as site_is_cms,
+    m.created_at as mrn_created_at,
+    m.updated_at as mrn_updated_at,
+    m.mrn as mrn_value
+FROM visits as v
+LEFT JOIN sites as s ON v.site_id = s.id
+LEFT JOIN mrns as m ON v.mrn_id = m.id
+WHERE v.id = $1
+`
+
+type GetVisitByIdRow struct {
+	ID              int64
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+	OutsideSystemID pgtype.Int4
+	SiteID          pgtype.Int4
+	MrnID           pgtype.Int8
+	Number          string
+	PatientType     int16
+	SiteCreatedAt   pgtype.Timestamp
+	SiteUpdatedAt   pgtype.Timestamp
+	SiteCode        pgtype.Text
+	SiteName        pgtype.Text
+	SiteAddress     pgtype.Text
+	SiteIsCms       pgtype.Bool
+	MrnCreatedAt    pgtype.Timestamp
+	MrnUpdatedAt    pgtype.Timestamp
+	MrnValue        pgtype.Text
+}
+
+func (q *Queries) GetVisitById(ctx context.Context, id int64) (GetVisitByIdRow, error) {
+	row := q.db.QueryRow(ctx, getVisitById, id)
+	var i GetVisitByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OutsideSystemID,
+		&i.SiteID,
+		&i.MrnID,
+		&i.Number,
+		&i.PatientType,
+		&i.SiteCreatedAt,
+		&i.SiteUpdatedAt,
+		&i.SiteCode,
+		&i.SiteName,
+		&i.SiteAddress,
+		&i.SiteIsCms,
+		&i.MrnCreatedAt,
+		&i.MrnUpdatedAt,
+		&i.MrnValue,
 	)
 	return i, err
 }

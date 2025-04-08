@@ -28,17 +28,17 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
 		return errors.New("error creating message: " + err.Error())
 	}
 
-	site, err := v.Site.ToDB(ctx, db)
+	siteID, err := v.Site.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating site: " + err.Error())
 	}
 
-	patient, err := p.ToDB(ctx, db)
+	patientID, err := p.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating patient: " + err.Error())
 	}
 
-	mrn, err := v.MRN.ToDB(ctx, site.ID, patient.ID, db)
+	mrnID, err := v.MRN.ToDB(ctx, siteID, patientID, db)
 	if err != nil {
 		return errors.New("error creating mrn: " + err.Error())
 	}
@@ -48,27 +48,27 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
 		log.Debug().Str("orderNumber", o.Number).Msg("filling visit number with order number")
 		v.VisitNo = o.Number
 	}
-	visit, err := v.ToDB(ctx, site.ID, mrn.ID, db)
+	visitID, err := v.ToDB(ctx, siteID, mrnID, db)
 	if err != nil {
 		return errors.New("error creating visit: " + err.Error())
 	}
 
-	physician, err := o.Provider.ToDB(ctx, db)
+	physicianID, err := o.Provider.ToDB(ctx, db)
 	if err != nil {
 		return errors.New("error creating physician: " + err.Error())
 	}
 
-	order, err := o.ToDB(ctx, site.ID, visit.ID, mrn.ID, physician.ID, db)
+	orderID, orderStatus, err := o.ToDB(ctx, siteID, visitID, mrnID, physicianID, db)
 	if err != nil {
 		return errors.New("error creating order: " + err.Error())
 	}
 
-	procedure, err := e.Procedure.ToDB(ctx, site.ID, db)
+	procedureID, err := e.Procedure.ToDB(ctx, siteID, db)
 	if err != nil {
 		return errors.New("error creating procedure: " + err.Error())
 	}
 
-	_, err = e.ToDB(ctx, order.ID, visit.ID, mrn.ID, site.ID, procedure.ID, order.CurrentStatus, db)
+	_, err = e.ToDB(ctx, orderID, visitID, mrnID, siteID, procedureID, orderStatus, db)
 	if err != nil {
 		return errors.New("error creating exam: " + err.Error())
 	}

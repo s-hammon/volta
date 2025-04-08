@@ -7,19 +7,34 @@ package database
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createSite = `-- name: CreateSite :one
-INSERT INTO sites (code, name, address, is_cms)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (code, name) DO UPDATE
-SET name = EXCLUDED.name,
-    address = EXCLUDED.address,
-    is_cms = EXCLUDED.is_cms
-WHERE sites.name IS DISTINCT FROM EXCLUDED.name
-    OR sites.address IS DISTINCT FROM EXCLUDED.address
-    OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
-RETURNING id, created_at, updated_at, code, name, address, is_cms
+WITH upsert AS (
+    INSERT INTO SITES (
+        code,
+        name,
+        address,
+        is_cms
+    )
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (code, name) DO UPDATE
+    SET name = EXCLUDED.name,
+        address = EXCLUDED.address,
+        is_cms = EXCLUDED.is_cms
+    WHERE sites.name IS DISTINCT FROM EXCLUDED.name
+        OR sites.address IS DISTINCT FROM EXCLUDED.address
+        OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
+    RETURNING id, created_at, updated_at, code, name, address, is_cms
+)
+SELECT id, created_at, updated_at, code, name, address, is_cms FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, code, name, address, is_cms FROM sites
+WHERE code = $1
+    AND name = $2
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateSiteParams struct {
@@ -29,14 +44,24 @@ type CreateSiteParams struct {
 	IsCms   bool
 }
 
-func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (Site, error) {
+type CreateSiteRow struct {
+	ID        int32
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	Code      string
+	Name      string
+	Address   string
+	IsCms     bool
+}
+
+func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (CreateSiteRow, error) {
 	row := q.db.QueryRow(ctx, createSite,
 		arg.Code,
 		arg.Name,
 		arg.Address,
 		arg.IsCms,
 	)
-	var i Site
+	var i CreateSiteRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -57,6 +82,27 @@ WHERE code = $1
 
 func (q *Queries) GetSiteByCode(ctx context.Context, code string) (Site, error) {
 	row := q.db.QueryRow(ctx, getSiteByCode, code)
+	var i Site
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Code,
+		&i.Name,
+		&i.Address,
+		&i.IsCms,
+	)
+	return i, err
+}
+
+const getSiteById = `-- name: GetSiteById :one
+SELECT id, created_at, updated_at, code, name, address, is_cms
+FROM sites
+WHERE id = $1
+`
+
+func (q *Queries) GetSiteById(ctx context.Context, id int32) (Site, error) {
+	row := q.db.QueryRow(ctx, getSiteById, id)
 	var i Site
 	err := row.Scan(
 		&i.ID,

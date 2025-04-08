@@ -12,58 +12,66 @@ import (
 )
 
 const createPatient = `-- name: CreatePatient :one
-INSERT INTO patients (
-    first_name,
-    last_name,
-    middle_name,
-    suffix,
-    prefix,
-    degree,
-    dob,
-    sex,
-    ssn,
-    home_phone,
-    work_phone,
-    cell_phone
+WITH upsert AS (
+    INSERT INTO patients (
+        first_name,
+        last_name,
+        middle_name,
+        suffix,
+        prefix,
+        degree,
+        dob,
+        sex,
+        ssn,
+        home_phone,
+        work_phone,
+        cell_phone
+    )
+    VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12
+    )
+    ON CONFLICT (ssn) DO UPDATE
+    SET first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        middle_name = EXCLUDED.middle_name,
+        suffix = EXCLUDED.suffix,
+        prefix = EXCLUDED.prefix,
+        degree = EXCLUDED.degree,
+        dob = EXCLUDED.dob,
+        sex = EXCLUDED.sex,
+        home_phone = EXCLUDED.home_phone,
+        work_phone = EXCLUDED.work_phone,
+        cell_phone = EXCLUDED.cell_phone
+    WHERE patients.first_name IS DISTINCT FROM EXCLUDED.first_name
+        OR patients.last_name IS DISTINCT FROM EXCLUDED.last_name
+        OR patients.middle_name IS DISTINCT FROM EXCLUDED.middle_name
+        OR patients.suffix IS DISTINCT FROM EXCLUDED.suffix
+        OR patients.prefix IS DISTINCT FROM EXCLUDED.prefix
+        OR patients.degree IS DISTINCT FROM EXCLUDED.degree
+        OR patients.dob IS DISTINCT FROM EXCLUDED.dob
+        OR patients.sex IS DISTINCT FROM EXCLUDED.sex
+        OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
+        OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
+        OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
+    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
 )
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12
-)
-ON CONFLICT (ssn) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name = EXCLUDED.last_name,
-    middle_name = EXCLUDED.middle_name,
-    suffix = EXCLUDED.suffix,
-    prefix = EXCLUDED.prefix,
-    degree = EXCLUDED.degree,
-    dob = EXCLUDED.dob,
-    sex = EXCLUDED.sex,
-    home_phone = EXCLUDED.home_phone,
-    work_phone = EXCLUDED.work_phone,
-    cell_phone = EXCLUDED.cell_phone
-WHERE patients.first_name IS DISTINCT FROM EXCLUDED.first_name
-    OR patients.last_name IS DISTINCT FROM EXCLUDED.last_name
-    OR patients.middle_name IS DISTINCT FROM EXCLUDED.middle_name
-    OR patients.suffix IS DISTINCT FROM EXCLUDED.suffix
-    OR patients.prefix IS DISTINCT FROM EXCLUDED.prefix
-    OR patients.degree IS DISTINCT FROM EXCLUDED.degree
-    OR patients.dob IS DISTINCT FROM EXCLUDED.dob
-    OR patients.sex IS DISTINCT FROM EXCLUDED.sex
-    OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
-    OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
-    OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
-RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone FROM patients
+WHERE
+    ssn = $9
+    AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreatePatientParams struct {
@@ -81,7 +89,25 @@ type CreatePatientParams struct {
 	CellPhone  pgtype.Text
 }
 
-func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (Patient, error) {
+type CreatePatientRow struct {
+	ID         int64
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+	FirstName  string
+	LastName   string
+	MiddleName pgtype.Text
+	Suffix     pgtype.Text
+	Prefix     pgtype.Text
+	Degree     pgtype.Text
+	Dob        pgtype.Date
+	Sex        string
+	Ssn        pgtype.Text
+	HomePhone  pgtype.Text
+	WorkPhone  pgtype.Text
+	CellPhone  pgtype.Text
+}
+
+func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (CreatePatientRow, error) {
 	row := q.db.QueryRow(ctx, createPatient,
 		arg.FirstName,
 		arg.LastName,
@@ -96,6 +122,35 @@ func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (P
 		arg.WorkPhone,
 		arg.CellPhone,
 	)
+	var i CreatePatientRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.MiddleName,
+		&i.Suffix,
+		&i.Prefix,
+		&i.Degree,
+		&i.Dob,
+		&i.Sex,
+		&i.Ssn,
+		&i.HomePhone,
+		&i.WorkPhone,
+		&i.CellPhone,
+	)
+	return i, err
+}
+
+const getPatientById = `-- name: GetPatientById :one
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+FROM patients
+WHERE id = $1
+`
+
+func (q *Queries) GetPatientById(ctx context.Context, id int64) (Patient, error) {
+	row := q.db.QueryRow(ctx, getPatientById, id)
 	var i Patient
 	err := row.Scan(
 		&i.ID,
