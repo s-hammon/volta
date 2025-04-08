@@ -115,4 +115,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.3.6-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.6-alpha
 [v0.3.7-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.7-alpha
 [v0.4.3-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.4.3-alpha
-[v0.5.0-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.5.0-alpha
+[v0.5.0]: https://github.com/s-hammon/volta/releases/tag/v0.5.0
