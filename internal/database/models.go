@@ -25,6 +25,8 @@ type Exam struct {
 	ScheduleDt       pgtype.Timestamp
 	BeginExamDt      pgtype.Timestamp
 	EndExamDt        pgtype.Timestamp
+	ExamCancelledDt  pgtype.Timestamp
+	PrelimReportID   pgtype.Int8
 }
 
 type Message struct {

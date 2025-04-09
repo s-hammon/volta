@@ -51,19 +51,3 @@ func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (int64, erro
 	}
 	return phys.ID, nil
 }
-
-func (p *Physician) Equal(other Physician) bool {
-	return p.Name.Full() == other.Name.Full() &&
-		p.NPI == other.NPI &&
-		p.Specialty == other.Specialty
-}
-
-func (p *Physician) Coalesce(other Physician) {
-	p.Name.Coalesce(other.Name)
-	if other.NPI != "" && p.NPI != other.NPI {
-		p.NPI = other.NPI
-	}
-	if other.Specialty != "" && p.Specialty != other.Specialty {
-		p.Specialty = other.Specialty
-	}
-}

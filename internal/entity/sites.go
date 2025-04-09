@@ -47,18 +47,3 @@ func (s *Site) Equal(other Site) bool {
 		s.Address == other.Address &&
 		s.Phone == other.Phone
 }
-
-func (s *Site) Coalesce(other Site) {
-	if other.Code != "" && s.Code != other.Code {
-		s.Code = other.Code
-	}
-	if other.Name != "" && s.Name != other.Name {
-		s.Name = other.Name
-	}
-	if other.Address != "" && s.Address != other.Address {
-		s.Address = other.Address
-	}
-	if other.Phone != "" && s.Phone != other.Phone {
-		s.Phone = other.Phone
-	}
-}

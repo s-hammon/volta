@@ -32,7 +32,7 @@ func TestSiteDBtoSite(t *testing.T) {
 		Address: "7700 Floyd Curl Dr",
 	}
 
-	if got := DBtoSite(dbSite); got != want {
+	if got := DBtoSite(dbSite); !got.Equal(want) {
 		t.Errorf("got '%v', want '%v'", got, want)
 	}
 }

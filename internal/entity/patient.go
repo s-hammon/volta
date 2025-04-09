@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -62,30 +61,6 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (int64, error)
 	return patient.ID, nil
 }
 
-func (p *Patient) String() string {
-	return fmt.Sprintf("Name: %s\tDOB: %v\tSex: %s", p.Name.Record(), p.DOB, p.Sex)
-}
-
-func (p *Patient) Equal(other Patient) bool {
-	return p.Name.Full() == other.Name.Full() &&
-		p.DOB.Equal(other.DOB) &&
-		p.Sex == other.Sex &&
-		p.SSN == other.SSN
-}
-
-func (p *Patient) Coalesce(other Patient) {
-	p.Name.Coalesce(other.Name)
-	if !other.DOB.IsZero() {
-		p.DOB = other.DOB
-	}
-	if other.Sex != "" {
-		p.Sex = other.Sex
-	}
-	if other.SSN != "" {
-		p.SSN = other.SSN
-	}
-}
-
 type MRN struct {
 	Base
 	Value string
@@ -118,5 +93,3 @@ func (m *MRN) Coalesce(other MRN) {
 		m.AssigningAuthority = other.AssigningAuthority
 	}
 }
-
-type MrnPatientMap map[string]Patient

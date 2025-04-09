@@ -73,7 +73,7 @@ func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, 
 		Accession:     e.Accession,
 		CurrentStatus: currentStatus,
 	}
-	e.timestamp(currentStatus, &params)
+	e.timestamp(&params)
 
 	exam, err := db.CreateExam(ctx, params)
 	if err != nil {
@@ -82,50 +82,17 @@ func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, 
 	return exam.ID, nil
 }
 
-func (e *Exam) timestamp(status string, params *database.CreateExamParams) {
-	switch status {
-	case "SC":
+func (e *Exam) timestamp(params *database.CreateExamParams) {
+	if !e.Scheduled.IsZero() {
 		params.ScheduleDt = pgtype.Timestamp{Time: e.Scheduled, Valid: true}
-	case "IP":
+	}
+	if !e.Begin.IsZero() {
 		params.BeginExamDt = pgtype.Timestamp{Time: e.Begin, Valid: true}
-	case "CM":
-		if !e.End.IsZero() {
-			params.EndExamDt = pgtype.Timestamp{Time: e.End, Valid: true}
-		}
-	case "":
-	default:
 	}
-}
-
-func (e *Exam) Equal(other Exam) bool {
-	return e.Accession == other.Accession &&
-		e.MRN.Equal(other.MRN) &&
-		e.Procedure.Equal(other.Procedure) &&
-		e.Site.Equal(other.Site) &&
-		e.Scheduled.Equal(other.Scheduled) &&
-		e.Begin.Equal(other.Begin) &&
-		e.End.Equal(other.End) &&
-		e.Cancelled.Equal(other.Cancelled)
-}
-
-func (e *Exam) Coalesce(other Exam) {
-	if other.Accession != "" && e.Accession != other.Accession {
-		e.Accession = other.Accession
+	if !e.End.IsZero() {
+		params.EndExamDt = pgtype.Timestamp{Time: e.End, Valid: true}
 	}
-	if !other.Scheduled.IsZero() && !e.Scheduled.Equal(other.Scheduled) {
-		e.Scheduled = other.Scheduled
+	if !e.Cancelled.IsZero() {
+		params.ExamCancelledDt = pgtype.Timestamp{Time: e.Cancelled, Valid: true}
 	}
-	if !other.Begin.IsZero() && !e.Begin.Equal(other.Begin) {
-		e.Begin = other.Begin
-	}
-	if !other.End.IsZero() && !e.End.Equal(other.End) {
-		e.End = other.End
-	}
-	if !other.Cancelled.IsZero() && !e.Cancelled.Equal(other.Cancelled) {
-		e.Cancelled = other.Cancelled
-	}
-
-	e.MRN.Coalesce(other.MRN)
-	e.Procedure.Coalesce(other.Procedure)
-	e.Site.Coalesce(other.Site)
 }

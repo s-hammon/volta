@@ -28,19 +28,3 @@ func (p *Procedure) ToDB(ctx context.Context, siteID int32, db *database.Queries
 	}
 	return procedure.ID, nil
 }
-
-func (p *Procedure) Equal(other Procedure) bool {
-	return p.Code == other.Code &&
-		p.Description == other.Description &&
-		p.Site.Equal(other.Site)
-}
-
-func (p *Procedure) Coalesce(other Procedure) {
-	if other.Code != "" && p.Code != other.Code {
-		p.Code = other.Code
-	}
-	if other.Description != "" && p.Description != other.Description {
-		p.Description = other.Description
-	}
-	p.Site.Coalesce(other.Site)
-}

@@ -148,6 +148,15 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 				return errors.New("error updating exam with addendum report: " + err.Error())
 			}
 		}
+	case objects.Pending:
+		for _, examID := range examIDs {
+			if _, err := db.UpdateExamPrelimReport(ctx, database.UpdateExamPrelimReportParams{
+				ID:             int64(examID),
+				PrelimReportID: pgtype.Int8{Int64: examID, Valid: true},
+			}); err != nil {
+				return errors.New("error updating exam with correction report: " + err.Error())
+			}
+		}
 	}
 
 	return nil
@@ -164,7 +173,7 @@ func (oru *ORU) GetReport() entity.Report {
 	if len(oru.OBX) > 0 {
 		observation = oru.OBX[0].ObservationValue
 	}
-	submitDT, err := time.Parse("20060102150405", oru.ORC[0].Quantity.Duration) // TODO: audit this, seems like times are all over the place in HL7
+	submitDT, err := time.Parse("20060102150405", oru.OBR[0].StatusDT) // TODO: audit this, seems like times are all over the place in HL7
 	if err != nil {
 		submitDT = time.Now()
 	}

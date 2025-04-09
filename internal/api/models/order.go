@@ -11,7 +11,6 @@ type OrderModel struct {
 	OrderNo          string `json:"ORC.2"`
 	FillerOrderNo    string `json:"ORC.3"`
 	Status           string `json:"ORC.5"`
-	Quantity         TQ     `json:"ORC.7"`
 	OrderDT          string `json:"ORC.9"`
 	OrderingProvider XCN    `json:"ORC.12"`
 }
@@ -19,10 +18,7 @@ type OrderModel struct {
 func (o *OrderModel) ToEntity() entity.Order {
 	orderDT, err := time.Parse("20060102150405", o.OrderDT)
 	if err != nil {
-		orderDT, err = time.Parse("20060102150405", o.Quantity.StartDT)
-		if err != nil {
-			orderDT = time.Now()
-		}
+		orderDT = time.Now()
 	}
 
 	provider := entity.Physician{

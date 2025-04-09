@@ -10,9 +10,10 @@ WITH upsert as (
         current_status,
         schedule_dt,
         begin_exam_dt,
-        end_exam_dt
+        end_exam_dt,
+        exam_cancelled_dt
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     ON CONFLICT (site_id, accession) DO UPDATE
     SET
         order_id = EXCLUDED.order_id,
@@ -22,7 +23,8 @@ WITH upsert as (
         current_status = COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status),
         schedule_dt = COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt),
         begin_exam_dt = COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt),
-        end_exam_dt = COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt)
+        end_exam_dt = COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt),
+        exam_cancelled_dt = COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt)
     WHERE
         exams.order_id IS DISTINCT FROM EXCLUDED.order_id
         OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
@@ -33,6 +35,7 @@ WITH upsert as (
         OR COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt) IS DISTINCT FROM exams.schedule_dt
         OR COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt) IS DISTINCT FROM exams.begin_exam_dt
         OR COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt) IS DISTINCT FROM exams.end_exam_dt
+        OR COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt) IS DISTINCT FROM exams.exam_cancelled_dt
     RETURNING *
 )
 SELECT * FROM upsert
@@ -107,5 +110,13 @@ UPDATE exams
 SET
     updated_at = CURRENT_TIMESTAMP,
     addendum_report_id = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateExamPrelimReport :one
+UPDATE exams
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    prelim_report_id = $2
 WHERE id = $1
 RETURNING *;

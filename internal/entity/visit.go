@@ -51,21 +51,3 @@ func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *databas
 	}
 	return visit.ID, nil
 }
-
-func (v *Visit) Equal(other Visit) bool {
-	return v.VisitNo == other.VisitNo &&
-		v.Site.Equal(other.Site) &&
-		v.MRN.Equal(other.MRN) &&
-		v.Type == other.Type
-}
-
-func (v *Visit) Coalesce(other Visit) {
-	if other.VisitNo != "" && v.VisitNo != other.VisitNo {
-		v.VisitNo = other.VisitNo
-	}
-	if other.Type != 0 && v.Type != other.Type {
-		v.Type = other.Type
-	}
-	v.Site.Coalesce(other.Site)
-	v.MRN.Coalesce(other.MRN)
-}

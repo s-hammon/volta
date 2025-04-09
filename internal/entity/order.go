@@ -98,29 +98,3 @@ func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, provider
 	}
 	return order.ID, order.CurrentStatus, nil
 }
-
-func (o *Order) Equal(other Order) bool {
-	return o.Number == other.Number &&
-		o.CurrentStatus == other.CurrentStatus &&
-		o.Date.Equal(other.Date) &&
-		o.Site.Equal(other.Site) &&
-		o.Visit.Equal(other.Visit) &&
-		o.MRN.Equal(other.MRN) &&
-		o.Provider.Equal(other.Provider)
-}
-
-func (o *Order) Coalesce(other Order) {
-	if other.Number != "" && o.Number != other.Number {
-		o.Number = other.Number
-	}
-	if other.CurrentStatus != "" && o.CurrentStatus != other.CurrentStatus {
-		o.CurrentStatus = other.CurrentStatus
-	}
-	if !other.Date.IsZero() {
-		o.Date = other.Date
-	}
-	o.Site.Coalesce(other.Site)
-	o.MRN.Coalesce(other.MRN)
-	o.Visit.Coalesce(other.Visit)
-	o.Provider.Coalesce(other.Provider)
-}
