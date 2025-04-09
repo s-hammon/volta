@@ -7,10 +7,11 @@ import (
 )
 
 type ExamModel struct {
-	Accession string `json:"OBR.3"`
-	Service   CE     `json:"OBR.4"`
-	StatusDT  string `json:"OBR.22"`
-	Status    string `json:"OBR.25"` // TODO: make sure we're using for report type (F - final, A - addendum, P - preliminary)
+	Accession   string `json:"OBR.3"`
+	Service     CE     `json:"OBR.4"`
+	StatusDT    string `json:"OBR.22"`
+	Status      string `json:"OBR.25"`
+	Radiologist XCN    `json:"OBR.32"`
 }
 
 func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam {

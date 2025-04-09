@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Reworked models for tracking timestamps based on when ORM is received
+- Added pending report FK in exams for preliminary reports
+
 ## [v0.5.0]
 
 - Changed models & included integration testing
