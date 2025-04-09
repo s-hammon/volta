@@ -8,11 +8,11 @@ WITH upsert AS (
     )
     VALUES ($1, $2, $3, $4)
     ON CONFLICT (code, name) DO UPDATE
-    SET name = EXCLUDED.name,
+    SET
         address = EXCLUDED.address,
         is_cms = EXCLUDED.is_cms
-    WHERE sites.name IS DISTINCT FROM EXCLUDED.name
-        OR sites.address IS DISTINCT FROM EXCLUDED.address
+    WHERE
+        sites.address IS DISTINCT FROM EXCLUDED.address
         OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
     RETURNING *
 )

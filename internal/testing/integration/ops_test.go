@@ -161,6 +161,7 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 			t.Fatalf("failed to get exam by ID: %v", err)
 		}
 		assertEqual(t, examID, exam.ID)
+		assertNotNullStatusTimestamp(t, exam)
 
 		examIDs[i] = examID
 	}
@@ -206,6 +207,7 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 			assertEqual(t, exam.ID, examID.ID)
 			assertEqual(t, exam.FinalReportID, examID.FinalReportID)
 			assertEqual(t, exam.UpdatedAt, examID.UpdatedAt)
+			assertNotNullStatusTimestamp(t, examID)
 		}
 	case objects.Addendum:
 		for _, examID := range examIDs {
@@ -333,6 +335,7 @@ func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 		t.Fatalf("failed to get exam by ID: %v", err)
 	}
 	assertEqual(t, examID, exam.ID)
+	assertNotNullStatusTimestamp(t, exam)
 }
 
 func extractMsgType(t *testing.T, msg hl7.Message) string {
@@ -409,5 +412,28 @@ func assertEqual[T any](t *testing.T, expected, actual T) {
 	t.Helper()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Fatalf("expected %v, got %v", expected, actual)
+	}
+}
+
+func assertNotNullStatusTimestamp(t *testing.T, exam database.Exam) {
+	t.Helper()
+
+	switch exam.CurrentStatus {
+	case "SC":
+		if exam.ScheduleDt.Time.IsZero() {
+			t.Fatalf("exam schedule timestamp is empty for status %s", exam.CurrentStatus)
+		}
+	case "IP":
+		if exam.BeginExamDt.Time.IsZero() {
+			t.Fatalf("exam begin timestamp is empty for status %s", exam.CurrentStatus)
+		}
+	case "CM":
+		if exam.EndExamDt.Time.IsZero() {
+			t.Fatalf("exam end timestamp is empty for status %s", exam.CurrentStatus)
+		}
+	case "":
+		t.Fatalf("exam status is empty")
+	default:
+		t.Fatalf("error: unexpected exam status %s", exam.CurrentStatus)
 	}
 }

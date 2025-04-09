@@ -16,8 +16,8 @@ WITH upsert AS (
     INSERT INTO mrns (site_id, patient_id, mrn)
     VALUES ($1, $2, $3)
     ON CONFLICT (site_id, patient_id) DO UPDATE
-    SET mrn = EXCLUDED.mrn
-    WHERE mrns.mrn IS DISTINCT FROM EXCLUDED.mrn
+    SET mrn = COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
+    WHERE mrns.mrn IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
     RETURNING id, created_at, updated_at, patient_id, mrn, site_id
 )
 SELECT id, created_at, updated_at, patient_id, mrn, site_id FROM upsert

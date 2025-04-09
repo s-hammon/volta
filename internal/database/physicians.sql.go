@@ -34,22 +34,18 @@ WITH upsert AS (
         $8
     )
     ON CONFLICT (first_name, last_name, npi) DO UPDATE
-    SET first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
+    SET
         middle_name = EXCLUDED.middle_name,
         suffix = EXCLUDED.suffix,
         prefix = EXCLUDED.prefix,
         degree = EXCLUDED.degree,
-        npi = EXCLUDED.npi,
-        specialty = EXCLUDED.specialty
-    WHERE physicians.first_name IS DISTINCT FROM EXCLUDED.first_name
-        OR physicians.last_name IS DISTINCT FROM EXCLUDED.last_name
-        OR physicians.middle_name IS DISTINCT FROM EXCLUDED.middle_name
+        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), physicians.specialty)
+    WHERE
+        physicians.middle_name IS DISTINCT FROM EXCLUDED.middle_name
         OR physicians.suffix IS DISTINCT FROM EXCLUDED.suffix
         OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
         OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
-        OR physicians.npi IS DISTINCT FROM EXCLUDED.npi
-        OR physicians.specialty IS DISTINCT FROM EXCLUDED.specialty
+        OR physicians.specialty IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.specialty, ''), physicians.specialty)
     RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
 )
 SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty FROM upsert

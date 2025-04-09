@@ -293,3 +293,34 @@ func (x *XAD) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+// Timing Quantity
+type TQ struct {
+	Quantity string `json:"1"`
+	Interval string `json:"2"`
+	Duration string `json:"3"`
+	StartDT  string `json:"4"`
+	EndDT    string `json:"5"`
+}
+
+func (t *TQ) UnmarshalJSON(data []byte) error {
+	var raw map[string]string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	for k, v := range raw {
+		switch {
+		case strings.HasSuffix(k, ".1"):
+			t.Quantity = v
+		case strings.HasSuffix(k, ".2"):
+			t.Interval = v
+		case strings.HasSuffix(k, ".3"):
+			t.Duration = v
+		case strings.HasSuffix(k, ".4"):
+			t.StartDT = v
+		case strings.HasSuffix(k, ".5"):
+			t.EndDT = v
+		}
+	}
+	return nil
+}

@@ -164,7 +164,7 @@ func (oru *ORU) GetReport() entity.Report {
 	if len(oru.OBX) > 0 {
 		observation = oru.OBX[0].ObservationValue
 	}
-	submitDT, err := time.Parse("20060102150405", oru.OBR[0].ObservationDT) // TODO: audit this, seems like times are all over the place in HL7
+	submitDT, err := time.Parse("20060102150405", oru.ORC[0].Quantity.Duration) // TODO: audit this, seems like times are all over the place in HL7
 	if err != nil {
 		submitDT = time.Now()
 	}

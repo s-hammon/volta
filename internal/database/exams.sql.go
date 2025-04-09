@@ -27,35 +27,32 @@ WITH upsert as (
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     ON CONFLICT (site_id, accession) DO UPDATE
-    SET order_id = EXCLUDED.order_id,
+    SET
+        order_id = EXCLUDED.order_id,
         visit_id = EXCLUDED.visit_id,
         mrn_id = EXCLUDED.mrn_id,
-        site_id = EXCLUDED.site_id,
         procedure_id = EXCLUDED.procedure_id,
-        current_status = EXCLUDED.current_status,
-        schedule_dt = EXCLUDED.schedule_dt,
-        begin_exam_dt = EXCLUDED.begin_exam_dt,
-        end_exam_dt = EXCLUDED.end_exam_dt
-    WHERE exams.order_id IS DISTINCT FROM EXCLUDED.order_id
+        current_status = COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status),
+        schedule_dt = COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt),
+        begin_exam_dt = COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt),
+        end_exam_dt = COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt)
+    WHERE
+        exams.order_id IS DISTINCT FROM EXCLUDED.order_id
         OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
         OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
         OR exams.site_id IS DISTINCT FROM EXCLUDED.site_id
         OR exams.procedure_id IS DISTINCT FROM EXCLUDED.procedure_id
-        OR exams.current_status IS DISTINCT FROM EXCLUDED.current_status
-        OR exams.schedule_dt IS DISTINCT FROM EXCLUDED.schedule_dt
-        OR exams.begin_exam_dt IS DISTINCT FROM EXCLUDED.begin_exam_dt
-        OR exams.end_exam_dt IS DISTINCT FROM EXCLUDED.end_exam_dt
+        OR COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status) IS DISTINCT FROM exams.current_status
+        OR COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt) IS DISTINCT FROM exams.schedule_dt
+        OR COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt) IS DISTINCT FROM exams.begin_exam_dt
+        OR COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt) IS DISTINCT FROM exams.end_exam_dt
     RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt
 )
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM UPSERT
+SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM upsert
 UNION ALL
 SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt FROM exams
 WHERE
-    order_id = $1
-    AND visit_id = $2
-    AND mrn_id = $3
-    AND site_id = $4
-    AND procedure_id = $5
+    site_id = $4
     AND accession = $6
     AND NOT EXISTS (SELECT 1 FROM upsert)
 `

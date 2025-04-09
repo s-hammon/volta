@@ -15,15 +15,11 @@ WITH upsert AS (
         $5
     )
     ON CONFLICT (site_id, mrn_id, number) DO UPDATE
-    SET outside_system_id = EXCLUDED.outside_system_id,
-        site_id = EXCLUDED.site_id,
-        mrn_id = EXCLUDED.mrn_id,
-        number = EXCLUDED.number,
+    SET
+        outside_system_id = EXCLUDED.outside_system_id,
         patient_type = EXCLUDED.patient_type
-    WHERE visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
-        OR visits.site_id IS DISTINCT FROM EXCLUDED.site_id
-        OR visits.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
-        OR visits.number IS DISTINCT FROM EXCLUDED.number
+    WHERE
+        visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
         OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
     RETURNING *
 )

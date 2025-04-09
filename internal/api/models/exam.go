@@ -34,7 +34,7 @@ func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam
 		Site:      site,
 	}
 
-	dt, err := time.Parse("20060102150405", e.RequestDT)
+	dt, err := time.Parse("20060102150405", e.StatusDT)
 	if err != nil {
 		dt = time.Now()
 	}

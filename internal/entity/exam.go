@@ -64,7 +64,7 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 }
 
 func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (int64, error) {
-	exam, err := db.CreateExam(ctx, database.CreateExamParams{
+	params := database.CreateExamParams{
 		OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
 		VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
 		MrnID:         pgtype.Int8{Int64: int64(mrnID), Valid: true},
@@ -72,14 +72,29 @@ func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, 
 		ProcedureID:   pgtype.Int4{Int32: int32(procedureID), Valid: true},
 		Accession:     e.Accession,
 		CurrentStatus: currentStatus,
-		ScheduleDt:    pgtype.Timestamp{Time: e.Scheduled, Valid: true},
-		BeginExamDt:   pgtype.Timestamp{Time: e.Begin, Valid: true},
-		EndExamDt:     pgtype.Timestamp{Time: e.End, Valid: true},
-	})
+	}
+	e.timestamp(currentStatus, &params)
+
+	exam, err := db.CreateExam(ctx, params)
 	if err != nil {
 		return 0, err
 	}
 	return exam.ID, nil
+}
+
+func (e *Exam) timestamp(status string, params *database.CreateExamParams) {
+	switch status {
+	case "SC":
+		params.ScheduleDt = pgtype.Timestamp{Time: e.Scheduled, Valid: true}
+	case "IP":
+		params.BeginExamDt = pgtype.Timestamp{Time: e.Begin, Valid: true}
+	case "CM":
+		if !e.End.IsZero() {
+			params.EndExamDt = pgtype.Timestamp{Time: e.End, Valid: true}
+		}
+	case "":
+	default:
+	}
 }
 
 func (e *Exam) Equal(other Exam) bool {
