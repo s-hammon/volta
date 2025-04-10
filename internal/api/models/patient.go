@@ -7,6 +7,15 @@ import (
 	"github.com/s-hammon/volta/internal/objects"
 )
 
+var formats = []string{
+	"20060102",
+	"2006-01-02",
+	"2006/01/02",
+	"01/02/2006",
+	"01-02-2006",
+	"01/02/06",
+}
+
 type PatientModel struct {
 	MRN  CX     `json:"PID.3"`
 	Name XPN    `json:"PID.5"`
@@ -37,16 +46,6 @@ func (p *PatientModel) ToEntity() entity.Patient {
 func tryParseDOB(dob string) time.Time {
 	// try to parse dob a few different ways
 	// if none work, use current time
-	// TODO: move these to var
-	formats := []string{
-		"20060102",
-		"2006-01-02",
-		"2006/01/02",
-		"01/02/2006",
-		"01-02-2006",
-		"01/02/06",
-	}
-
 	for _, f := range formats {
 		dt, err := time.Parse(f, dob)
 		if err == nil {

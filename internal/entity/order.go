@@ -9,15 +9,42 @@ import (
 	"github.com/s-hammon/volta/internal/objects"
 )
 
+type orderStatus string
+
+const (
+	OrderScheduled   orderStatus = "SC"
+	OrderInProgress  orderStatus = "IP"
+	OrderComplete    orderStatus = "CM"
+	OrderCancelled   orderStatus = "CA"
+	OrderRescheduled orderStatus = "RS"
+)
+
+func newOrderStatus(status string) orderStatus {
+	return orderStatus(status)
+}
+
+func (o orderStatus) String() string {
+	return string(o)
+}
+
 type Order struct {
 	Base
 	Number        string
-	CurrentStatus string
+	CurrentStatus orderStatus
 	Date          time.Time
 	Site          Site
 	Visit         Visit
 	MRN           MRN
 	Provider      Physician
+}
+
+func NewOrder(number, status string, orderDT time.Time, physician Physician) Order {
+	return Order{
+		Number:        number,
+		CurrentStatus: newOrderStatus(status),
+		Date:          orderDT,
+		Provider:      physician,
+	}
 }
 
 func DBtoOrder(order database.GetOrderBySiteIDNumberRow) Order {
@@ -48,7 +75,7 @@ func DBtoOrder(order database.GetOrderBySiteIDNumberRow) Order {
 			UpdatedAt: order.UpdatedAt.Time,
 		},
 		Number:        order.Number,
-		CurrentStatus: order.CurrentStatus,
+		CurrentStatus: newOrderStatus(order.CurrentStatus),
 		Date:          order.Arrival.Time,
 		Site:          site,
 		Visit: Visit{
@@ -91,7 +118,7 @@ func (o *Order) ToDB(ctx context.Context, siteID int32, visitID, mrnID, provider
 		OrderingPhysicianID: pgtype.Int8{Int64: providerID, Valid: true},
 		Arrival:             pgtype.Timestamp{Time: o.Date, Valid: true},
 		Number:              o.Number,
-		CurrentStatus:       o.CurrentStatus,
+		CurrentStatus:       o.CurrentStatus.String(),
 	})
 	if err != nil {
 		return 0, "", err

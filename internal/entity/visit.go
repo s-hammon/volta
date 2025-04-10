@@ -39,7 +39,6 @@ func DBtoVisit(visit database.GetVisitBySiteIdNumberRow) Visit {
 }
 
 func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *database.Queries) (int64, error) {
-	// TODO: if v.VisitNo == "", use the accession
 	visit, err := db.CreateVisit(ctx, database.CreateVisitParams{
 		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
 		MrnID:       pgtype.Int8{Int64: mrnID, Valid: true},

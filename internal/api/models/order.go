@@ -38,10 +38,5 @@ func (o *OrderModel) ToEntity() entity.Order {
 		orderNo = o.FillerOrderNo
 	}
 
-	return entity.Order{
-		Number:        orderNo,
-		CurrentStatus: o.Status,
-		Date:          orderDT,
-		Provider:      provider,
-	}
+	return entity.NewOrder(orderNo, o.Status, orderDT, provider)
 }

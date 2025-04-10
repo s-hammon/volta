@@ -38,7 +38,6 @@ func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam
 		dt = time.Now()
 	}
 
-	// TODO: status to uint8 enum
 	switch status {
 	case "SC":
 		exam.Scheduled = dt

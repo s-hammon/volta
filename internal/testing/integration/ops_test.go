@@ -240,7 +240,7 @@ func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 	v := orm.PV1.ToEntity(m.SendingFac, orm.PID.MRN)
 	p := orm.PID.ToEntity()
 	o := orm.ORC.ToEntity()
-	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus, orm.PID.MRN)
+	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus.String(), orm.PID.MRN)
 
 	writeMsg, err := m.ToDB(ctx, repo.Queries)
 	if err != nil {

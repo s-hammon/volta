@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reworked models for tracking timestamps based on when ORM is received
 - Added pending report FK in exams for preliminary reports
+- Made orderNumber enum
+- Added crypto library (but did not implement yet)
 
 ## [v0.5.0]
 

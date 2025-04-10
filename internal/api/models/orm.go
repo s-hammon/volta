@@ -21,7 +21,7 @@ func (orm *ORM) ToDB(ctx context.Context, db *database.Queries) error {
 	m := orm.MSH.ToEntity()
 	v := orm.PV1.ToEntity(m.SendingFac, orm.PID.MRN)
 	o := orm.ORC.ToEntity()
-	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus, orm.PID.MRN)
+	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus.String(), orm.PID.MRN)
 
 	_, err := m.ToDB(ctx, db)
 	if err != nil {

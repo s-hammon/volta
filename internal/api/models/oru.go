@@ -173,14 +173,14 @@ func (oru *ORU) GetReport() entity.Report {
 	if len(oru.OBX) > 0 {
 		observation = oru.OBX[0].ObservationValue
 	}
-	submitDT, err := time.Parse("20060102150405", oru.OBR[0].StatusDT) // TODO: audit this, seems like times are all over the place in HL7
+	submitDT, err := time.Parse("20060102150405", oru.OBR[0].StatusDT)
 	if err != nil {
 		submitDT = time.Now()
 	}
 	return entity.Report{
 		Body:        body,
 		Impression:  observation,
-		Status:      objects.NewReportStatus(oru.OBR[0].Status), // TODO: also audit this
+		Status:      objects.NewReportStatus(oru.OBR[0].Status),
 		SubmittedDT: submitDT,
 	}
 }
@@ -227,7 +227,7 @@ func NewOrderEntities(visitSiteCode string, mrn CX, orderGroups ...orderGroup) [
 	entities := make([]orderEntity, len(orderGroups))
 	for i, group := range orderGroups {
 		o := group.Order.ToEntity()
-		e := group.Exam.ToEntity(visitSiteCode, o.CurrentStatus, mrn)
+		e := group.Exam.ToEntity(visitSiteCode, o.CurrentStatus.String(), mrn)
 		entities[i] = orderEntity{order: o, exam: e}
 	}
 
