@@ -51,7 +51,7 @@ jobs:
             --worker-pool=projects/$GAR_PROJECT_ID/locations/$GAR_REGION/workerPools/$GCP_WORKER_POOL
 
 env:
-  PROJECT_NAME: volta
+  PROJECT_NAME: goose
   GAR_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   GAR_REGION: ${{ secrets.GCP_PROJECT_LOCATION }}
   GAR_REPOSITORY: hl7
