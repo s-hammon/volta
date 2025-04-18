@@ -143,7 +143,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 		for _, examID := range examIDs {
 			if _, err := db.UpdateExamAddendumReport(ctx, database.UpdateExamAddendumReportParams{
 				ID:               int64(examID),
-				AddendumReportID: pgtype.Int8{Int64: examID, Valid: true},
+				AddendumReportID: pgtype.Int8{Int64: report.ID, Valid: true},
 			}); err != nil {
 				return errors.New("error updating exam with addendum report: " + err.Error())
 			}
@@ -152,7 +152,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 		for _, examID := range examIDs {
 			if _, err := db.UpdateExamPrelimReport(ctx, database.UpdateExamPrelimReportParams{
 				ID:             int64(examID),
-				PrelimReportID: pgtype.Int8{Int64: examID, Valid: true},
+				PrelimReportID: pgtype.Int8{Int64: report.ID, Valid: true},
 			}); err != nil {
 				return errors.New("error updating exam with correction report: " + err.Error())
 			}
