@@ -38,6 +38,9 @@ test-packages-short:
 prod-build: build 
 	@scripts/build-prod.sh $(ARGS)
 
+goose-build:
+	@scripts/build-goose.sh $(ARGS)
+
 ready: clean test
 	go vet ./...
 	golangci-lint run ./...

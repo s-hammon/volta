@@ -6,9 +6,23 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get-version.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Get Latest DB Version
+        id: get-version
+        run: |
+          LATEST=$(ls sql/schema | sort | tail -n 1 | cut -d'_' -f1 | sed 's/^0*//')
+          TAG="v1.$LATEST"
+          echo "Latest DB version: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and Tag Goose Image
+        id: goose-img
+        run: make goose-build ARGS=${{ steps.get-version.outputs.tag }}
 
       - name: GCP Authenticate
         uses: google-github-actions/auth@v2
@@ -19,9 +33,26 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
 
+      - run: gcloud auth configure-docker $GAR_REGION-docker.pkg.dev --quiet
+
+      - name: Push Goose Image
+        run: |
+          IMAGE_NAME=$GAR_REGION-docker.pkg.dev/$GAR_PROJECT_ID/$GAR_REPOSITORY/$PROJECT_NAME
+          TAG=${{ steps.get-version.outputs.tag }}
+          echo "Pushing image with tag: $TAG"
+          docker push $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:latest
+
       - name: Submit Cloud Build
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml . \
-            --region=${{ secrets.GCP_PROJECT_LOCATION }} \
-            --worker-pool=projects/${{ secrets.GCP_PROJECT_ID }}/locations/${{ secrets.GCP_PROJECT_LOCATION }}/workerPools/${{ secrets.GCP_WORKER_POOL }}
+            --region=$GAR_REGION \
+            --worker-pool=projects/$GAR_PROJECT_ID/locations/$GAR_REGION/workerPools/$GCP_WORKER_POOL
+
+env:
+  PROJECT_NAME: volta
+  GAR_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GAR_REGION: ${{ secrets.GCP_PROJECT_LOCATION }}
+  GAR_REPOSITORY: hl7
+  GCP_WORKER_POOL: ${{ secrets.GCP_WORKER_POOL }}
