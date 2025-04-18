@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.1]
+
 - Reworked models for tracking timestamps based on when ORM is received
 - Added pending report FK in exams for preliminary reports
 - Made orderNumber enum
@@ -121,3 +123,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.3.7-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.3.7-alpha
 [v0.4.3-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.4.3-alpha
 [v0.5.0]: https://github.com/s-hammon/volta/releases/tag/v0.5.0
+[v0.5.1]: https://github.com/s-hammon/volta/releases/tag/v0.5.1
