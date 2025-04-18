@@ -7,7 +7,7 @@ fi
 TAG=$1
 
 docker build \
-    -t ${GAR_REGION}-docker.pkg.dev/${GAR_PROJECT_ID}/${GAR_REPOSITORY}/${PROJECT_NAME}:${TAG} \
-    -t ${GAR_REGION}-docker.pkg.dev/${GAR_PROJECT_ID}/${GAR_REPOSITORY}/${PROJECT_NAME}:latest \
+    -t ${GAR_REGION}-docker.pkg.dev/${GAR_PROJECT_ID}/${GAR_REPOSITORY}/goose:${TAG} \
+    -t ${GAR_REGION}-docker.pkg.dev/${GAR_PROJECT_ID}/${GAR_REPOSITORY}/goose:latest \
     -f Dockerfile_migrate \
     .
