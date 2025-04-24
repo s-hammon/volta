@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.3]
+
+- Changed report query to upsert
+- Removed index on `reports` SQL table
+
+## [v0.5.2]
+
+- Changed exam model
+- CI/CD edits
+
 ## [v0.5.1]
 
 - Reworked models for tracking timestamps based on when ORM is received

@@ -1,13 +1,28 @@
 -- name: CreateReport :one
-INSERT INTO reports (
-    radiologist_id,
-    body,
-    impression,
-    report_status,
-    submitted_dt
+WITH upsert as (
+    INSERT INTO reports (
+        radiologist_id,
+        body,
+        impression,
+        report_status,
+        submitted_dt
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
+    SET
+        body = COALESCE(EXCLUDED.body, exams.body)
+    WHERE
+        COALESCE(EXCLUDED.body, exams.body) IS DISTINCT FROM EXCLUDED.body
+    RETURNING *
 )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING *;
+SELECT * FROM upsert
+UNION ALL
+SELECT * FROM exams
+WHERE
+    radiologist_id = $1
+    AND impression = $3
+    AND report_status = $4
+    AND submitted_dt = $5
 
 -- name: GetReportById :one
 SELECT * FROM reports
