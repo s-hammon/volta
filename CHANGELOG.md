@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.5]
+
+- convert HL7 timestamps form CST to UTC before writing to database
+- assign CM to exam/orders if written from ORU
+
 ## [v0.5.4]
 
 - actually changed report query

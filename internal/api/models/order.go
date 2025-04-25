@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -16,11 +14,7 @@ type OrderModel struct {
 }
 
 func (o *OrderModel) ToEntity() entity.Order {
-	orderDT, err := time.Parse("20060102150405", o.OrderDT)
-	if err != nil {
-		orderDT = time.Now()
-	}
-
+	orderDT := convertCSTtoUTC(o.OrderDT)
 	provider := entity.Physician{
 		Name: objects.Name{
 			Last:   o.OrderingProvider.FamilyName,

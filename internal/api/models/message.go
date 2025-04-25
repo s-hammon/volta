@@ -1,10 +1,6 @@
 package models
 
-import (
-	"time"
-
-	"github.com/s-hammon/volta/internal/entity"
-)
+import "github.com/s-hammon/volta/internal/entity"
 
 type MessageModel struct {
 	FieldSeparator string `json:"MSH.1"`
@@ -21,10 +17,7 @@ type MessageModel struct {
 }
 
 func (m *MessageModel) ToEntity() entity.Message {
-	dt, err := time.Parse("20060102150405", m.DateTime)
-	if err != nil {
-		dt = time.Now()
-	}
+	dt := convertCSTtoUTC(m.DateTime)
 	return entity.Message{
 		FieldSeparator: m.FieldSeparator,
 		EncodingChars:  m.EncodingChars,

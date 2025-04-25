@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
@@ -100,6 +99,7 @@ func (oru *ORU) ToDB(ctx context.Context, db *database.Queries) error {
 
 	examIDs := make([]int64, len(oe))
 	for i, orderEntity := range oe {
+		orderEntity.order.CurrentStatus = entity.OrderComplete
 		orderID, orderStatus, err := orderEntity.order.ToDB(ctx, siteID, visitID, mrnID, physicianID, db)
 		if err != nil {
 			return errors.New("error creating order: " + err.Error())
@@ -173,10 +173,7 @@ func (oru *ORU) GetReport() entity.Report {
 	if len(oru.OBX) > 0 {
 		observation = oru.OBX[0].ObservationValue
 	}
-	submitDT, err := time.Parse("20060102150405", oru.OBR[0].StatusDT)
-	if err != nil {
-		submitDT = time.Now()
-	}
+	submitDT := convertCSTtoUTC(oru.OBR[0].StatusDT)
 	return entity.Report{
 		Body:        body,
 		Impression:  observation,

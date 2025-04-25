@@ -1,10 +1,6 @@
 package models
 
-import (
-	"time"
-
-	"github.com/s-hammon/volta/internal/entity"
-)
+import "github.com/s-hammon/volta/internal/entity"
 
 type ExamModel struct {
 	Accession   string `json:"OBR.3"`
@@ -33,11 +29,7 @@ func (e *ExamModel) ToEntity(siteCode string, status string, mrn CX) entity.Exam
 		Site:      site,
 	}
 
-	dt, err := time.Parse("20060102150405", e.StatusDT)
-	if err != nil {
-		dt = time.Now()
-	}
-
+	dt := convertCSTtoUTC(e.StatusDT)
 	switch status {
 	case "SC":
 		exam.Scheduled = dt

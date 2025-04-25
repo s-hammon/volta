@@ -162,6 +162,8 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 			t.Fatalf("failed to get exam by ID: %v", err)
 		}
 		assertEqual(t, examID, exam.ID)
+		assertEqual(t, "CM", exam.CurrentStatus)
+		assertEqual(t, "CM", order.CurrentStatus)
 		assertNotNullStatusTimestamp(t, exam)
 
 		examIDs[i] = examID
