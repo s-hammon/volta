@@ -10,19 +10,20 @@ WITH upsert as (
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
     SET
-        body = COALESCE(EXCLUDED.body, exams.body)
+        body = COALESCE(EXCLUDED.body, reports.body)
     WHERE
-        COALESCE(EXCLUDED.body, exams.body) IS DISTINCT FROM EXCLUDED.body
+        COALESCE(EXCLUDED.body, reports.body) IS DISTINCT FROM EXCLUDED.body
     RETURNING *
 )
+
 SELECT * FROM upsert
 UNION ALL
-SELECT * FROM exams
+SELECT * FROM reports
 WHERE
     radiologist_id = $1
     AND impression = $3
     AND report_status = $4
-    AND submitted_dt = $5
+    AND submitted_dt = $5;
 
 -- name: GetReportById :one
 SELECT * FROM reports

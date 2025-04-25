@@ -12,15 +12,31 @@ import (
 )
 
 const createReport = `-- name: CreateReport :one
-INSERT INTO reports (
-    radiologist_id,
-    body,
-    impression,
-    report_status,
-    submitted_dt
+WITH upsert as (
+    INSERT INTO reports (
+        radiologist_id,
+        body,
+        impression,
+        report_status,
+        submitted_dt
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
+    SET
+        body = COALESCE(EXCLUDED.body, reports.body)
+    WHERE
+        COALESCE(EXCLUDED.body, reports.body) IS DISTINCT FROM EXCLUDED.body
+    RETURNING id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
 )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
+
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM upsert
+UNION ALL
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+WHERE
+    radiologist_id = $1
+    AND impression = $3
+    AND report_status = $4
+    AND submitted_dt = $5
 `
 
 type CreateReportParams struct {
@@ -31,7 +47,18 @@ type CreateReportParams struct {
 	SubmittedDt   pgtype.Timestamp
 }
 
-func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Report, error) {
+type CreateReportRow struct {
+	ID            int64
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+	RadiologistID pgtype.Int8
+	Body          string
+	Impression    string
+	ReportStatus  string
+	SubmittedDt   pgtype.Timestamp
+}
+
+func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (CreateReportRow, error) {
 	row := q.db.QueryRow(ctx, createReport,
 		arg.RadiologistID,
 		arg.Body,
@@ -39,7 +66,7 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Rep
 		arg.ReportStatus,
 		arg.SubmittedDt,
 	)
-	var i Report
+	var i CreateReportRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,

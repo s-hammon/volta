@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.5.4]
+
+- actually changed report query
+
 ## [v0.5.3]
 
 - Changed report query to upsert

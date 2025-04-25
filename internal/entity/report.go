@@ -18,10 +18,10 @@ type Report struct {
 	SubmittedDT time.Time
 }
 
-func (r *Report) ToDB(ctx context.Context, db *database.Queries) (database.Report, error) {
+func (r *Report) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
 	var submitDT pgtype.Timestamp
 	if err := submitDT.Scan(r.SubmittedDT); err != nil {
-		return database.Report{}, err
+		return 0, err
 	}
 
 	res, err := db.CreateReport(ctx, database.CreateReportParams{
@@ -32,8 +32,8 @@ func (r *Report) ToDB(ctx context.Context, db *database.Queries) (database.Repor
 		SubmittedDt:   submitDT,
 	})
 	if err != nil {
-		return database.Report{}, err
+		return 0, err
 	}
 
-	return res, nil
+	return res.ID, nil
 }

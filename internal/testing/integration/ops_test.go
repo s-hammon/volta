@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -167,6 +168,7 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Messa
 	}
 
 	reportModel := oru.GetReport()
+	fmt.Printf("radID: %d\tbody: %s\timpression: %s\tstatus: %s\tsubmitDT: %s", physicianID, reportModel.Body, reportModel.Impression, reportModel.Status.String(), reportModel.SubmittedDT)
 	report, err := repo.Queries.CreateReport(ctx, database.CreateReportParams{
 		RadiologistID: pgtype.Int8{Int64: int64(physicianID), Valid: true},
 		Body:          reportModel.Body,
