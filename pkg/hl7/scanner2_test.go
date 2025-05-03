@@ -30,7 +30,7 @@ func TestScanner(t *testing.T) {
 	require.Equal(t, stateSegmentEnd, state)
 
 	state = scan.step(scan, '\r')
-	require.Equal(t, -1, state)
+	require.Equal(t, stateErr, state)
 }
 
 func TestFieldNode(t *testing.T) {
@@ -110,9 +110,9 @@ func TestDecoder(t *testing.T) {
 	segIdc, exists := dec.segMap.getSegmentIdx("MSH")
 	require.True(t, exists)
 	require.NotNil(t, segIdc)
-	require.IsType(t, 1, segIdc)
+	require.IsType(t, []int{}, segIdc)
 
-	segment, ok := dec.segments[segIdc.(int)]
+	segment, ok := dec.segments[segIdc[0]]
 	require.True(t, ok)
 	require.NotNil(t, segment)
 
@@ -134,7 +134,7 @@ func TestDecoderRepeatSegments(t *testing.T) {
 	require.True(t, exists)
 	require.NotNil(t, indices)
 	require.IsType(t, []int{}, indices)
-	require.Equal(t, 2, len(indices.([]int)))
+	require.Equal(t, 2, len(indices))
 
 	assert.Equal(t, "1", dec.getFieldVal("OBX", 1, 0))
 	assert.Equal(t, "diagnostic", dec.getFieldVal("OBX", 5, 0))

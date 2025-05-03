@@ -11,19 +11,25 @@ type fieldNode struct {
 }
 
 const (
-	stateContinue int = iota
+	stateContinue scanState = iota
 	stateSegmentName
 	stateSegmentNameEnd
 	stateFieldDelimiter
 	stateSegmentEnd
 	stateFieldValEnd
+
+	stateErr
 )
 
-type hl7Scanner struct {
-	lastIdx int
-	step    func(scan *hl7Scanner, c byte) int
+type scanState int
+type scanStep func(scan *hl7Scanner, c byte) scanState
 
-	segDelim, fldDelim, comDelim, repDelim, escDelim, subDelim byte
+type hl7Scanner struct {
+	lastIdx            int
+	step               scanStep
+	segDelim, fldDelim byte
+	comDelim, repDelim byte
+	escDelim, subDelim byte
 }
 
 func newScanner2(sd, fd byte) *hl7Scanner {
@@ -35,28 +41,29 @@ func newScanner2(sd, fd byte) *hl7Scanner {
 	}
 }
 
-func scanSegmentName(scan *hl7Scanner, c byte) int {
-	if validSegNameChar(c) {
-		scan.step = scanSegmentName
+func scanSegmentName(scan *hl7Scanner, c byte) scanState {
+	switch {
+	case validSegNameChar(c):
 		return stateSegmentName
-	}
-	if c == scan.fldDelim {
+	case c == scan.fldDelim:
 		scan.step = scanFieldVal
 		return stateSegmentNameEnd
+	default:
+		return stateErr
 	}
-	return -1
 }
 
-func scanFieldVal(scan *hl7Scanner, c byte) int {
-	if c == scan.fldDelim {
+func scanFieldVal(scan *hl7Scanner, c byte) scanState {
+	switch c {
+	case scan.fldDelim:
 		return stateFieldValEnd
-	}
-	if c == scan.segDelim {
+	case scan.segDelim:
 		scan.step = scanSegmentName
 		return stateSegmentEnd
+	// TODO: add case for true utf-8 so we can default panic ;)
+	default:
+		return stateContinue
 	}
-	// still in field
-	return stateContinue
 }
 
 func validSegNameChar(c byte) bool {
@@ -70,18 +77,20 @@ type fieldMap map[int]*fieldNode
 
 func newFieldMap() fieldMap { return fieldMap{} }
 
-// idx1 is the 1-based HL7 index of the field delimiter
+// idx is the 1-based HL7 index of the field delimiter
 // returns true if there is already a node registered for the given idx1
-func (m fieldMap) setFieldNodeIdx(idx1 int, n *fieldNode) (exists bool) {
-	_, exists = m[idx1]
+func (m fieldMap) setFieldNodeIdx(idx int, n *fieldNode) (exists bool) {
+	_, exists = m[idx]
 	if !exists {
-		m[idx1] = n
+		m[idx] = n
 	}
 	return exists
 }
 
-func (m fieldMap) getFieldNodeIdx(idx1 int) (n *fieldNode, exists bool) {
-	val, exists := m[idx1]
+// idx is the 1-based HL7 index of the field delimiter
+// if idx doesn't exist, exists returns false
+func (m fieldMap) getFieldNodeIdx(idx int) (n *fieldNode, exists bool) {
+	val, exists := m[idx]
 	return val, exists
 }
 
@@ -92,36 +101,33 @@ type segment struct {
 }
 
 func NewSegment(s string) *segment {
-	return &segment{
-		name:   s,
-		fields: newFieldMap(),
-	}
+	return &segment{name: s, fields: newFieldMap()}
 }
 
-// idx1 is the 1-based HL7 index of the field delimiter
-// idx0 is the 0-based index of the field delimiter (in the raw byte slice
+// hl7Idx is the 1-based HL7 index of the field delimiter
+// bytIdx is the 0-based index of the field delimiter (in the raw byte slice
 // AddField will set the scanner's lastIdx field to the current one
-func (s *segment) AddField(idx1, idx0 int, scan *hl7Scanner) (exists bool) {
-	n := &fieldNode{bytIdx: idx0}
+func (s *segment) AddField(hl7Idx, bytIdx int, scan *hl7Scanner) (exists bool) {
+	n := &fieldNode{bytIdx: bytIdx}
 	if prev, ok := s.fields.getFieldNodeIdx(scan.lastIdx); ok {
 		prev.next = n
 	}
-	exists = s.fields.setFieldNodeIdx(idx1, n)
+	exists = s.fields.setFieldNodeIdx(hl7Idx, n)
 	if !exists {
-		scan.lastIdx = idx1
+		scan.lastIdx = hl7Idx
 	}
 	return exists
 }
 
-func (s *segment) GetFieldNode(idx1 int) *fieldNode {
-	if n, ok := s.fields.getFieldNodeIdx(idx1); ok {
+func (s *segment) GetFieldNode(hl7Idx int) *fieldNode {
+	if n, ok := s.fields.getFieldNodeIdx(hl7Idx); ok {
 		return n
 	}
 	return nil
 }
 
-func (s *segment) GetFieldIdx(idx1 int) int {
-	idx, ok := s.fields.getFieldNodeIdx(idx1)
+func (s *segment) GetFieldIdx(hl7Idx int) int {
+	idx, ok := s.fields.getFieldNodeIdx(hl7Idx)
 	if !ok {
 		return -1
 	}
@@ -129,44 +135,30 @@ func (s *segment) GetFieldIdx(idx1 int) int {
 }
 
 // keys are the 3-letter segment names (MSH, PID, OBX, etc)
-// values are the 0-based index (or indices) of the first pipe delimiter (in the raw byte slice)
-// in other words, it can be an int or []int
-type segmentMap map[string]any
+// values are the segment structure of each occurring segment
+// for the given key
+type segmentMap map[string][]int
 
-func newSegmentMap() segmentMap { return map[string]any{} }
+func newSegmentMap() segmentMap { return make(segmentMap) }
 
-func (m segmentMap) getSegmentIdx(s string) (val any, exists bool) {
+func (m segmentMap) getSegmentIdx(s string) (val []int, exists bool) {
 	val, exists = m[s]
 	return val, exists
 }
 
-func (m segmentMap) addSegment(s string, idx0 int) {
-	value, ok := m[s]
-	if ok {
-		switch v := any(value).(type) {
-		case []int:
-			m[s] = append(v, idx0)
-		case int:
-			m[s] = []int{v, idx0}
-		default:
-			panic("whooooooooooops!")
-		}
-		return
-	} else {
-		m[s] = idx0
-		return
-	}
+func (m segmentMap) addSegment(s string, idx int) {
+	m[s] = append(m[s], idx)
 }
 
 type decoder struct {
 	data       []byte
 	start, off int
+	lastState  scanState
+	length     int
 
-	lastState int
-	length    int
-	segMap    segmentMap       // this converts the name to the (list of) zero-based idx
-	segments  map[int]*segment // key is zero-based idx of segment
-	scan      *hl7Scanner
+	scan     *hl7Scanner
+	segMap   segmentMap       // this converts the name to the (list of) zero-based idx
+	segments map[int]*segment // key is zero-based idx of segment
 }
 
 func newDecoder() *decoder {
@@ -177,12 +169,11 @@ func newDecoder() *decoder {
 }
 
 func (d *decoder) init(data []byte, segDelim byte) error {
-	l := len(data)
-	if l < 8 {
+	if len(data) < 8 {
 		return fmt.Errorf("message is too short (length: %d)\n", len(data))
 	}
 	d.data = data
-	d.off = 0
+	l := len(data)
 	d.length = l
 	d.scan = &hl7Scanner{
 		step:     scanSegmentName,
@@ -194,10 +185,13 @@ func (d *decoder) init(data []byte, segDelim byte) error {
 		subDelim: data[7],
 	} // switch to pool
 
-	idx1 := 1
-	currentSegIdx := 0
-	currentSegName := ""
-	var currentSegFields *segment
+	var (
+		idx1             = 1
+		currentSegIdx    int
+		currentSegName   string
+		currentSegFields *segment
+	)
+
 	for d.off < d.length {
 		s, i := d.scan, d.off
 		state := s.step(s, d.data[i])
@@ -211,7 +205,7 @@ func (d *decoder) init(data []byte, segDelim byte) error {
 			currentSegIdx = d.start
 			currentSegName = string(d.data[currentSegIdx : d.off-1])
 			currentSegFields = NewSegment(currentSegName)
-			if currentSegName == "MSH" {
+			if currentSegName == messageHeader {
 				idx1++
 			}
 			if exists := currentSegFields.AddField(idx1, d.off-1, d.scan); exists {
@@ -245,7 +239,7 @@ func (d *decoder) init(data []byte, segDelim byte) error {
 	return nil
 }
 
-func (d *decoder) scanWhile(state int) {
+func (d *decoder) scanWhile(state scanState) {
 	s, data, i := d.scan, d.data, d.off
 	for i < len(data) {
 		newState := s.step(s, data[i])
@@ -262,36 +256,18 @@ func (d *decoder) scanWhile(state int) {
 // n is the "nth" segment repeat
 func (d *decoder) getFieldVal(s string, idx1, n int) string {
 	if s == messageHeader {
-		if idx1 == 1 {
+		switch idx1 {
+		case 1:
 			return string(d.scan.fldDelim)
-		}
-		if idx1 == 2 {
-			return fmt.Sprintf(
-				"%c%c%c%c",
-				d.scan.comDelim,
-				d.scan.repDelim,
-				d.scan.escDelim,
-				d.scan.subDelim,
-			)
+		case 2:
+			return fmt.Sprintf("%c%c%c%c", d.scan.comDelim, d.scan.repDelim, d.scan.escDelim, d.scan.subDelim)
 		}
 	}
-	segIdx, exists := d.segMap.getSegmentIdx(s)
-	if !exists {
+	indices, found := d.segMap.getSegmentIdx(s)
+	if !found || n >= len(indices) {
 		return ""
 	}
-
-	switch segIdx.(type) {
-	case int:
-		return d.scanField(idx1, segIdx.(int))
-	case []int:
-		if len(segIdx.([]int)) <= max(0, n) {
-			return ""
-		}
-		indices := segIdx.([]int)
-		return d.scanField(idx1, indices[n])
-	default:
-		panic("unknown index type")
-	}
+	return d.scanField(idx1, indices[n])
 }
 
 func (d *decoder) scanField(idx1, idx0 int) string {
@@ -311,11 +287,4 @@ func (d *decoder) scanField(idx1, idx0 int) string {
 		}
 	}
 	return ""
-}
-
-func max(m, n int) int {
-	if n > m {
-		return n
-	}
-	return m
 }
