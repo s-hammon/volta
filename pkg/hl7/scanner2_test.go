@@ -8,7 +8,7 @@ import (
 )
 
 var orcBytes = []byte("|CM|12345678||CRX^CHEST XRAY")
-var validOBX = []byte("OBX|1|FT|CXR^Chest X-ray||diagnostic\rOBX|2|FT|CXR^Chest X-ray||more diagnostic")
+var validOBX = []byte("MSH|^~\\&|LabSystem|Hospital|OrderingSystem|Clinic|202501140830||ORU^R01|MSG00002|P|2.3\rOBX|1|FT|CXR^Chest X-ray||diagnostic\rOBX|2|FT|CXR^Chest X-ray||more diagnostic")
 
 func TestScanner(t *testing.T) {
 	scan := newScanner2('\r', '|')
@@ -37,19 +37,19 @@ func TestFieldNode(t *testing.T) {
 	// suppose that this is the index of the first field delimiter
 	// it will always be the 0th position if the first 3 bytes (segment name) are removed from the segment byte slice
 	// ORC-1 (2 characters)
-	orc1 := &fieldNode{bytIdx: 0}
+	orc1 := &fieldNode{idx: 0}
 	// ORC-2 (8 characters)
-	orc2 := &fieldNode{bytIdx: 3}
+	orc2 := &fieldNode{idx: 3}
 	// ORC-3 (0 characters)
-	orc3 := &fieldNode{bytIdx: 12}
-	orc4 := &fieldNode{bytIdx: 13}
+	orc3 := &fieldNode{idx: 12}
+	orc4 := &fieldNode{idx: 13}
 
 	orcMap := fieldMap{}
 	_ = orcMap.setFieldNodeIdx(1, orc1)
 	val, exists := orcMap.getFieldNodeIdx(1)
 	require.True(t, exists)
 	require.NotNil(t, val)
-	require.Equal(t, 0, val.bytIdx)
+	require.Equal(t, 0, val.idx)
 
 	_ = orcMap.setFieldNodeIdx(2, orc2)
 	val, exists = orcMap.getFieldNodeIdx(2)
@@ -69,7 +69,7 @@ func TestFieldNode(t *testing.T) {
 	n, _ := orcMap.getFieldNodeIdx(1)
 	n.next = orc2
 	require.NotNil(t, n.next)
-	assert.Equal(t, "CM", string(orcBytes[n.bytIdx+1:n.next.bytIdx]))
+	assert.Equal(t, "CM", string(orcBytes[n.idx+1:n.next.idx]))
 }
 
 func TestSegment(t *testing.T) {
@@ -89,8 +89,8 @@ func TestSegment(t *testing.T) {
 
 	assert.Equal(t, 0, orc.GetFieldIdx(1))
 	n := orc.GetFieldNode(1)
-	assert.Equal(t, 3, n.next.bytIdx)
-	assert.Equal(t, "CM", string(orcBytes[n.bytIdx+1:n.next.bytIdx]))
+	assert.Equal(t, 3, n.next.idx)
+	assert.Equal(t, "CM", string(orcBytes[n.idx+1:n.next.idx]))
 
 	assert.Nil(t, orc.GetFieldNode(420))
 	assert.Equal(t, -1, orc.GetFieldIdx(69))
@@ -120,7 +120,9 @@ func TestDecoder(t *testing.T) {
 
 	assert.Equal(t, "|", dec.getFieldVal("MSH", 1, 0))
 	assert.Equal(t, "^~\\&", dec.getFieldVal("MSH", 2, 0))
+	assert.Equal(t, "LabSystem", dec.getFieldVal("MSH", 3, 0))
 	assert.Equal(t, "ORU^R01", dec.getFieldVal("MSH", 9, 0))
+	assert.Equal(t, "2.3", dec.getFieldVal("MSH", 12, 0))
 	assert.Equal(t, "", dec.getFieldVal("PID", 2, 0))
 }
 
@@ -129,7 +131,7 @@ func TestDecoderRepeatSegments(t *testing.T) {
 	err := dec.init(validOBX, '\r')
 	require.NoError(t, err)
 
-	require.Equal(t, 2, len(dec.segments))
+	require.Equal(t, 3, len(dec.segments))
 	indices, exists := dec.segMap.getSegmentIdx("OBX")
 	require.True(t, exists)
 	require.NotNil(t, indices)

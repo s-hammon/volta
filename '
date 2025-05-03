@@ -6,13 +6,12 @@ const messageHeader = "MSH"
 
 // a node representing a field
 type fieldNode struct {
-	idx  int
-	next *fieldNode
+	bytIdx int
+	next   *fieldNode
 }
 
 const (
-	stateBegin scanState = iota
-	stateContinue
+	stateContinue scanState = iota
 	stateSegmentName
 	stateSegmentNameEnd
 	stateFieldDelimiter
@@ -44,11 +43,11 @@ func newScanner2(sd, fd byte) *hl7Scanner {
 
 func scanSegmentName(scan *hl7Scanner, c byte) scanState {
 	switch {
-	case validSegNameChar(c):
-		return stateSegmentName
 	case c == scan.fldDelim:
 		scan.step = scanFieldVal
 		return stateSegmentNameEnd
+	case validSegNameChar(c):
+		return stateSegmentName
 	default:
 		return stateErr
 	}
@@ -97,7 +96,7 @@ func (m fieldMap) getFieldNodeIdx(idx int) (n *fieldNode, exists bool) {
 
 type segment struct {
 	name   string
-	endIdx int
+	size   int
 	fields fieldMap
 }
 
@@ -109,7 +108,7 @@ func NewSegment(s string) *segment {
 // bytIdx is the 0-based index of the field delimiter (in the raw byte slice
 // AddField will set the scanner's lastIdx field to the current one
 func (s *segment) AddField(hl7Idx, bytIdx int, scan *hl7Scanner) (exists bool) {
-	n := &fieldNode{idx: bytIdx}
+	n := &fieldNode{bytIdx: bytIdx}
 	if prev, ok := s.fields.getFieldNodeIdx(scan.lastIdx); ok {
 		prev.next = n
 	}
@@ -132,7 +131,7 @@ func (s *segment) GetFieldIdx(hl7Idx int) int {
 	if !ok {
 		return -1
 	}
-	return idx.idx
+	return idx.bytIdx
 }
 
 // keys are the 3-letter segment names (MSH, PID, OBX, etc)
@@ -155,6 +154,7 @@ type decoder struct {
 	data       []byte
 	start, off int
 	lastState  scanState
+	length     int
 
 	scan     *hl7Scanner
 	segMap   segmentMap       // this converts the name to the (list of) zero-based idx
@@ -173,7 +173,7 @@ func (d *decoder) init(data []byte, segDelim byte) error {
 		return fmt.Errorf("message is too short (length: %d)\n", len(data))
 	}
 	d.data = data
-	d.lastState = stateBegin
+	d.length = len(data)
 	d.scan = &hl7Scanner{
 		step:     scanSegmentName,
 		segDelim: segDelim,
@@ -191,84 +191,55 @@ func (d *decoder) init(data []byte, segDelim byte) error {
 		currentSegFields *segment
 	)
 
-	for d.off < len(d.data) {
-		switch d.lastState {
-		case stateBegin:
-			d.scanWhile(stateSegmentName)
-			if d.lastState != stateSegmentNameEnd {
-				panic("huh!?")
-			}
-			currentSegIdx = d.start
-			currentSegName = string(d.data[currentSegIdx : d.off-1])
-			currentSegFields = NewSegment(currentSegName)
-			if currentSegName != messageHeader {
-				return fmt.Errorf("first segment should be 'MSH', got %s", currentSegName)
-			}
-			idx1++
-		case stateSegmentNameEnd:
-			if ok := currentSegFields.AddField(idx1, d.off, d.scan); ok {
-				panic("error writing field!")
-			}
-			idx1++
-			d.scanNext()
+	for d.off < d.length {
+		c := d.data[d.off]
+		state := d.scan.step(d.scan, c)
+		d.off++
+
+		switch state {
 		case stateSegmentName:
 			d.scanWhile(stateSegmentName)
 			if d.lastState != stateSegmentNameEnd {
 				panic("huh!?")
 			}
 			currentSegIdx = d.start
-			currentSegName = string(d.data[currentSegIdx : d.off-1])
+			currentSegName = string(d.data[currentSegIdx:d.off])
 			currentSegFields = NewSegment(currentSegName)
+			if currentSegName == messageHeader {
+				idx1++
+			}
+			currentSegFields.AddField(idx1, d.off-1, d.scan)
+			idx1++
 		case stateSegmentEnd:
-			currentSegFields.endIdx = d.off - 1
-			fmt.Printf("set size for %s to %d\n", currentSegName, currentSegFields.endIdx)
+			currentSegFields.size = d.off - currentSegIdx - 1
 			d.segMap.addSegment(currentSegName, currentSegIdx)
 			d.segments[currentSegIdx] = currentSegFields
-			d.start = d.off
+			d.start = d.off + 1
 			idx1 = 1
-			d.scanNext()
 		case stateFieldValEnd:
-			if ok := currentSegFields.AddField(idx1, d.off, d.scan); ok {
-				panic("error writing field!")
-			}
+			currentSegFields.AddField(idx1, d.off, d.scan)
 			idx1++
-			d.scanNext()
 		case stateContinue:
-			d.scanWhile(stateContinue)
+			continue
 		default:
-			panic(fmt.Sprintf("unrecognized state! got: '%d'\n", d.lastState))
+			panic(fmt.Sprintf("unrecognized state! got: '%d'\n", state))
 		}
 	}
-	currentSegFields.AddField(idx1, d.off+1, d.scan)
+	currentSegFields.AddField(idx1, d.off, d.scan)
 	d.segMap.addSegment(currentSegName, d.start)
 	d.segments[currentSegIdx] = currentSegFields
 	return nil
 }
 
-func (d *decoder) scanNext() {
-	if d.off < len(d.data) {
-		if d.lastState == stateBegin {
-			d.lastState = d.scan.step(d.scan, d.data[d.off])
+func (d *decoder) scanWhile(state scanState) {
+	s := d.scan
+	for d.off < d.length {
+		if newState := s.step(s, d.data[d.off]); newState != state {
+			d.lastState = newState
 			return
 		}
-		d.lastState = d.scan.step(d.scan, d.data[d.off])
 		d.off++
 	}
-}
-
-func (d *decoder) scanWhile(state scanState) {
-	s, data, i := d.scan, d.data, d.off
-	for i < len(data) {
-		newState := s.step(s, d.data[i])
-		i++
-		if newState != state {
-			d.lastState = newState
-			d.off = i
-			return
-		}
-	}
-	d.off = len(d.data)
-	d.lastState = stateErr
 }
 
 // n is the "nth" segment repeat
@@ -297,10 +268,10 @@ func (d *decoder) scanField(idx1, idx0 int) string {
 	if !exists {
 		return ""
 	}
-	start := field.idx
-	end := segment.endIdx
+	start := field.bytIdx + 1
+	end := segment.size
 	if field.next != nil {
-		end = field.next.idx - 1
+		return ""
 	}
 	return string(d.data[start:end])
 }
