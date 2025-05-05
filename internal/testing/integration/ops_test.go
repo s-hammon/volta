@@ -3,8 +3,6 @@ package integration
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,6 +19,8 @@ import (
 	"github.com/s-hammon/volta/internal/objects"
 	"github.com/s-hammon/volta/internal/testing/testdb"
 	"github.com/s-hammon/volta/pkg/hl7"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHL7Upserts(t *testing.T) {
@@ -42,326 +42,220 @@ func TestHL7Upserts(t *testing.T) {
 			if len(data) == 0 {
 				t.Fatalf("file %s is empty", fPath)
 			}
-			msg, err := hl7.NewMessage(data)
-			if err != nil {
-				t.Fatalf("failed to parse HL7 message from file %s: %v", fPath, err)
+			msg := &models.MessageModel{}
+			d := hl7.NewDecoder(data)
+			if err := d.Decode(msg); err != nil {
+				t.Fatalf("error unmarshaling HL7: %v", err)
 			}
+			m := msg.ToEntity()
+			dbMsg, err := m.ToDB(ctx, repo.Queries)
+			assert.NoError(t, err)
+			assert.NotEqual(t, 0, dbMsg.ID)
+			getMsg, err := repo.Queries.GetMessageByID(ctx, dbMsg.ID)
+			assert.NoError(t, err)
+			assert.Equal(t, dbMsg.ID, getMsg.ID)
 
-			switch extractMsgType(t, msg) {
+			switch msg.Type.Name {
 			case "ORM":
-				testUpsertORM(t, ctx, repo, msg)
+				testUpsertORM(t, ctx, repo, d)
 			case "ORU":
-				testUpsertORU(t, ctx, repo, msg)
+				testUpsertORU(t, ctx, repo, d)
 			case "ADT":
 				t.Logf("skipping ADT message: %s", hl7Msg.Name())
 			default:
-				t.Fatalf("unsupported message type: %s", extractMsgType(t, msg))
+				t.Fatalf("unsupported message type: %s", msg.Type.Name)
 			}
 		})
 	}
 }
 
-func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Message) {
+func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decoder) {
 	t.Helper()
 
-	var oru models.ORU
-	if err := json.Unmarshal(msg, &oru); err != nil {
-		t.Fatalf("failed to unmarshal HL7 message: %v", err)
-	}
-	p := oru.PID.ToEntity()
-	m := oru.MSH.ToEntity()
-	v := oru.PV1.ToEntity(m.SendingFac, oru.PID.MRN)
+	patient := &models.PatientModel{}
+	err := d.Decode(patient)
+	require.NoError(t, err)
 
-	orderGroups, err := oru.GroupOrders()
-	if err != nil {
-		t.Fatalf("error grouping orders and exams: %v", err)
-	}
-	oe := models.NewOrderEntities(v.Site.Code, oru.PID.MRN, orderGroups...)
+	p := patient.ToEntity()
+	pID, err := p.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, pID)
+	dbPatient, err := repo.Queries.GetPatientById(ctx, pID)
+	require.NoError(t, err)
+	require.Equal(t, pID, dbPatient.ID)
 
-	siteID, err := v.Site.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create site: %v", err)
-	}
-	site, err := repo.Queries.GetSiteById(ctx, siteID)
-	if err != nil {
-		t.Fatalf("failed to get site by code: %v", err)
-	}
-	assertEqual(t, siteID, site.ID)
+	visit := &models.VisitModel{}
+	err = d.Decode(visit)
+	require.NoError(t, err)
+	v := visit.ToEntity()
 
-	patientID, err := p.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create patient: %v", err)
-	}
-	patient, err := repo.Queries.GetPatientById(ctx, patientID)
-	if err != nil {
-		t.Fatalf("failed to get patient by ID: %v", err)
-	}
-	assertEqual(t, patientID, patient.ID)
+	sID, err := v.Site.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, sID)
+	site, err := repo.Queries.GetSiteById(ctx, sID)
+	require.NoError(t, err)
+	require.Equal(t, sID, site.ID)
 
-	mrnID, err := v.MRN.ToDB(ctx, siteID, patientID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create mrn: %v", err)
-	}
-	mrn, err := repo.Queries.GetMrnById(ctx, mrnID)
-	if err != nil {
-		t.Fatalf("failed to get mrn by ID: %v", err)
-	}
-	assertEqual(t, mrnID, mrn.ID)
+	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, mID)
+	mrn, err := repo.Queries.GetMrnById(ctx, mID)
+	require.NoError(t, err)
+	require.Equal(t, mID, mrn.ID)
 
-	visitID, err := v.ToDB(ctx, siteID, mrnID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create visit: %v", err)
-	}
-	visit, err := repo.Queries.GetVisitById(ctx, visitID)
-	if err != nil {
-		t.Fatalf("failed to get visit by ID: %v", err)
-	}
-	assertEqual(t, visitID, visit.ID)
+	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, vID)
+	dbVisit, err := repo.Queries.GetVisitById(ctx, vID)
+	require.NoError(t, err)
+	require.Equal(t, vID, dbVisit.ID)
 
-	provider := oe[0].GetOrder().Provider
-	physicianID, err := provider.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create physician: %v", err)
+	exams := []models.ExamModel{}
+	err = d.Decode(&exams)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(exams), 1)
+	eg := models.ToEntities(exams)
+	require.Equal(t, len(exams), len(eg))
+
+	phID, err := eg[0].Provider.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, phID)
+	physician, err := repo.Queries.GetPhysicianById(ctx, phID)
+	require.NoError(t, err)
+	require.Equal(t, phID, physician.ID)
+
+	examIDs := []int64{}
+	for i, e := range eg {
+		prID, err := eg[i].Procedure.ToDB(ctx, sID, repo.Queries)
+		require.NoError(t, err)
+		require.NotEqual(t, 0, prID)
+		proc, err := repo.Queries.GetProcedureById(ctx, prID)
+		require.NoError(t, err)
+		require.Equal(t, prID, proc.ID)
+
+		eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
+		require.NoError(t, err)
+		require.NotEqual(t, 0, eID)
+		dbExam, err := repo.Queries.GetExamById(ctx, eID)
+		require.NoError(t, err)
+		require.Equal(t, eID, dbExam.ID)
+		assertNotNullStatusTimestamp(t, dbExam)
+		examIDs = append(examIDs, eID)
 	}
-	physician, err := repo.Queries.GetPhysicianById(ctx, physicianID)
-	if err != nil {
-		t.Fatalf("failed to get physician by ID: %v", err)
-	}
-	assertEqual(t, physicianID, physician.ID)
+	report := []models.ReportModel{}
+	err = d.Decode(&report)
+	require.NoError(t, err)
+	require.Greater(t, len(report), 0)
+	r := models.GetReport(report)
+	radID, err := r.Radiologist.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, radID)
+	rID, err := r.ToDB(ctx, repo.Queries, radID)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, rID)
+	dbReport, err := repo.Queries.GetReportById(ctx, rID)
+	require.NoError(t, err)
+	reportEnt, err := repo.Queries.GetReportByRadID(ctx, pgtype.Int8{Int64: radID, Valid: true})
+	require.NoError(t, err)
+	require.Equal(t, rID, dbReport.ID)
+	assert.Equal(t, r.Body, dbReport.Body)
+	assert.Equal(t, r.Impression, dbReport.Impression)
+	assert.Equal(t, "F", reportEnt.ReportStatus)
+	assert.Equal(t, r.SubmittedDT, reportEnt.SubmittedDt.Time)
+	assert.Equal(t, radID, dbReport.RadiologistID.Int64)
 
-	examIDs := make([]int64, len(oe))
-	for i, orderEntity := range oe {
-		thisOrder := orderEntity.GetOrder()
-		orderID, orderStatus, err := thisOrder.ToDB(ctx, siteID, visitID, mrnID, physicianID, repo.Queries)
-		if err != nil {
-			t.Fatalf("failed to create order: %v", err)
-		}
-		order, err := repo.Queries.GetOrderById(ctx, orderID)
-		if err != nil {
-			t.Fatalf("failed to get order by ID: %v", err)
-		}
-		assertEqual(t, orderID, order.ID)
-
-		thisExam := orderEntity.GetExam()
-		procedureID, err := thisExam.Procedure.ToDB(ctx, siteID, repo.Queries)
-		if err != nil {
-			t.Fatalf("failed to create procedure: %v", err)
-		}
-		procedure, err := repo.Queries.GetProcedureById(ctx, procedureID)
-		if err != nil {
-			t.Fatalf("failed to get procedure by ID: %v", err)
-		}
-		assertEqual(t, procedureID, procedure.ID)
-
-		examID, err := thisExam.ToDB(ctx, orderID, visitID, mrnID, siteID, procedureID, orderStatus, repo.Queries)
-		if err != nil {
-			t.Fatalf("failed to create exam: %v", err)
-		}
-		exam, err := repo.Queries.GetExamById(ctx, examID)
-		if err != nil {
-			t.Fatalf("failed to get exam by ID: %v", err)
-		}
-		assertEqual(t, examID, exam.ID)
-		assertEqual(t, "CM", exam.CurrentStatus)
-		assertEqual(t, "CM", order.CurrentStatus)
-		assertNotNullStatusTimestamp(t, exam)
-
-		examIDs[i] = examID
-	}
-
-	reportModel := oru.GetReport()
-	fmt.Printf("radID: %d\tbody: %s\timpression: %s\tstatus: %s\tsubmitDT: %s", physicianID, reportModel.Body, reportModel.Impression, reportModel.Status.String(), reportModel.SubmittedDT)
-	report, err := repo.Queries.CreateReport(ctx, database.CreateReportParams{
-		RadiologistID: pgtype.Int8{Int64: int64(physicianID), Valid: true},
-		Body:          reportModel.Body,
-		Impression:    reportModel.Impression,
-		ReportStatus:  reportModel.Status.String(),
-		SubmittedDt:   pgtype.Timestamp{Time: reportModel.SubmittedDT, Valid: true},
-	})
-	if err != nil {
-		t.Fatalf("failed to create report: %v", err)
-	}
-	getReport, err := repo.Queries.GetReportById(ctx, report.ID)
-	if err != nil {
-		t.Fatalf("failed to get report by ID: %v", err)
-	}
-	assertEqual(t, report.ID, getReport.ID)
-	assertEqual(t, report.Body, getReport.Body)
-	assertEqual(t, report.Impression, getReport.Impression)
-	assertEqual(t, report.ReportStatus, getReport.ReportStatus)
-	assertEqual(t, report.SubmittedDt, getReport.SubmittedDt)
-	assertEqual(t, report.RadiologistID, getReport.RadiologistID)
-	assertEqual(t, report.CreatedAt, getReport.CreatedAt)
-	assertEqual(t, report.UpdatedAt, getReport.UpdatedAt)
-
-	switch reportModel.Status {
+	switch r.Status {
 	case objects.Final:
 		for _, examID := range examIDs {
 			exam, err := repo.Queries.UpdateExamFinalReport(ctx, database.UpdateExamFinalReportParams{
-				ID:            int64(examID),
-				FinalReportID: pgtype.Int8{Int64: int64(report.ID), Valid: true},
+				ID:            examID,
+				FinalReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
 			})
-			if err != nil {
-				t.Fatalf("failed to update exam with final report: %v", err)
-			}
-			examID, err := repo.Queries.GetExamById(ctx, exam.ID)
-			if err != nil {
-				t.Fatalf("failed to get exam by ID: %v", err)
-			}
-			assertEqual(t, exam.ID, examID.ID)
-			assertEqual(t, exam.FinalReportID, examID.FinalReportID)
-			assertEqual(t, exam.UpdatedAt, examID.UpdatedAt)
-			assertNotNullStatusTimestamp(t, examID)
+			require.NoError(t, err)
+			require.NotEqual(t, 0, exam.ID)
+			updatedExam, err := repo.Queries.GetExamById(ctx, exam.ID)
+			require.NoError(t, err)
+			assert.Equal(t, exam.ID, updatedExam.ID)
+			assert.Equal(t, exam.FinalReportID.Int64, dbReport.ID)
+			assertNotNullStatusTimestamp(t, updatedExam)
 		}
 	case objects.Addendum:
 		for _, examID := range examIDs {
 			exam, err := repo.Queries.UpdateExamAddendumReport(ctx, database.UpdateExamAddendumReportParams{
-				ID:               int64(examID),
-				AddendumReportID: pgtype.Int8{Int64: int64(report.ID), Valid: true},
+				ID:               examID,
+				AddendumReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
 			})
-			if err != nil {
-				t.Fatalf("failed to update exam with addendum report: %v", err)
-			}
-			examID, err := repo.Queries.GetExamById(ctx, exam.ID)
-			if err != nil {
-				t.Fatalf("failed to get exam by ID: %v", err)
-			}
-			assertEqual(t, exam.ID, examID.ID)
-			assertEqual(t, exam.AddendumReportID, examID.AddendumReportID)
-			assertEqual(t, exam.UpdatedAt, examID.UpdatedAt)
+			require.NoError(t, err)
+			require.NotEqual(t, 0, exam.ID)
+			updatedExam, err := repo.Queries.GetExamById(ctx, exam.ID)
+			require.NoError(t, err)
+			assert.Equal(t, exam.ID, updatedExam.ID)
+			assert.Equal(t, exam.AddendumReportID, dbReport.ID)
+			assertNotNullStatusTimestamp(t, updatedExam)
 		}
 	}
 }
 
-func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, msg hl7.Message) {
+func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decoder) {
 	t.Helper()
 
-	var orm models.ORM
-	if err := json.Unmarshal(msg, &orm); err != nil {
-		t.Fatalf("failed to unmarshal HL7 message: %v", err)
-	}
-	m := orm.MSH.ToEntity()
-	v := orm.PV1.ToEntity(m.SendingFac, orm.PID.MRN)
-	p := orm.PID.ToEntity()
-	o := orm.ORC.ToEntity()
-	e := orm.OBR.ToEntity(v.Site.Code, o.CurrentStatus.String(), orm.PID.MRN)
+	patient := &models.PatientModel{}
+	err := d.Decode(patient)
+	require.NoError(t, err)
 
-	writeMsg, err := m.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create message: %v", err)
-	}
-	readMsg, err := repo.Queries.GetMessageByID(ctx, writeMsg.ID)
-	if err != nil {
-		t.Fatalf("failed to get message by ID: %v", err)
-	}
-	assertEqual(t, writeMsg.ID, readMsg.ID)
+	p := patient.ToEntity()
+	pID, err := p.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, pID)
+	dbPatient, err := repo.Queries.GetPatientById(ctx, pID)
+	require.NoError(t, err)
+	require.Equal(t, pID, dbPatient.ID)
 
-	siteID, err := v.Site.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create site: %v", err)
-	}
-	site, err := repo.Queries.GetSiteById(ctx, siteID)
-	if err != nil {
-		t.Fatalf("failed to get site by code: %v", err)
-	}
-	assertEqual(t, siteID, site.ID)
+	visit := &models.VisitModel{}
+	err = d.Decode(visit)
+	require.NoError(t, err)
+	v := visit.ToEntity()
 
-	patientID, err := p.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create patient: %v", err)
-	}
-	patient, err := repo.Queries.GetPatientById(ctx, patientID)
-	if err != nil {
-		t.Fatalf("failed to get patient by ID: %v", err)
-	}
-	assertEqual(t, patientID, patient.ID)
+	sID, err := v.Site.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, sID)
+	site, err := repo.Queries.GetSiteById(ctx, sID)
+	require.NoError(t, err)
+	require.Equal(t, sID, site.ID)
 
-	mrnID, err := v.MRN.ToDB(ctx, siteID, patientID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create mrn: %v", err)
-	}
-	mrn, err := repo.Queries.GetMrnById(ctx, mrnID)
-	if err != nil {
-		t.Fatalf("failed to get mrn by ID: %v", err)
-	}
-	assertEqual(t, mrnID, mrn.ID)
+	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, mID)
+	mrn, err := repo.Queries.GetMrnById(ctx, mID)
+	require.NoError(t, err)
+	require.Equal(t, mID, mrn.ID)
 
-	if v.VisitNo == "" {
-		v.VisitNo = o.Number
-	}
-	visitID, err := v.ToDB(ctx, siteID, mrnID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create visit: %v", err)
-	}
-	visit, err := repo.Queries.GetVisitById(ctx, visitID)
-	if err != nil {
-		t.Fatalf("failed to get visit by ID: %v", err)
-	}
-	assertEqual(t, visitID, visit.ID)
+	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, vID)
+	dbVisit, err := repo.Queries.GetVisitById(ctx, vID)
+	require.NoError(t, err)
+	require.Equal(t, vID, dbVisit.ID)
 
-	physicianID, err := o.Provider.ToDB(ctx, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create physician: %v", err)
-	}
-	physician, err := repo.Queries.GetPhysicianById(ctx, physicianID)
-	if err != nil {
-		t.Fatalf("failed to get physician by ID: %v", err)
-	}
-	assertEqual(t, physicianID, physician.ID)
+	exam := &models.ExamModel{}
+	err = d.Decode(exam)
+	require.NoError(t, err)
+	e := exam.ToEntity()
 
-	orderID, orderStatus, err := o.ToDB(ctx, siteID, visitID, mrnID, physicianID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create order: %v", err)
-	}
-	order, err := repo.Queries.GetOrderById(ctx, orderID)
-	if err != nil {
-		t.Fatalf("failed to get order by ID: %v", err)
-	}
-	assertEqual(t, orderID, order.ID)
-	assertEqual(t, orderStatus, order.CurrentStatus)
+	phID, err := e.Provider.ToDB(ctx, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, phID)
+	prID, err := e.Procedure.ToDB(ctx, sID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, prID)
 
-	procedureID, err := e.Procedure.ToDB(ctx, siteID, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create procedure: %v", err)
-	}
-	procedure, err := repo.Queries.GetProcedureById(ctx, procedureID)
-	if err != nil {
-		t.Fatalf("failed to get procedure by ID: %v", err)
-	}
-	assertEqual(t, procedureID, procedure.ID)
-
-	examID, err := e.ToDB(ctx, orderID, visitID, mrnID, siteID, procedureID, orderStatus, repo.Queries)
-	if err != nil {
-		t.Fatalf("failed to create exam: %v", err)
-	}
-	exam, err := repo.Queries.GetExamById(ctx, examID)
-	if err != nil {
-		t.Fatalf("failed to get exam by ID: %v", err)
-	}
-	assertEqual(t, examID, exam.ID)
-	assertNotNullStatusTimestamp(t, exam)
-}
-
-func extractMsgType(t *testing.T, msg hl7.Message) string {
-	t.Helper()
-
-	var msgMap map[string]any
-	if err := json.Unmarshal(msg, &msgMap); err != nil {
-		t.Fatalf("failed to unmarshal HL7 message: %v", err)
-	}
-	msh, ok := msgMap["MSH"].(map[string]any)
-	if !ok {
-		t.Fatalf("failed extracting MSH")
-	}
-	msh9, ok := msh["MSH.9"].(map[string]any)
-	if !ok {
-		t.Fatalf("failed extracting MSH.9")
-	}
-	msgType, ok := msh9["MSH.9.1"].(string)
-	if !ok {
-		t.Fatalf("failed to extract message type from HL7 message")
-	}
-	return msgType
+	eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
+	require.NoError(t, err)
+	require.NotEqual(t, 0, eID)
+	dbExam, err := repo.Queries.GetExamById(ctx, eID)
+	require.NoError(t, err)
+	require.Equal(t, eID, dbExam.ID)
+	assertNotNullStatusTimestamp(t, dbExam)
 }
 
 func setupDB(t *testing.T, ctx context.Context) (api.DB, []fs.DirEntry) {

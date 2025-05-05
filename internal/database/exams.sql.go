@@ -14,46 +14,46 @@ import (
 const createExam = `-- name: CreateExam :one
 WITH upsert as (
     INSERT INTO exams (
-        order_id,
-        visit_id,
-        mrn_id,
-        site_id,
-        procedure_id,
-        accession,
-        current_status,
-        schedule_dt,
-        begin_exam_dt,
-        end_exam_dt,
-        exam_cancelled_dt
+        visit_id, -- $1
+        mrn_id, -- $2
+        site_id, -- $3
+        procedure_id, -- $4
+        ordering_physician_id, -- $5
+        accession, -- $6
+        current_status, -- $7
+        schedule_dt, -- $8
+        begin_exam_dt, -- $9
+        end_exam_dt, -- $10
+        exam_cancelled_dt -- $11
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     ON CONFLICT (site_id, accession) DO UPDATE
     SET
-        order_id = EXCLUDED.order_id,
         visit_id = EXCLUDED.visit_id,
         mrn_id = EXCLUDED.mrn_id,
         procedure_id = EXCLUDED.procedure_id,
+        ordering_physician_id = EXCLUDED.ordering_physician_id,
         current_status = COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status),
         schedule_dt = COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt),
         begin_exam_dt = COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt),
         end_exam_dt = COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt),
         exam_cancelled_dt = COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt)
     WHERE
-        exams.order_id IS DISTINCT FROM EXCLUDED.order_id
-        OR exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
+        exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
         OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id
         OR exams.site_id IS DISTINCT FROM EXCLUDED.site_id
         OR exams.procedure_id IS DISTINCT FROM EXCLUDED.procedure_id
+        OR exams.ordering_physician_id IS DISTINCT FROM EXCLUDED.ordering_physician_id
         OR COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status) IS DISTINCT FROM exams.current_status
         OR COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt) IS DISTINCT FROM exams.schedule_dt
         OR COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt) IS DISTINCT FROM exams.begin_exam_dt
         OR COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt) IS DISTINCT FROM exams.end_exam_dt
         OR COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt) IS DISTINCT FROM exams.exam_cancelled_dt
-    RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+    RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 )
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id FROM upsert
+SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id FROM exams
+SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id FROM exams
 WHERE
     site_id = $4
     AND accession = $6
@@ -61,47 +61,47 @@ WHERE
 `
 
 type CreateExamParams struct {
-	OrderID         pgtype.Int8
-	VisitID         pgtype.Int8
-	MrnID           pgtype.Int8
-	SiteID          pgtype.Int4
-	ProcedureID     pgtype.Int4
-	Accession       string
-	CurrentStatus   string
-	ScheduleDt      pgtype.Timestamp
-	BeginExamDt     pgtype.Timestamp
-	EndExamDt       pgtype.Timestamp
-	ExamCancelledDt pgtype.Timestamp
+	VisitID             pgtype.Int8
+	MrnID               pgtype.Int8
+	SiteID              pgtype.Int4
+	ProcedureID         pgtype.Int4
+	OrderingPhysicianID pgtype.Int8
+	Accession           string
+	CurrentStatus       string
+	ScheduleDt          pgtype.Timestamp
+	BeginExamDt         pgtype.Timestamp
+	EndExamDt           pgtype.Timestamp
+	ExamCancelledDt     pgtype.Timestamp
 }
 
 type CreateExamRow struct {
-	ID               int64
-	CreatedAt        pgtype.Timestamp
-	UpdatedAt        pgtype.Timestamp
-	OutsideSystemID  pgtype.Int4
-	OrderID          pgtype.Int8
-	VisitID          pgtype.Int8
-	MrnID            pgtype.Int8
-	SiteID           pgtype.Int4
-	ProcedureID      pgtype.Int4
-	FinalReportID    pgtype.Int8
-	AddendumReportID pgtype.Int8
-	Accession        string
-	CurrentStatus    string
-	ScheduleDt       pgtype.Timestamp
-	BeginExamDt      pgtype.Timestamp
-	EndExamDt        pgtype.Timestamp
-	ExamCancelledDt  pgtype.Timestamp
-	PrelimReportID   pgtype.Int8
+	ID                  int64
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
+	OutsideSystemID     pgtype.Int4
+	VisitID             pgtype.Int8
+	MrnID               pgtype.Int8
+	SiteID              pgtype.Int4
+	ProcedureID         pgtype.Int4
+	FinalReportID       pgtype.Int8
+	AddendumReportID    pgtype.Int8
+	Accession           string
+	CurrentStatus       string
+	ScheduleDt          pgtype.Timestamp
+	BeginExamDt         pgtype.Timestamp
+	EndExamDt           pgtype.Timestamp
+	ExamCancelledDt     pgtype.Timestamp
+	PrelimReportID      pgtype.Int8
+	OrderingPhysicianID pgtype.Int8
 }
 
 func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateExamRow, error) {
 	row := q.db.QueryRow(ctx, createExam,
-		arg.OrderID,
 		arg.VisitID,
 		arg.MrnID,
 		arg.SiteID,
 		arg.ProcedureID,
+		arg.OrderingPhysicianID,
 		arg.Accession,
 		arg.CurrentStatus,
 		arg.ScheduleDt,
@@ -115,7 +115,6 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateE
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -129,12 +128,13 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateE
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }
 
 const getAllExams = `-- name: GetAllExams :many
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 FROM exams
 `
 
@@ -152,7 +152,6 @@ func (q *Queries) GetAllExams(ctx context.Context) ([]Exam, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.OutsideSystemID,
-			&i.OrderID,
 			&i.VisitID,
 			&i.MrnID,
 			&i.SiteID,
@@ -166,6 +165,7 @@ func (q *Queries) GetAllExams(ctx context.Context) ([]Exam, error) {
 			&i.EndExamDt,
 			&i.ExamCancelledDt,
 			&i.PrelimReportID,
+			&i.OrderingPhysicianID,
 		); err != nil {
 			return nil, err
 		}
@@ -178,7 +178,7 @@ func (q *Queries) GetAllExams(ctx context.Context) ([]Exam, error) {
 }
 
 const getExamById = `-- name: GetExamById :one
-SELECT id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id FROM exams
+SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id FROM exams
 WHERE id = $1
 `
 
@@ -190,7 +190,6 @@ func (q *Queries) GetExamById(ctx context.Context, id int64) (Exam, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -204,13 +203,14 @@ func (q *Queries) GetExamById(ctx context.Context, id int64) (Exam, error) {
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }
 
 const getExamBySiteIDAccession = `-- name: GetExamBySiteIDAccession :one
 SELECT
-    e.id, e.created_at, e.updated_at, e.outside_system_id, e.order_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.final_report_id, e.addendum_report_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt, e.exam_cancelled_dt, e.prelim_report_id,
+    e.id, e.created_at, e.updated_at, e.outside_system_id, e.visit_id, e.mrn_id, e.site_id, e.procedure_id, e.final_report_id, e.addendum_report_id, e.accession, e.current_status, e.schedule_dt, e.begin_exam_dt, e.end_exam_dt, e.exam_cancelled_dt, e.prelim_report_id, e.ordering_physician_id,
     m.created_at AS mrn_created_at,
     m.updated_at AS mrn_updated_at,
     m.mrn AS mrn_value,
@@ -220,6 +220,16 @@ SELECT
     p.description AS procedure_description,
     p.specialty AS procedure_specialty,
     p.modality AS procedure_modality,
+    o.created_at AS provider_created_at,
+    o.updated_at AS provider_updated_at,
+    o.first_name AS provider_first_name,
+    o.last_name AS provider_last_name,
+    o.middle_name AS provider_middle_name,
+    o.suffix AS provider_suffix,
+    o.prefix AS provider_prefix,
+    o.degree AS provider_degree,
+    o.npi AS provider_npi,
+    o.specialty AS provider_specialty,
     s.created_at AS site_created_at,
     s.updated_at AS site_updated_at,
     s.code AS site_code,
@@ -229,6 +239,7 @@ SELECT
 FROM exams AS e
 LEFT JOIN mrns AS m ON e.mrn_id = m.id
 LEFT JOIN procedures AS p ON e.procedure_id = p.id and e.site_id = p.site_id
+LEFT JOIN physicians AS o ON e.ordering_physician_id = o.id
 LEFT JOIN sites AS s ON e.site_id = s.id
 WHERE
     e.site_id = $1
@@ -245,7 +256,6 @@ type GetExamBySiteIDAccessionRow struct {
 	CreatedAt            pgtype.Timestamp
 	UpdatedAt            pgtype.Timestamp
 	OutsideSystemID      pgtype.Int4
-	OrderID              pgtype.Int8
 	VisitID              pgtype.Int8
 	MrnID                pgtype.Int8
 	SiteID               pgtype.Int4
@@ -259,6 +269,7 @@ type GetExamBySiteIDAccessionRow struct {
 	EndExamDt            pgtype.Timestamp
 	ExamCancelledDt      pgtype.Timestamp
 	PrelimReportID       pgtype.Int8
+	OrderingPhysicianID  pgtype.Int8
 	MrnCreatedAt         pgtype.Timestamp
 	MrnUpdatedAt         pgtype.Timestamp
 	MrnValue             pgtype.Text
@@ -268,6 +279,16 @@ type GetExamBySiteIDAccessionRow struct {
 	ProcedureDescription pgtype.Text
 	ProcedureSpecialty   pgtype.Text
 	ProcedureModality    pgtype.Text
+	ProviderCreatedAt    pgtype.Timestamp
+	ProviderUpdatedAt    pgtype.Timestamp
+	ProviderFirstName    pgtype.Text
+	ProviderLastName     pgtype.Text
+	ProviderMiddleName   pgtype.Text
+	ProviderSuffix       pgtype.Text
+	ProviderPrefix       pgtype.Text
+	ProviderDegree       pgtype.Text
+	ProviderNpi          pgtype.Text
+	ProviderSpecialty    pgtype.Text
 	SiteCreatedAt        pgtype.Timestamp
 	SiteUpdatedAt        pgtype.Timestamp
 	SiteCode             pgtype.Text
@@ -284,7 +305,6 @@ func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySit
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -298,6 +318,7 @@ func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySit
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 		&i.MrnCreatedAt,
 		&i.MrnUpdatedAt,
 		&i.MrnValue,
@@ -307,6 +328,16 @@ func (q *Queries) GetExamBySiteIDAccession(ctx context.Context, arg GetExamBySit
 		&i.ProcedureDescription,
 		&i.ProcedureSpecialty,
 		&i.ProcedureModality,
+		&i.ProviderCreatedAt,
+		&i.ProviderUpdatedAt,
+		&i.ProviderFirstName,
+		&i.ProviderLastName,
+		&i.ProviderMiddleName,
+		&i.ProviderSuffix,
+		&i.ProviderPrefix,
+		&i.ProviderDegree,
+		&i.ProviderNpi,
+		&i.ProviderSpecialty,
 		&i.SiteCreatedAt,
 		&i.SiteUpdatedAt,
 		&i.SiteCode,
@@ -321,42 +352,42 @@ const updateExam = `-- name: UpdateExam :one
 UPDATE exams
 SET
     updated_at = CURRENT_TIMESTAMP,
-    order_id = $2,
-    visit_id = $3,
-    mrn_id = $4,
-    site_id = $5,
-    procedure_id = $6,
+    visit_id = $2,
+    mrn_id = $3,
+    site_id = $4,
+    procedure_id = $5,
+    ordering_physician_id = $6,
     accession = $7,
     current_status = $8,
     schedule_dt = $9,
     begin_exam_dt = $10,
     end_exam_dt = $11
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 `
 
 type UpdateExamParams struct {
-	ID            int64
-	OrderID       pgtype.Int8
-	VisitID       pgtype.Int8
-	MrnID         pgtype.Int8
-	SiteID        pgtype.Int4
-	ProcedureID   pgtype.Int4
-	Accession     string
-	CurrentStatus string
-	ScheduleDt    pgtype.Timestamp
-	BeginExamDt   pgtype.Timestamp
-	EndExamDt     pgtype.Timestamp
+	ID                  int64
+	VisitID             pgtype.Int8
+	MrnID               pgtype.Int8
+	SiteID              pgtype.Int4
+	ProcedureID         pgtype.Int4
+	OrderingPhysicianID pgtype.Int8
+	Accession           string
+	CurrentStatus       string
+	ScheduleDt          pgtype.Timestamp
+	BeginExamDt         pgtype.Timestamp
+	EndExamDt           pgtype.Timestamp
 }
 
 func (q *Queries) UpdateExam(ctx context.Context, arg UpdateExamParams) (Exam, error) {
 	row := q.db.QueryRow(ctx, updateExam,
 		arg.ID,
-		arg.OrderID,
 		arg.VisitID,
 		arg.MrnID,
 		arg.SiteID,
 		arg.ProcedureID,
+		arg.OrderingPhysicianID,
 		arg.Accession,
 		arg.CurrentStatus,
 		arg.ScheduleDt,
@@ -369,7 +400,6 @@ func (q *Queries) UpdateExam(ctx context.Context, arg UpdateExamParams) (Exam, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -383,6 +413,7 @@ func (q *Queries) UpdateExam(ctx context.Context, arg UpdateExamParams) (Exam, e
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }
@@ -393,7 +424,7 @@ SET
     updated_at = CURRENT_TIMESTAMP,
     addendum_report_id = $2
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 `
 
 type UpdateExamAddendumReportParams struct {
@@ -409,7 +440,6 @@ func (q *Queries) UpdateExamAddendumReport(ctx context.Context, arg UpdateExamAd
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -423,6 +453,7 @@ func (q *Queries) UpdateExamAddendumReport(ctx context.Context, arg UpdateExamAd
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }
@@ -433,7 +464,7 @@ SET
     updated_at = CURRENT_TIMESTAMP,
     final_report_id = $2
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 `
 
 type UpdateExamFinalReportParams struct {
@@ -449,7 +480,6 @@ func (q *Queries) UpdateExamFinalReport(ctx context.Context, arg UpdateExamFinal
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -463,6 +493,7 @@ func (q *Queries) UpdateExamFinalReport(ctx context.Context, arg UpdateExamFinal
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }
@@ -473,7 +504,7 @@ SET
     updated_at = CURRENT_TIMESTAMP,
     prelim_report_id = $2
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, order_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id
+RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
 `
 
 type UpdateExamPrelimReportParams struct {
@@ -489,7 +520,6 @@ func (q *Queries) UpdateExamPrelimReport(ctx context.Context, arg UpdateExamPrel
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.OutsideSystemID,
-		&i.OrderID,
 		&i.VisitID,
 		&i.MrnID,
 		&i.SiteID,
@@ -503,6 +533,7 @@ func (q *Queries) UpdateExamPrelimReport(ctx context.Context, arg UpdateExamPrel
 		&i.EndExamDt,
 		&i.ExamCancelledDt,
 		&i.PrelimReportID,
+		&i.OrderingPhysicianID,
 	)
 	return i, err
 }

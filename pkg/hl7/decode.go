@@ -23,7 +23,17 @@ func Unmarshal(data []byte, v any) error {
 	// return nil
 }
 
-type decoder struct {
+func NewDecoder(data []byte) *Decoder {
+	d := newDecoder()
+	d.init(data, DefaultSegDelim)
+	return d
+}
+
+func (d *Decoder) Decode(v any) error {
+	return d.unmarshal(v)
+}
+
+type Decoder struct {
 	segMap       segmentMap       // this converts the name to the (list of) zero-based idx
 	segments     map[int]*segment // key is zero-based idx of segment
 	data         []byte
@@ -34,14 +44,14 @@ type decoder struct {
 	savedError   error
 }
 
-func newDecoder() *decoder {
-	return &decoder{
+func newDecoder() *Decoder {
+	return &Decoder{
 		segMap:   newSegmentMap(),
 		segments: make(map[int]*segment),
 	}
 }
 
-func (d *decoder) init(data []byte, segDelim byte) {
+func (d *Decoder) init(data []byte, segDelim byte) {
 	if len(data) < 8 {
 		d.saveError(fmt.Errorf("message is too short (length: %d)\n", len(data)))
 		return
@@ -96,7 +106,6 @@ func (d *decoder) init(data []byte, segDelim byte) {
 			currentSegFields = NewSegment(currentSegName)
 		case stateSegmentEnd:
 			currentSegFields.endIdx = d.readIndex()
-			fmt.Printf("set size for %s to %d\n", currentSegName, currentSegFields.endIdx)
 			d.segMap.addSegment(currentSegName, currentSegIdx)
 			d.segments[currentSegIdx] = currentSegFields
 			d.start = d.off
@@ -119,14 +128,14 @@ func (d *decoder) init(data []byte, segDelim byte) {
 	d.segments[currentSegIdx] = currentSegFields
 }
 
-func (d *decoder) scanNext() {
+func (d *Decoder) scanNext() {
 	if d.off < len(d.data) {
 		d.lastState = d.scan.step(d.scan, d.data[d.off])
 		d.off++
 	}
 }
 
-func (d *decoder) scanWhile(state scanState) {
+func (d *Decoder) scanWhile(state scanState) {
 	s, data, i := d.scan, d.data, d.off
 	for i < len(data) {
 		newState := s.step(s, d.data[i])
@@ -142,7 +151,7 @@ func (d *decoder) scanWhile(state scanState) {
 }
 
 // n is the "nth" segment repeat
-func (d *decoder) getFieldVal(s string, idx1, n int) string {
+func (d *Decoder) getFieldVal(s string, idx1, n int) string {
 	if s == messageHeader {
 		switch idx1 {
 		case 1:
@@ -158,7 +167,7 @@ func (d *decoder) getFieldVal(s string, idx1, n int) string {
 	return d.scanField(idx1, indices[n])
 }
 
-func (d *decoder) scanField(idx1, idx0 int) string {
+func (d *Decoder) scanField(idx1, idx0 int) string {
 	segment, ok := d.segments[idx0]
 	if !ok {
 		return ""
@@ -378,11 +387,11 @@ func cachedTypeFields(t reflect.Type) structFields {
 // 	savedError   error
 // }
 
-func (d *decoder) readIndex() int {
+func (d *Decoder) readIndex() int {
 	return d.off - 1
 }
 
-func (d *decoder) addErrorContext(err error) error {
+func (d *Decoder) addErrorContext(err error) error {
 	if d.errorContext != nil && (d.errorContext.Struct != nil || len(d.errorContext.FieldStack) > 0) {
 		switch err := err.(type) {
 		case *UnmarshalTypeError:
@@ -397,13 +406,13 @@ func (d *decoder) addErrorContext(err error) error {
 	return err
 }
 
-func (d *decoder) saveError(err error) {
+func (d *Decoder) saveError(err error) {
 	if d.savedError == nil {
 		d.savedError = d.addErrorContext(err)
 	}
 }
 
-func (d *decoder) unmarshal(v any) error {
+func (d *Decoder) unmarshal(v any) error {
 	val := reflect.ValueOf(v)
 	if val.Kind() != reflect.Pointer || val.IsNil() {
 		return &InvalidUnmarshalError{reflect.TypeOf(v)}
@@ -416,7 +425,7 @@ func (d *decoder) unmarshal(v any) error {
 	return d.savedError
 }
 
-func (d *decoder) repeatSegments(v reflect.Value, elemType reflect.Type) error {
+func (d *Decoder) repeatSegments(v reflect.Value, elemType reflect.Type) error {
 	for i := 0; ; i++ {
 		elemPtr := reflect.New(elemType).Elem()
 		err := d.prep(elemPtr, elemType, i)
@@ -441,14 +450,12 @@ func isEmptyStruct(v reflect.Value) bool {
 	return true
 }
 
-func (d *decoder) value(v reflect.Value, idx int) error {
+func (d *Decoder) value(v reflect.Value, idx int) error {
 	val := v.Elem()
 	typ := val.Type()
 
 	if val.Kind() == reflect.Slice {
-		fmt.Println("this is the hardest part")
 		elemType := typ.Elem()
-		fmt.Printf("elemType: %v\n", elemType)
 		if elemType.Kind() != reflect.Struct {
 			return fmt.Errorf("expected a slice of structs, but got %s", elemType)
 		}
@@ -458,7 +465,7 @@ func (d *decoder) value(v reflect.Value, idx int) error {
 	return d.prep(val, typ, idx)
 }
 
-func (d *decoder) prep(val reflect.Value, typ reflect.Type, idx int) error {
+func (d *Decoder) prep(val reflect.Value, typ reflect.Type, idx int) error {
 	for i := range typ.NumField() {
 		field := typ.Field(i)
 		hl7Tag := field.Tag.Get("hl7")

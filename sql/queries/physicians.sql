@@ -1,14 +1,14 @@
 -- name: CreatePhysician :one
 WITH upsert AS (
     INSERT INTO physicians (
-        first_name,
-        last_name,
-        middle_name,
-        suffix,
-        prefix,
-        degree,
-        npi,
-        specialty
+        first_name, -- $1
+        last_name, -- $2
+        middle_name, -- $3
+        suffix, -- $4
+        prefix, -- $5
+        degree, -- $6
+        app_code, -- $7
+        npi -- $8
     )
     VALUES (
         $1,
@@ -20,7 +20,7 @@ WITH upsert AS (
         $7,
         $8
     )
-    ON CONFLICT (first_name, last_name, npi) DO UPDATE
+    ON CONFLICT (first_name, last_name, app_code) DO UPDATE
     SET
         middle_name = EXCLUDED.middle_name,
         suffix = EXCLUDED.suffix,
@@ -41,7 +41,7 @@ SELECT * FROM physicians
 WHERE
     first_name = $1
     AND last_name = $2
-    AND npi = $7
+    AND app_code = $7
     AND NOT EXISTS (SELECT 1 FROM upsert);
 
 -- name: GetPhysicianById :one
@@ -57,6 +57,14 @@ WHERE
     AND last_name = $2
     AND npi = $3;
 
+-- name: GetPhysicianByNameAppCode :one
+SELECT *
+FROM physicians
+WHERE
+    first_name = $1
+    AND last_name = $2
+    AND app_code = $3;
+
 -- name: UpdatePhysician :one
 UPDATE physicians
 SET
@@ -67,7 +75,8 @@ SET
     suffix = $5,
     prefix = $6,
     degree = $7,
-    npi = $8,
-    specialty = $9
+    app_code = $8,
+    npi = $9,
+    specialty = $10
 WHERE id = $1
 RETURNING *;

@@ -10,7 +10,6 @@ import (
 
 	json "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
-	"github.com/s-hammon/volta/pkg/hl7"
 	"google.golang.org/api/healthcare/v1"
 	"google.golang.org/api/option"
 )
@@ -64,22 +63,12 @@ func NewHl7Client(ctx context.Context, opts ...option.ClientOption) (*Hl7Client,
 	return (*Hl7Client)(client), nil
 }
 
-func (h *Hl7Client) GetHL7V2Message(messagePath string) (hl7.Message, error) {
+func (h *Hl7Client) GetHL7V2Message(messagePath string) ([]byte, error) {
 	messagesSvc := h.Projects.Locations.Datasets.Hl7V2Stores.Messages
 	msg, err := messagesSvc.Get(messagePath).View("RAW_ONLY").Do()
 	if err != nil {
 		return nil, fmt.Errorf("error getting HL7 message: %w", err)
 	}
 
-	raw, err := base64.StdEncoding.DecodeString(msg.Data)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding HL7 message: %w", err)
-	}
-
-	msgMap, err := hl7.NewMessage(raw)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing HL7 message: %w", err)
-	}
-
-	return msgMap, nil
+	return base64.StdEncoding.DecodeString(msg.Data)
 }

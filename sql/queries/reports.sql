@@ -29,6 +29,10 @@ WHERE
 SELECT * FROM reports
 WHERE id = $1;
 
+-- name: GetReportByRadID :one
+SELECT * FROM reports
+where radiologist_id = $1;
+
 -- name: GetAllReports :many
 SELECT *
 FROM reports;

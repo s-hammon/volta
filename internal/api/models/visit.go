@@ -6,20 +6,20 @@ import (
 )
 
 type VisitModel struct {
-	VisitNo          string `json:"PV1.19"`
-	Class            string `json:"PV1.2"`
-	AssignedLocation PL     `json:"PV1.3"`
+	Facility         string `hl7:"MSH.4"`
+	MRN              CX     `hl7:"PID.3"`
+	VisitNo          string `hl7:"PV1.19"`
+	Class            string `hl7:"PV1.2"`
+	AssignedLocation PL     `hl7:"PV1.3"`
 }
 
-func (v *VisitModel) ToEntity(siteCode string, mrn CX) entity.Visit {
-	site := entity.Site{Code: siteCode}
-
+func (v *VisitModel) ToEntity() entity.Visit {
 	visit := entity.Visit{
 		VisitNo: v.VisitNo,
-		Site:    site,
+		Site:    entity.Site{Code: v.Facility},
 		MRN: entity.MRN{
-			Value:              mrn.ID,
-			AssigningAuthority: mrn.AssigningAuthority,
+			Value:              v.MRN.ID,
+			AssigningAuthority: v.MRN.AssigningAuthority,
 		},
 	}
 

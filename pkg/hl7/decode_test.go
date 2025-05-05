@@ -1,6 +1,7 @@
 package hl7
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -142,4 +143,59 @@ func TestUnmarshal(t *testing.T) {
 		},
 	}
 	require.Equal(t, wantOrders, orders)
+}
+
+func TestNewDecoder(t *testing.T) {
+	dec := NewDecoder(multipleOrders)
+	require.Nil(t, dec.savedError)
+
+	orders := []orderGroup{}
+	err := dec.Decode(&orders)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(orders))
+	wantOrders := []orderGroup{
+		{
+			"CN",
+			"42069",
+			"96024",
+			ce{Code: "CXR", Description: "Chest X-Ray"},
+			"S",
+		},
+		{
+			"RE",
+			"42070",
+			"07024",
+			ce{Code: "UDOP", Description: "US Doppler"},
+			"S",
+		},
+	}
+	require.Equal(t, wantOrders, orders)
+}
+
+func BenchmarkDecoderEach(b *testing.B) {
+	entries, err := HL7.ReadDir("test_hl7")
+	if err != nil {
+		b.Fatalf("failed to read embedded test directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		data, err := HL7.ReadFile(filepath.Join("test_hl7", entry.Name()))
+		if err != nil {
+			b.Fatalf("failed to read test file %s: %v", entry.Name(), err)
+		}
+		if len(data) == 0 {
+			b.Fatalf("file %s is empty", entry.Name())
+		}
+
+		b.Run(entry.Name(), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				d := NewDecoder(data)
+				if d.savedError != nil {
+					b.Fatalf("unexpected error in parsing: %v", d.savedError)
+				}
+			}
+		})
+	}
 }

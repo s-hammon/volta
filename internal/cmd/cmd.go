@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/internal/api"
+	"github.com/s-hammon/volta/internal/database"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +91,7 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		var db api.DB
+		var db *database.Queries
 		if !debugMode {
 			pool, err := pgxpool.New(ctx, dbURL)
 			if err != nil {
@@ -102,7 +103,7 @@ var serveCmd = &cobra.Command{
 				return err
 			}
 			log.Info().Msg("connected to database")
-			db = api.NewDB(pool)
+			db = database.New(pool)
 		} else {
 			log.Info().Msg("debug mode enabled; printing messages to stdout")
 		}
