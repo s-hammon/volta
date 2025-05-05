@@ -1,337 +1,143 @@
 package hl7
 
-import (
-	"strconv"
-	"sync"
-)
+const messageHeader = "MSH"
 
-// enums representing the current state
+// a node representing a field
+type fieldNode struct {
+	idx  int
+	next *fieldNode
+}
+
 const (
-	scanContinue = iota
+	stateBegin scanState = iota
+	stateContinue
+	stateSegmentName
+	stateSegmentNameEnd
+	stateFieldDelimiter
+	stateSegmentEnd
+	stateFieldValEnd
+	stateDone
 
-	scanBeginHeader
-	scanEndHeader
-
-	scanBeginEscape
-	scanEndEscape
-	scanEndField
-	scanEndComponent
-	scanEndSubComponent
-	scanEndRepeat
-	scanEndSegment
-	scanBeginLiteral
-	scanBeginSegmentName
-	scanEndSegmentName
-
-	scanEnd
-	scanError
+	stateErr
 )
 
-// SyntaxError describes the HL7 syntax error
-type SyntaxError struct {
-	msg    string
-	Offset int64
-}
-
-func (e *SyntaxError) Error() string { return e.msg }
-
-// a HL7 scanning state machine
-// takes inspiration from the `encoding/json` library
-// fortunately, HL7 is easier to parse in some ways than JSON
-// unfortunately, it is harder in others
+type scanState int
 type scanner struct {
-	step  func(*scanner, byte) int
-	err   error
-	bytes int64
-
-	charDict                                                   utfChars
-	segDelim, fldDelim, comDelim, repDelim, escDelim, subDelim byte
+	lastIdx            int
+	step               scanStep
+	segDelim, fldDelim byte
+	comDelim, repDelim byte
+	escDelim, subDelim byte
 }
 
-var scannerPool = sync.Pool{
-	New: func() any {
-		return &scanner{}
-	},
-}
+type scanStep func(scan *scanner, c byte) scanState
 
-func newScanner(segDelim byte) *scanner {
-	scan := scannerPool.Get().(*scanner)
-	scan.charDict = newCharDict()
-	scan.err = nil
-	if segDelim == 0 {
-		segDelim = '\r'
+func NewScanner(segmentDelim, fieldDelim byte) *scanner {
+	return &scanner{
+		step:     scanSegmentName,
+		segDelim: segmentDelim,
+		fldDelim: fieldDelim,
 	}
-	scan.segDelim = segDelim
-	return scan
 }
 
-func freeScanner(scan *scanner) {
-	scannerPool.Put(scan)
-}
-
-func stateInit(s *scanner, c byte) int {
-	if c != 'M' {
-		return s.error(c, "expected first character to be 'M'")
+func scanSegmentName(scan *scanner, c byte) scanState {
+	switch {
+	case isValidSegNameChar(c):
+		return stateSegmentName
+	case c == scan.fldDelim:
+		scan.step = scanFieldVal
+		return stateSegmentNameEnd
+	default:
+		return stateErr
 	}
-	s.step = stateFirstHeaderSegNameChar
-	return scanBeginHeader
 }
 
-func stateFirstHeaderSegNameChar(s *scanner, c byte) int {
-	if c != 'S' {
-		return s.error(c, "expected second character to be 'S'")
-	}
-	s.step = stateSecondHeaderSegNameChar
-	return scanBeginHeader
-}
-
-func stateSecondHeaderSegNameChar(s *scanner, c byte) int {
-	if c != 'H' {
-		return s.error(c, "expected second character to be 'H'")
-	}
-	s.step = stateThirdHeaderSegNameChar
-	return scanBeginHeader
-}
-
-func stateThirdHeaderSegNameChar(s *scanner, c byte) int {
-	if c == s.segDelim {
-		return s.error(c, "delimiter already in use")
-	}
-	if _, ok := s.charDict[c]; !ok {
-		return s.error(c, "invalid delimiter character")
-	}
-	s.fldDelim = c
-	delete(s.charDict, c)
-	s.step = stateFieldDelim
-	return scanBeginHeader
-}
-
-func stateFieldDelim(s *scanner, c byte) int {
+func scanFieldVal(scan *scanner, c byte) scanState {
 	switch c {
-	case s.segDelim, s.fldDelim:
-		return s.error(c, "delimiter already in use")
+	case scan.fldDelim:
+		return stateFieldValEnd
+	case scan.segDelim:
+		scan.step = scanSegmentName
+		return stateSegmentEnd
+	// TODO: add case for true utf-8 so we can default panic ;)
+	default:
+		return stateContinue
 	}
-	if _, ok := s.charDict[c]; !ok {
-		return s.error(c, "invalid delimiter character")
-	}
-	s.comDelim = c
-	delete(s.charDict, c)
-	s.step = stateComDelim
-	return scanBeginHeader
 }
 
-func stateComDelim(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim, s.fldDelim, s.comDelim:
-		return s.error(c, "delimiter already in use")
-	}
-	if _, ok := s.charDict[c]; !ok {
-		return s.error(c, "invalid delimiter character")
-	}
-	s.repDelim = c
-	delete(s.charDict, c)
-	s.step = stateRepDelim
-	return scanBeginHeader
-}
-
-func stateRepDelim(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim, s.fldDelim, s.comDelim, s.repDelim:
-		return s.error(c, "delimiter already in use")
-	}
-	if _, ok := s.charDict[c]; !ok {
-		return s.error(c, "invalid delimiter character")
-	}
-	s.escDelim = c
-	delete(s.charDict, c)
-	s.step = stateEscDelim
-	return scanBeginHeader
-}
-
-func stateEscDelim(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim, s.fldDelim, s.comDelim, s.repDelim, s.escDelim:
-		return s.error(c, "delimiter already in use")
-	}
-	if _, ok := s.charDict[c]; !ok {
-		return s.error(c, "invalid delimiter character")
-	}
-	s.subDelim = c
-	delete(s.charDict, c)
-	s.step = stateSubDelim
-	return scanBeginHeader
-}
-
-func stateSubDelim(s *scanner, c byte) int {
-	if c != s.fldDelim {
-		return s.error(c, "expected field delimiter after encoding characters (MSH.2)")
-	}
-	s.step = stateEndLiteral
-	return scanEndHeader
-}
-
-func stateEndLiteral(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim:
-		s.step = stateEndSegment
-		return scanEndSegment
-	case s.fldDelim:
-		s.step = stateEndLiteral
-		return scanEndField
-	case s.comDelim:
-		s.step = stateEndLiteral
-		return scanEndComponent
-	case s.repDelim:
-		s.step = stateEndLiteral
-		return scanEndRepeat
-	case s.subDelim:
-		s.step = stateEndLiteral
-		return scanEndSubComponent
-	case s.escDelim:
-		s.step = stateBeginEscape
-		return scanBeginEscape
-		// add other delims
-	}
-	if _, ok := s.charDict[c]; ok {
-		s.step = stateInLiteral
-		return scanBeginLiteral
-	}
-	return s.error(c, "invalid character in message")
-}
-
-func stateBeginEscape(s *scanner, c byte) int {
-	// for now, just see if A-Z
-	if c >= 'A' && c <= 'Z' {
-		s.step = stateInEscapeChar
-		return scanContinue
-	}
-	return s.error(c, "invalid escape literal")
-}
-
-func stateInEscapeChar(s *scanner, c byte) int {
-	if c == s.escDelim {
-		s.step = stateEndEscape
-		return scanEndEscape
-	}
-	return s.error(c, "unclosed escape delimiter")
-}
-
-func stateEndEscape(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim:
-		s.step = stateEndSegment
-		return scanEndSegment
-	case s.fldDelim:
-		s.step = stateEndLiteral
-		return scanEndField
-	case s.comDelim:
-		s.step = stateEndLiteral
-		return scanEndComponent
-	case s.repDelim:
-		s.step = stateEndLiteral
-		return scanEndRepeat
-	case s.subDelim:
-		s.step = stateEndLiteral
-		return scanEndSubComponent
-	case s.escDelim:
-		s.step = stateBeginEscape
-		return scanBeginEscape
-	}
-	if _, ok := s.charDict[c]; ok {
-		s.step = stateInLiteral
-		return scanBeginLiteral
-	}
-	return s.error(c, "invalid character")
-}
-
-func stateEndSegment(s *scanner, c byte) int {
-	if isValidSegmentNameChar(c) {
-		s.step = stateFirstSegNameChar
-		return scanBeginSegmentName
-	}
-	return s.error(c, "expected segment name (A-Z and/or 1-9)")
-}
-
-func stateFirstSegNameChar(s *scanner, c byte) int {
-	if isValidSegmentNameChar(c) {
-		s.step = stateSecondSegNameChar
-		return scanContinue
-	}
-	return s.error(c, "expected segment name (A-Z and/or 1-9)")
-}
-
-func stateSecondSegNameChar(s *scanner, c byte) int {
-	if isValidSegmentNameChar(c) {
-		s.step = stateThirdSegNameChar
-		return scanContinue
-	}
-	return s.error(c, "expected segment name (A-Z and/or 1-9)")
-}
-
-func stateThirdSegNameChar(s *scanner, c byte) int {
-	if c == s.fldDelim {
-		s.step = stateEndLiteral
-		return scanEndSegmentName
-	}
-	return s.error(c, "expected field delimiter")
-}
-
-func stateInLiteral(s *scanner, c byte) int {
-	switch c {
-	case s.segDelim:
-		s.step = stateEndSegment
-		return scanEndSegment
-	case s.fldDelim:
-		s.step = stateEndLiteral
-		return scanEndField
-	case s.comDelim:
-		s.step = stateEndLiteral
-		return scanEndComponent
-	case s.repDelim:
-		s.step = stateEndLiteral
-		return scanEndRepeat
-	case s.subDelim:
-		s.step = stateEndLiteral
-		return scanEndSubComponent
-	case s.escDelim:
-		s.step = stateBeginEscape
-		return scanBeginEscape
-	}
-	if _, ok := s.charDict[c]; ok {
-		s.step = stateInLiteral
-		return scanContinue
-	}
-	return s.error(c, "invalid character in message")
-}
-
-func stateError(s *scanner, c byte) int {
-	return scanError
-}
-
-func (s *scanner) reset() {
-	s.step = stateEndLiteral
-	s.err = nil
-}
-
-func (s *scanner) error(c byte, context string) int {
-	s.step = stateError
-	s.err = &SyntaxError{"invalid character " + quoteChar(c) + " " + context, s.bytes}
-	return scanError
-}
-
-// characters in segment names are usually
-// A-Z or 1-9
-func isValidSegmentNameChar(c byte) bool {
+func isValidSegNameChar(c byte) bool {
 	return (c >= 'A' && c <= 'Z') || (c >= '1' && c <= '9')
 }
 
-func quoteChar(c byte) string {
-	if c == '\'' {
-		return `'\''`
+// keys are the 1-based HL7 index of each field delimiter
+// values are the field node representing the byte index
+// they may point to a succeeding field node
+type fieldMap map[int]*fieldNode
+
+func newFieldMap() fieldMap { return make(fieldMap) }
+
+// idx is the 1-based HL7 index of the field delimiter
+// returns true if there is already a node registered for the given idx1
+func (m fieldMap) setFieldNode(idx int, n *fieldNode) (exists bool) {
+	_, exists = m[idx]
+	if !exists {
+		m[idx] = n
 	}
-	if c == '"' {
-		return `'"'`
+	return exists
+}
+
+// idx is the 1-based HL7 index of the field delimiter
+// if idx doesn't exist, exists returns false
+func (m fieldMap) getFieldNode(idx int) (n *fieldNode, exists bool) {
+	val, exists := m[idx]
+	return val, exists
+}
+
+type segment struct {
+	name   string
+	endIdx int
+	fields fieldMap
+}
+
+func NewSegment(s string) *segment {
+	return &segment{name: s, fields: newFieldMap()}
+}
+
+// hl7Idx is the 1-based HL7 index of the field delimiter
+// bytIdx is the 0-based index of the field delimiter (in the raw byte slice
+// AddField will set the scanner's lastIdx field to the current one
+func (s *segment) AddField(hl7Idx, bytIdx int, scan *scanner) (exists bool) {
+	n := &fieldNode{idx: bytIdx}
+	if prev, ok := s.fields.getFieldNode(scan.lastIdx); ok {
+		prev.next = n
 	}
-	s := strconv.Quote(string(c))
-	return "'" + s[1:len(s)-1] + "'"
+	exists = s.fields.setFieldNode(hl7Idx, n)
+	if !exists {
+		scan.lastIdx = hl7Idx
+	}
+	return exists
+}
+
+func (s *segment) GetFieldIdx(hl7Idx int) int {
+	idx, ok := s.fields.getFieldNode(hl7Idx)
+	if !ok {
+		return -1
+	}
+	return idx.idx
+}
+
+// keys are the 3-letter segment names (MSH, PID, OBX, etc)
+// values are the segment structure of each occurring segment
+// for the given key
+type segmentMap map[string][]int
+
+func newSegmentMap() segmentMap { return make(segmentMap) }
+
+func (m segmentMap) getSegmentIndices(s string) (indices []int, exists bool) {
+	indices, exists = m[s]
+	return indices, exists
+}
+
+func (m segmentMap) addSegment(s string, idx int) {
+	m[s] = append(m[s], idx)
 }
