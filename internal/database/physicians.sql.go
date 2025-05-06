@@ -14,14 +14,14 @@ import (
 const createPhysician = `-- name: CreatePhysician :one
 WITH upsert AS (
     INSERT INTO physicians (
-        first_name,
-        last_name,
-        middle_name,
-        suffix,
-        prefix,
-        degree,
-        npi,
-        specialty
+        first_name, -- $1
+        last_name, -- $2
+        middle_name, -- $3
+        suffix, -- $4
+        prefix, -- $5
+        degree, -- $6
+        app_code, -- $7
+        npi -- $8
     )
     VALUES (
         $1,
@@ -33,7 +33,7 @@ WITH upsert AS (
         $7,
         $8
     )
-    ON CONFLICT (first_name, last_name, npi) DO UPDATE
+    ON CONFLICT (first_name, last_name, app_code) DO UPDATE
     SET
         middle_name = EXCLUDED.middle_name,
         suffix = EXCLUDED.suffix,
@@ -46,15 +46,15 @@ WITH upsert AS (
         OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
         OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
         OR physicians.specialty IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.specialty, ''), physicians.specialty)
-    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
 )
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty FROM upsert
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty FROM physicians
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code FROM physicians
 WHERE
     first_name = $1
     AND last_name = $2
-    AND npi = $7
+    AND app_code = $7
     AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
@@ -65,8 +65,8 @@ type CreatePhysicianParams struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
+	AppCode    pgtype.Text
 	Npi        string
-	Specialty  pgtype.Text
 }
 
 type CreatePhysicianRow struct {
@@ -81,6 +81,7 @@ type CreatePhysicianRow struct {
 	Degree     pgtype.Text
 	Npi        string
 	Specialty  pgtype.Text
+	AppCode    pgtype.Text
 }
 
 func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (CreatePhysicianRow, error) {
@@ -91,8 +92,8 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 		arg.Suffix,
 		arg.Prefix,
 		arg.Degree,
+		arg.AppCode,
 		arg.Npi,
-		arg.Specialty,
 	)
 	var i CreatePhysicianRow
 	err := row.Scan(
@@ -107,12 +108,13 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 		&i.Degree,
 		&i.Npi,
 		&i.Specialty,
+		&i.AppCode,
 	)
 	return i, err
 }
 
 const getPhysicianById = `-- name: GetPhysicianById :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
 FROM physicians
 WHERE id = $1
 `
@@ -132,12 +134,48 @@ func (q *Queries) GetPhysicianById(ctx context.Context, id int64) (Physician, er
 		&i.Degree,
 		&i.Npi,
 		&i.Specialty,
+		&i.AppCode,
+	)
+	return i, err
+}
+
+const getPhysicianByNameAppCode = `-- name: GetPhysicianByNameAppCode :one
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+FROM physicians
+WHERE
+    first_name = $1
+    AND last_name = $2
+    AND app_code = $3
+`
+
+type GetPhysicianByNameAppCodeParams struct {
+	FirstName string
+	LastName  string
+	AppCode   pgtype.Text
+}
+
+func (q *Queries) GetPhysicianByNameAppCode(ctx context.Context, arg GetPhysicianByNameAppCodeParams) (Physician, error) {
+	row := q.db.QueryRow(ctx, getPhysicianByNameAppCode, arg.FirstName, arg.LastName, arg.AppCode)
+	var i Physician
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.MiddleName,
+		&i.Suffix,
+		&i.Prefix,
+		&i.Degree,
+		&i.Npi,
+		&i.Specialty,
+		&i.AppCode,
 	)
 	return i, err
 }
 
 const getPhysicianByNameNPI = `-- name: GetPhysicianByNameNPI :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
 FROM physicians
 WHERE
     first_name = $1
@@ -166,6 +204,7 @@ func (q *Queries) GetPhysicianByNameNPI(ctx context.Context, arg GetPhysicianByN
 		&i.Degree,
 		&i.Npi,
 		&i.Specialty,
+		&i.AppCode,
 	)
 	return i, err
 }
@@ -180,10 +219,11 @@ SET
     suffix = $5,
     prefix = $6,
     degree = $7,
-    npi = $8,
-    specialty = $9
+    app_code = $8,
+    npi = $9,
+    specialty = $10
 WHERE id = $1
-RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty
+RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
 `
 
 type UpdatePhysicianParams struct {
@@ -194,6 +234,7 @@ type UpdatePhysicianParams struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
+	AppCode    pgtype.Text
 	Npi        string
 	Specialty  pgtype.Text
 }
@@ -207,6 +248,7 @@ func (q *Queries) UpdatePhysician(ctx context.Context, arg UpdatePhysicianParams
 		arg.Suffix,
 		arg.Prefix,
 		arg.Degree,
+		arg.AppCode,
 		arg.Npi,
 		arg.Specialty,
 	)
@@ -223,6 +265,7 @@ func (q *Queries) UpdatePhysician(ctx context.Context, arg UpdatePhysicianParams
 		&i.Degree,
 		&i.Npi,
 		&i.Specialty,
+		&i.AppCode,
 	)
 	return i, err
 }

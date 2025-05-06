@@ -9,24 +9,24 @@ import (
 )
 
 type Exam struct {
-	ID               int64
-	CreatedAt        pgtype.Timestamp
-	UpdatedAt        pgtype.Timestamp
-	OutsideSystemID  pgtype.Int4
-	OrderID          pgtype.Int8
-	VisitID          pgtype.Int8
-	MrnID            pgtype.Int8
-	SiteID           pgtype.Int4
-	ProcedureID      pgtype.Int4
-	FinalReportID    pgtype.Int8
-	AddendumReportID pgtype.Int8
-	Accession        string
-	CurrentStatus    string
-	ScheduleDt       pgtype.Timestamp
-	BeginExamDt      pgtype.Timestamp
-	EndExamDt        pgtype.Timestamp
-	ExamCancelledDt  pgtype.Timestamp
-	PrelimReportID   pgtype.Int8
+	ID                  int64
+	CreatedAt           pgtype.Timestamp
+	UpdatedAt           pgtype.Timestamp
+	OutsideSystemID     pgtype.Int4
+	VisitID             pgtype.Int8
+	MrnID               pgtype.Int8
+	SiteID              pgtype.Int4
+	ProcedureID         pgtype.Int4
+	FinalReportID       pgtype.Int8
+	AddendumReportID    pgtype.Int8
+	Accession           string
+	CurrentStatus       string
+	ScheduleDt          pgtype.Timestamp
+	BeginExamDt         pgtype.Timestamp
+	EndExamDt           pgtype.Timestamp
+	ExamCancelledDt     pgtype.Timestamp
+	PrelimReportID      pgtype.Int8
+	OrderingPhysicianID pgtype.Int8
 }
 
 type Message struct {
@@ -62,20 +62,6 @@ type Mrn struct {
 	PatientID pgtype.Int8
 	Mrn       string
 	SiteID    int32
-}
-
-type Order struct {
-	ID                  int64
-	CreatedAt           pgtype.Timestamp
-	UpdatedAt           pgtype.Timestamp
-	OutsideSystemID     pgtype.Int4
-	SiteID              pgtype.Int4
-	VisitID             pgtype.Int8
-	MrnID               pgtype.Int8
-	OrderingPhysicianID pgtype.Int8
-	Arrival             pgtype.Timestamp
-	Number              string
-	CurrentStatus       string
 }
 
 type OutsideSystem struct {
@@ -116,6 +102,7 @@ type Physician struct {
 	Degree     pgtype.Text
 	Npi        string
 	Specialty  pgtype.Text
+	AppCode    pgtype.Text
 }
 
 type Procedure struct {

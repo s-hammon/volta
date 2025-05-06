@@ -2,23 +2,46 @@ package entity
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 )
 
+type ExamStatus string
+
+const (
+	ExamScheduled  ExamStatus = "SC"
+	ExamInProgress ExamStatus = "IP"
+	ExamComplete   ExamStatus = "CM"
+	ExamCancelled  ExamStatus = "CA"
+)
+
+func NewExamStatus(s string) ExamStatus {
+	switch s {
+	case "SC", "IP", "CM", "CA":
+		return ExamStatus(s)
+	}
+	return ExamScheduled
+}
+
+func (o ExamStatus) String() string {
+	return string(o)
+}
+
 type Exam struct {
 	Base
-	Accession   string
-	MRN         MRN
-	Procedure   Procedure
-	Site        Site
-	Scheduled   time.Time
-	Begin       time.Time
-	End         time.Time
-	Cancelled   time.Time
-	Rescheduled map[time.Time]struct{} // this might be interesting
+	Accession     string
+	MRN           MRN
+	Procedure     Procedure
+	CurrentStatus ExamStatus
+	Provider      Physician
+	Site          Site
+	Scheduled     time.Time
+	Begin         time.Time
+	End           time.Time
+	Cancelled     time.Time
 }
 
 func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
@@ -56,25 +79,25 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 			Name:    exam.SiteName.String,
 			Address: exam.SiteAddress.String,
 		},
-		Scheduled:   exam.ScheduleDt.Time,
-		Begin:       exam.BeginExamDt.Time,
-		End:         exam.EndExamDt.Time,
-		Rescheduled: make(map[time.Time]struct{}),
+		Scheduled: exam.ScheduleDt.Time,
+		Begin:     exam.BeginExamDt.Time,
+		End:       exam.EndExamDt.Time,
 	}
 }
 
-func (e *Exam) ToDB(ctx context.Context, orderID, visitID, mrnID int64, siteID, procedureID int32, currentStatus string, db *database.Queries) (int64, error) {
+func (e *Exam) ToDB(ctx context.Context, visitID, mrnID, physID int64, siteID, procedureID int32, db *database.Queries) (int64, error) {
 	params := database.CreateExamParams{
-		OrderID:       pgtype.Int8{Int64: orderID, Valid: true},
-		VisitID:       pgtype.Int8{Int64: visitID, Valid: true},
-		MrnID:         pgtype.Int8{Int64: int64(mrnID), Valid: true},
-		SiteID:        pgtype.Int4{Int32: int32(siteID), Valid: true},
-		ProcedureID:   pgtype.Int4{Int32: int32(procedureID), Valid: true},
-		Accession:     e.Accession,
-		CurrentStatus: currentStatus,
+		VisitID:             pgtype.Int8{Int64: visitID, Valid: true},
+		MrnID:               pgtype.Int8{Int64: int64(mrnID), Valid: true},
+		SiteID:              pgtype.Int4{Int32: int32(siteID), Valid: true},
+		ProcedureID:         pgtype.Int4{Int32: int32(procedureID), Valid: true},
+		OrderingPhysicianID: pgtype.Int8{Int64: physID, Valid: true},
+		Accession:           e.Accession,
+		CurrentStatus:       e.CurrentStatus.String(),
 	}
 	e.timestamp(&params)
 
+	fmt.Printf("%+v\n", params)
 	exam, err := db.CreateExam(ctx, params)
 	if err != nil {
 		return 0, err

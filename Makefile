@@ -9,7 +9,6 @@ build:
 
 clean: reset up
 	@rm -rf bin
-	@rm pkg/hl7/test_hl7/*.json || true
 	@go mod tidy
 
 up:

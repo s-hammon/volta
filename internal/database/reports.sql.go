@@ -135,6 +135,27 @@ func (q *Queries) GetReportById(ctx context.Context, id int64) (Report, error) {
 	return i, err
 }
 
+const getReportByRadID = `-- name: GetReportByRadID :one
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+where radiologist_id = $1
+`
+
+func (q *Queries) GetReportByRadID(ctx context.Context, radiologistID pgtype.Int8) (Report, error) {
+	row := q.db.QueryRow(ctx, getReportByRadID, radiologistID)
+	var i Report
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RadiologistID,
+		&i.Body,
+		&i.Impression,
+		&i.ReportStatus,
+		&i.SubmittedDt,
+	)
+	return i, err
+}
+
 const getReportByUniqueFields = `-- name: GetReportByUniqueFields :one
 SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
 FROM reports

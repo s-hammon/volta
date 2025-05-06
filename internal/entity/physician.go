@@ -11,6 +11,7 @@ import (
 type Physician struct {
 	Base
 	Name      objects.Name
+	AppCode   string
 	NPI       string
 	Specialty objects.Specialty
 }
@@ -30,6 +31,7 @@ func DBtoPhysician(physician database.Physician) Physician {
 			Prefix: physician.Prefix.String,
 			Degree: physician.Degree.String,
 		},
+		AppCode:   physician.AppCode.String,
 		NPI:       physician.Npi,
 		Specialty: objects.Specialty(physician.Specialty.String),
 	}
@@ -43,8 +45,8 @@ func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (int64, erro
 		Suffix:     pgtype.Text{String: p.Name.Suffix, Valid: true},
 		Prefix:     pgtype.Text{String: p.Name.Prefix, Valid: true},
 		Degree:     pgtype.Text{String: p.Name.Degree, Valid: true},
+		AppCode:    pgtype.Text{String: p.AppCode, Valid: true},
 		Npi:        p.NPI,
-		Specialty:  pgtype.Text{String: p.Specialty.String(), Valid: true},
 	})
 	if err != nil {
 		return 0, err
