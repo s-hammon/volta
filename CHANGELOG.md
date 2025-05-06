@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.0]
+
+- New HL7 decoder
+- Removed `orders` table from data model
+- Physicians/radiologists now tracked by name & "app code"
+  - The "app code" is just whatever code is sent over the HL7
+  - NPI does not actually come to us for radiologists
+
 ## [v0.5.5]
 
 - convert HL7 timestamps form CST to UTC before writing to database
@@ -75,21 +83,21 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 ## [v0.3.0-alpha]
 
 - Changed path of PubSub message type from "Attributes.type" to "Attributes.msgType"
-- Fixed & modified logging for JSON response 
+- Fixed & modified logging for JSON response
 - Changed HL7 parsing logic to handle any repeating segment
 - Added "OrderGroup" data type to handle ORUs w/ multiple orders
-    * ORUs may come with a second, third, etc. ORC/OBR group
-    * Dictation handles all in one report
-    * Each group is still handled as their own exam
+
+  - ORUs may come with a second, third, etc. ORC/OBR group
+  - Dictation handles all in one report
+  - Each group is still handled as their own exam
 
 - **Schema change**
 
   ![updated data model](assets/diagrams/relationships.real.large.png)
 
-    * `reports` model no longer has FK reference to `exam.id`; `exam` model now has `final_report_id` and `addendum_report_id` FK reference
-    * This is because one report may be assigned to multiple exams (see above)
-    * No significant instance of >2 reports (1 final, 1 addendum) assigned to an exam to warrant a bridge table
-
+  - `reports` model no longer has FK reference to `exam.id`; `exam` model now has `final_report_id` and `addendum_report_id` FK reference
+  - This is because one report may be assigned to multiple exams (see above)
+  - No significant instance of >2 reports (1 final, 1 addendum) assigned to an exam to warrant a bridge table
 
 - Development: built-in integration testing for schema changes
 
@@ -143,3 +151,8 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.4.3-alpha]: https://github.com/s-hammon/volta/releases/tag/v0.4.3-alpha
 [v0.5.0]: https://github.com/s-hammon/volta/releases/tag/v0.5.0
 [v0.5.1]: https://github.com/s-hammon/volta/releases/tag/v0.5.1
+[v0.5.2]: https://github.com/s-hammon/volta/releases/tag/v0.5.2
+[v0.5.3]: https://github.com/s-hammon/volta/releases/tag/v0.5.3
+[v0.5.4]: https://github.com/s-hammon/volta/releases/tag/v0.5.4
+[v0.5.5]: https://github.com/s-hammon/volta/releases/tag/v0.5.5
+[v0.6.0]: https://github.com/s-hammon/volta/releases/tag/v0.6.0
