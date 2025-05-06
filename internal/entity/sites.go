@@ -23,18 +23,21 @@ func DBtoSite(site database.Site) Site {
 			UpdatedAt: site.UpdatedAt.Time,
 		},
 		Code:    site.Code,
-		Name:    site.Name,
+		Name:    site.Name.String,
 		Address: site.Address,
 		// TODO: handle phone numbers
 	}
 }
 
 func (s *Site) ToDB(ctx context.Context, db *database.Queries) (int32, error) {
-	res, err := db.CreateSite(ctx, database.CreateSiteParams{
+	params := database.CreateSiteParams{
 		Code:    s.Code,
-		Name:    s.Name,
 		Address: s.Address,
-	})
+	}
+	if s.Name != "" {
+		params.Name.String = s.Name
+	}
+	res, err := db.CreateSite(ctx, params)
 	if err != nil {
 		return 0, err
 	}

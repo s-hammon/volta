@@ -25,7 +25,7 @@ func NewDecoder(data []byte) *Decoder {
 
 func (d *Decoder) init(data []byte, segDelim byte) {
 	if len(data) < 8 {
-		d.savedErr = fmt.Errorf("message is too short (length: %d)\n", len(data))
+		d.savedErr = fmt.Errorf("message is too short (length: %d)", len(data))
 		return
 	}
 	d.data = data

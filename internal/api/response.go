@@ -1,21 +1,25 @@
 package api
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+
+	json "github.com/json-iterator/go"
 )
 
-func respondJSON(w http.ResponseWriter, code int, data interface{}) {
+func respondJSON(w http.ResponseWriter, code int, data any) {
 	w.Header().Set("Content-Type", "application/json")
-	dat, err := json.Marshal(data)
+	j, err := json.Marshal(data)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("failed to marshal JSON response: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
-
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(j)))
 	w.WriteHeader(code)
-	if _, err = w.Write(dat); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	if _, err = w.Write(j); err != nil {
+		http.Error(w, fmt.Sprintf("failed to write response body: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 }

@@ -31,23 +31,26 @@ func DBtoPhysician(physician database.Physician) Physician {
 			Prefix: physician.Prefix.String,
 			Degree: physician.Degree.String,
 		},
-		AppCode:   physician.AppCode.String,
-		NPI:       physician.Npi,
+		AppCode:   physician.AppCode,
+		NPI:       physician.Npi.String,
 		Specialty: objects.Specialty(physician.Specialty.String),
 	}
 }
 
 func (p *Physician) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
-	phys, err := db.CreatePhysician(ctx, database.CreatePhysicianParams{
+	params := database.CreatePhysicianParams{
 		FirstName:  p.Name.First,
 		LastName:   p.Name.Last,
 		MiddleName: pgtype.Text{String: p.Name.Middle, Valid: true},
 		Suffix:     pgtype.Text{String: p.Name.Suffix, Valid: true},
 		Prefix:     pgtype.Text{String: p.Name.Prefix, Valid: true},
 		Degree:     pgtype.Text{String: p.Name.Degree, Valid: true},
-		AppCode:    pgtype.Text{String: p.AppCode, Valid: true},
-		Npi:        p.NPI,
-	})
+		AppCode:    p.AppCode,
+	}
+	if p.NPI != "" {
+		params.Npi.String = p.NPI
+	}
+	phys, err := db.CreatePhysician(ctx, params)
 	if err != nil {
 		return 0, err
 	}

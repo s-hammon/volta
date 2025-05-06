@@ -4,11 +4,12 @@ WITH upsert AS (
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (site_id, code) DO UPDATE
     SET description = EXCLUDED.description,
-        specialty = EXCLUDED.specialty,
-        modality = EXCLUDED.modality
-    WHERE procedures.description IS DISTINCT FROM EXCLUDED.description
-        OR procedures.specialty IS DISTINCT FROM EXCLUDED.specialty
-        OR procedures.modality IS DISTINCT FROM EXCLUDED.modality
+        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
+        modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
+    WHERE
+        procedures.description IS DISTINCT FROM EXCLUDED.description
+        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
+        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
     RETURNING *
 )
 SELECT * FROM upsert

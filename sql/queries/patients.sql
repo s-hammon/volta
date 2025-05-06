@@ -1,18 +1,18 @@
 -- name: CreatePatient :one
 WITH upsert AS (
     INSERT INTO patients (
-        first_name,
-        last_name,
-        middle_name,
-        suffix,
-        prefix,
-        degree,
-        dob,
-        sex,
-        ssn,
-        home_phone,
-        work_phone,
-        cell_phone
+        first_name, -- $1
+        last_name, -- $2
+        middle_name, -- $3
+        suffix, -- $4
+        prefix, -- $5
+        degree, -- $6
+        dob, -- $7
+        sex, -- $8
+        ssn, -- $9
+        home_phone, -- $10
+        work_phone, -- $11
+        cell_phone -- $12
     )
     VALUES (
         $1,
@@ -29,20 +29,21 @@ WITH upsert AS (
         $12
     )
     ON CONFLICT (ssn) DO UPDATE
-    SET first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        middle_name = EXCLUDED.middle_name,
-        suffix = EXCLUDED.suffix,
-        prefix = EXCLUDED.prefix,
-        degree = EXCLUDED.degree,
+    SET first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name),
+        last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), patients.last_name),
+        middle_name = COALESCE(NULLIF(EXCLUDED.middle_name, ''), patients.middle_name),
+        suffix = COALESCE(NULLIF(EXCLUDED.suffix, ''), patients.suffix),
+        prefix = COALESCE(NULLIF(EXCLUDED.prefix, ''), patients.prefix),
+        degree = COALESCE(NULLIF(EXCLUDED.degree, ''), patients.degree),
         dob = EXCLUDED.dob,
         sex = EXCLUDED.sex,
         home_phone = EXCLUDED.home_phone,
         work_phone = EXCLUDED.work_phone,
         cell_phone = EXCLUDED.cell_phone
-    WHERE patients.first_name IS DISTINCT FROM EXCLUDED.first_name
-        OR patients.last_name IS DISTINCT FROM EXCLUDED.last_name
-        OR patients.middle_name IS DISTINCT FROM EXCLUDED.middle_name
+    WHERE
+        COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name) IS DISTINCT FROM EXCLUDED.first_name
+        OR COALESCE(NULLIF(EXCLUDED.last_name, ''), patients.last_name) IS DISTINCT FROM EXCLUDED.last_name
+        OR COALESCE(NULLIF(EXCLUDED.middle_name, ''), patients.middle_name) IS DISTINCT FROM EXCLUDED.middle_name
         OR patients.suffix IS DISTINCT FROM EXCLUDED.suffix
         OR patients.prefix IS DISTINCT FROM EXCLUDED.prefix
         OR patients.degree IS DISTINCT FROM EXCLUDED.degree

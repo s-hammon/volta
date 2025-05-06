@@ -1,18 +1,20 @@
 -- name: CreateSite :one
 WITH upsert AS (
     INSERT INTO SITES (
-        code,
-        name,
-        address,
-        is_cms
+        code, -- $1
+        name, -- $2
+        address, -- $3
+        is_cms -- $4
     )
     VALUES ($1, $2, $3, $4)
-    ON CONFLICT (code, name) DO UPDATE
+    ON CONFLICT (code) DO UPDATE
     SET
+        name = EXCLUDED.name,
         address = EXCLUDED.address,
         is_cms = EXCLUDED.is_cms
     WHERE
-        sites.address IS DISTINCT FROM EXCLUDED.address
+        sites.name IS DISTINCT FROM EXCLUDED.name
+        OR sites.address IS DISTINCT FROM EXCLUDED.address
         OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
     RETURNING *
 )
@@ -20,7 +22,6 @@ SELECT * FROM upsert
 UNION ALL
 SELECT * FROM sites
 WHERE code = $1
-    AND name = $2
     AND NOT EXISTS (SELECT 1 FROM upsert);
 
 -- name: GetSiteById :one

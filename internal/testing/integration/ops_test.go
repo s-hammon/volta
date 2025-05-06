@@ -50,7 +50,7 @@ func TestHL7Upserts(t *testing.T) {
 			dbMsg, err := m.ToDB(ctx, repo.Queries)
 			assert.NoError(t, err)
 			assert.NotEqual(t, 0, dbMsg.ID)
-			getMsg, err := repo.Queries.GetMessageByID(ctx, dbMsg.ID)
+			getMsg, err := repo.GetMessageByID(ctx, dbMsg.ID)
 			assert.NoError(t, err)
 			assert.Equal(t, dbMsg.ID, getMsg.ID)
 
@@ -79,7 +79,7 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	pID, err := p.ToDB(ctx, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, pID)
-	dbPatient, err := repo.Queries.GetPatientById(ctx, pID)
+	dbPatient, err := repo.GetPatientById(ctx, pID)
 	require.NoError(t, err)
 	require.Equal(t, pID, dbPatient.ID)
 
@@ -91,21 +91,21 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	sID, err := v.Site.ToDB(ctx, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, sID)
-	site, err := repo.Queries.GetSiteById(ctx, sID)
+	site, err := repo.GetSiteById(ctx, sID)
 	require.NoError(t, err)
 	require.Equal(t, sID, site.ID)
 
 	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, mID)
-	mrn, err := repo.Queries.GetMrnById(ctx, mID)
+	mrn, err := repo.GetMrnById(ctx, mID)
 	require.NoError(t, err)
 	require.Equal(t, mID, mrn.ID)
 
 	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, vID)
-	dbVisit, err := repo.Queries.GetVisitById(ctx, vID)
+	dbVisit, err := repo.GetVisitById(ctx, vID)
 	require.NoError(t, err)
 	require.Equal(t, vID, dbVisit.ID)
 
@@ -119,7 +119,7 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	phID, err := eg[0].Provider.ToDB(ctx, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, phID)
-	physician, err := repo.Queries.GetPhysicianById(ctx, phID)
+	physician, err := repo.GetPhysicianById(ctx, phID)
 	require.NoError(t, err)
 	require.Equal(t, phID, physician.ID)
 
@@ -128,14 +128,14 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 		prID, err := eg[i].Procedure.ToDB(ctx, sID, repo.Queries)
 		require.NoError(t, err)
 		require.NotEqual(t, 0, prID)
-		proc, err := repo.Queries.GetProcedureById(ctx, prID)
+		proc, err := repo.GetProcedureById(ctx, prID)
 		require.NoError(t, err)
 		require.Equal(t, prID, proc.ID)
 
 		eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
 		require.NoError(t, err)
 		require.NotEqual(t, 0, eID)
-		dbExam, err := repo.Queries.GetExamById(ctx, eID)
+		dbExam, err := repo.GetExamById(ctx, eID)
 		require.NoError(t, err)
 		require.Equal(t, eID, dbExam.ID)
 		assertNotNullStatusTimestamp(t, dbExam)
@@ -152,9 +152,9 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	rID, err := r.ToDB(ctx, repo.Queries, radID)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, rID)
-	dbReport, err := repo.Queries.GetReportById(ctx, rID)
+	dbReport, err := repo.GetReportById(ctx, rID)
 	require.NoError(t, err)
-	reportEnt, err := repo.Queries.GetReportByRadID(ctx, pgtype.Int8{Int64: radID, Valid: true})
+	reportEnt, err := repo.GetReportByRadID(ctx, pgtype.Int8{Int64: radID, Valid: true})
 	require.NoError(t, err)
 	require.Equal(t, rID, dbReport.ID)
 	assert.Equal(t, r.Body, dbReport.Body)
@@ -166,13 +166,13 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	switch r.Status {
 	case objects.Final:
 		for _, examID := range examIDs {
-			exam, err := repo.Queries.UpdateExamFinalReport(ctx, database.UpdateExamFinalReportParams{
+			exam, err := repo.UpdateExamFinalReport(ctx, database.UpdateExamFinalReportParams{
 				ID:            examID,
 				FinalReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
 			})
 			require.NoError(t, err)
 			require.NotEqual(t, 0, exam.ID)
-			updatedExam, err := repo.Queries.GetExamById(ctx, exam.ID)
+			updatedExam, err := repo.GetExamById(ctx, exam.ID)
 			require.NoError(t, err)
 			assert.Equal(t, exam.ID, updatedExam.ID)
 			assert.Equal(t, exam.FinalReportID.Int64, dbReport.ID)
@@ -180,13 +180,13 @@ func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 		}
 	case objects.Addendum:
 		for _, examID := range examIDs {
-			exam, err := repo.Queries.UpdateExamAddendumReport(ctx, database.UpdateExamAddendumReportParams{
+			exam, err := repo.UpdateExamAddendumReport(ctx, database.UpdateExamAddendumReportParams{
 				ID:               examID,
 				AddendumReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
 			})
 			require.NoError(t, err)
 			require.NotEqual(t, 0, exam.ID)
-			updatedExam, err := repo.Queries.GetExamById(ctx, exam.ID)
+			updatedExam, err := repo.GetExamById(ctx, exam.ID)
 			require.NoError(t, err)
 			assert.Equal(t, exam.ID, updatedExam.ID)
 			assert.Equal(t, exam.AddendumReportID, dbReport.ID)
@@ -206,7 +206,7 @@ func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	pID, err := p.ToDB(ctx, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, pID)
-	dbPatient, err := repo.Queries.GetPatientById(ctx, pID)
+	dbPatient, err := repo.GetPatientById(ctx, pID)
 	require.NoError(t, err)
 	require.Equal(t, pID, dbPatient.ID)
 
@@ -218,21 +218,21 @@ func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	sID, err := v.Site.ToDB(ctx, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, sID)
-	site, err := repo.Queries.GetSiteById(ctx, sID)
+	site, err := repo.GetSiteById(ctx, sID)
 	require.NoError(t, err)
 	require.Equal(t, sID, site.ID)
 
 	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, mID)
-	mrn, err := repo.Queries.GetMrnById(ctx, mID)
+	mrn, err := repo.GetMrnById(ctx, mID)
 	require.NoError(t, err)
 	require.Equal(t, mID, mrn.ID)
 
 	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, vID)
-	dbVisit, err := repo.Queries.GetVisitById(ctx, vID)
+	dbVisit, err := repo.GetVisitById(ctx, vID)
 	require.NoError(t, err)
 	require.Equal(t, vID, dbVisit.ID)
 
@@ -251,7 +251,7 @@ func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decode
 	eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, eID)
-	dbExam, err := repo.Queries.GetExamById(ctx, eID)
+	dbExam, err := repo.GetExamById(ctx, eID)
 	require.NoError(t, err)
 	require.Equal(t, eID, dbExam.ID)
 	assertNotNullStatusTimestamp(t, dbExam)

@@ -17,7 +17,7 @@ func TestSiteDBtoSite(t *testing.T) {
 		CreatedAt: pgtype.Timestamp{Time: createdAt, Valid: true},
 		UpdatedAt: pgtype.Timestamp{Time: updatedAt, Valid: true},
 		Code:      "MHS",
-		Name:      "Methodist Hospital",
+		Name:      pgtype.Text{String: "Methodist Hospital", Valid: true},
 		Address:   "7700 Floyd Curl Dr",
 	}
 

@@ -3,13 +3,11 @@ package api
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"slices"
 
 	json "github.com/json-iterator/go"
-	"github.com/rs/zerolog/log"
 	"google.golang.org/api/healthcare/v1"
 	"google.golang.org/api/option"
 )
@@ -31,22 +29,19 @@ type attributes struct {
 func NewPubSubMessage(body io.Reader) (*pubSubMessage, error) {
 	data, err := io.ReadAll(body)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to read request body")
-		return nil, err
+		return nil, fmt.Errorf("failed to read request body: %v", err)
 	}
 
 	var m pubSubMessage
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal PubSub message: %v", err)
 	}
 
 	if len(m.Message.Data) == 0 {
-		log.Error().Msg("empty message data")
-		return nil, errors.New("empty message data")
+		return nil, fmt.Errorf("empty message data")
 	}
 	if !slices.Contains([]string{"ORM", "ORU", "ADT"}, m.Message.Attributes.Type) {
-		log.Error().Msg("invalid message type:" + m.Message.Attributes.Type)
-		return nil, fmt.Errorf("invalid message type: %s", m.Message.Attributes.Type)
+		return nil, fmt.Errorf("invalid message type; %s", m.Message.Attributes.Type)
 	}
 
 	return &m, nil

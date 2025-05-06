@@ -65,8 +65,8 @@ type CreatePhysicianParams struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
-	AppCode    pgtype.Text
-	Npi        string
+	AppCode    string
+	Npi        pgtype.Text
 }
 
 type CreatePhysicianRow struct {
@@ -79,9 +79,9 @@ type CreatePhysicianRow struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
-	Npi        string
+	Npi        pgtype.Text
 	Specialty  pgtype.Text
-	AppCode    pgtype.Text
+	AppCode    string
 }
 
 func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (CreatePhysicianRow, error) {
@@ -151,7 +151,7 @@ WHERE
 type GetPhysicianByNameAppCodeParams struct {
 	FirstName string
 	LastName  string
-	AppCode   pgtype.Text
+	AppCode   string
 }
 
 func (q *Queries) GetPhysicianByNameAppCode(ctx context.Context, arg GetPhysicianByNameAppCodeParams) (Physician, error) {
@@ -186,7 +186,7 @@ WHERE
 type GetPhysicianByNameNPIParams struct {
 	FirstName string
 	LastName  string
-	Npi       string
+	Npi       pgtype.Text
 }
 
 func (q *Queries) GetPhysicianByNameNPI(ctx context.Context, arg GetPhysicianByNameNPIParams) (Physician, error) {
@@ -234,8 +234,8 @@ type UpdatePhysicianParams struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
-	AppCode    pgtype.Text
-	Npi        string
+	AppCode    string
+	Npi        pgtype.Text
 	Specialty  pgtype.Text
 }
 

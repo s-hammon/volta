@@ -35,107 +35,133 @@ func New(db *database.Queries, client HealthcareClient, debugMode bool) http.Han
 	mux.HandleFunc("POST /", a.handleMessage)
 	mux.HandleFunc("GET /healthz", handleReadiness)
 
-	loggedMux := middlewareLogging(mux)
-
-	return loggedMux
+	return mux
 }
 
 func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
-	logMsg := NewLogMsg()
+	type response struct {
+		Message              string `json:"message"`
+		RequestContentLength int    `json:"request_content_length,omitempty"`
+		HL7Path              string `json:"hl7_path,omitempty"`
+		HL7Size              int    `json:"hl7_size,omitempty"`
+		ControlID            string `json:"hl7_control_id,omitempty"`
+		VoltaError           string `json:"volta_error,omitempty"`
+	}
+	resp := response{}
 
 	if r.Body == nil {
-		logMsg.RespondJSON(w, http.StatusBadRequest, "empty request body")
+		resp.Message = "empty request body"
+		respondJSON(w, http.StatusBadRequest, resp)
 		return
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
-			logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
+			resp.Message = fmt.Sprintf("error closing client connection: %v", err)
+			respondJSON(w, http.StatusBadRequest, resp)
 			return
 		}
 	}()
-	logMsg.NotifSize = r.Header.Get("Content-Length")
+	contentLen, _ := strconv.Atoi(r.Header.Get("Content-Length"))
+	resp.RequestContentLength = contentLen
 
 	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
-		logMsg.RespondJSON(w, http.StatusBadRequest, err.Error())
+		resp.Message = fmt.Sprintf("error getting Healthcare API response: %v", err)
+		respondJSON(w, http.StatusBadRequest, resp)
 		return
 	}
 
-	msg, err := a.Client.GetHL7V2Message(string(m.Message.Data))
+	hl7Path := string(m.Message.Data)
+	resp.HL7Path = hl7Path
+	msg, err := a.Client.GetHL7V2Message(hl7Path)
 	if err != nil {
-		logMsg.RespondJSON(w, http.StatusInternalServerError, err.Error())
+		resp.Message = "server error"
+		resp.VoltaError = err.Error()
+		respondJSON(w, http.StatusInternalServerError, resp)
 		return
 	}
-	logMsg.Hl7Size = strconv.Itoa(len(msg))
+	resp.HL7Size = len(msg)
 
 	if a.debugMode {
-		logMsg.RespondJSON(w, http.StatusOK, "received message")
+		resp.Message = "message received!"
+		respondJSON(w, http.StatusOK, resp)
 		return
 	}
 
-	res, code, err := HandleByMsgType(a.DB, msg)
+	controlID, code, err := HandleByMsgType(a.DB, msg)
 	if err != nil {
-		logMsg.RespondJSON(w, code, err.Error())
-		return
+		resp.Message = "server error"
+		resp.VoltaError = err.Error()
+	} else if code != http.StatusCreated {
+		resp.Message = "couldn't save message"
+	} else {
+		resp.Message = "message saved"
 	}
-
-	logMsg.RespondJSON(w, code, res)
+	resp.ControlID = controlID
+	respondJSON(w, code, resp)
 }
 
 func HandleByMsgType(db *database.Queries, data []byte) (string, int, error) {
+	var controlID string
 	msg := &models.MessageModel{}
 	d := hl7.NewDecoder(data)
 	if err := d.Decode(msg); err != nil {
-		return "error unmarshaling HL7", http.StatusInternalServerError, err
+		return "", http.StatusInternalServerError, fmt.Errorf("error unmarshaling HL7: %v", err)
 	}
 	m := msg.ToEntity()
+	controlID = m.ControlID
 	ctx := context.Background()
 	if _, err := m.ToDB(ctx, db); err != nil {
-		return "error writing message to db", http.StatusInternalServerError, err
+		return controlID, http.StatusInternalServerError, fmt.Errorf("error writing message to db: %v", err)
 	}
 
 	switch msg.Type.Name {
 	case "ORM":
-		return UpsertORM(ctx, db, d)
+		code, err := UpsertORM(ctx, db, d)
+		return controlID, code, err
 	case "ORU":
-		return UpsertORU(ctx, db, d)
+		code, err := UpsertORU(ctx, db, d)
+		return controlID, code, err
 	case "ADT":
-		return "ADT message type not implemented", http.StatusNotImplemented, fmt.Errorf("ADT message type not implemented")
+		return controlID, http.StatusNotImplemented, fmt.Errorf("ADT message type not implemented")
 	case "":
-		return "no message type found", http.StatusBadRequest, fmt.Errorf("MSH.9.1 is blank--is the HL7 formatted correctly?")
+		return controlID, http.StatusBadRequest, fmt.Errorf("MSH.9.1 is blank--is the HL7 formatted correctly?")
 	default:
-		return "unsupported message type", http.StatusInternalServerError, fmt.Errorf("unsupported message type")
+		// return "unsupported message type", http.StatusInternalServerError, fmt.Errorf("unsupported message type")
+		return controlID, http.StatusBadRequest, fmt.Errorf("unsupported message type: %s", msg.Type.Name)
 	}
 }
 
-func UpsertORM(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res string, code int, err error) {
+func UpsertORM(ctx context.Context, db *database.Queries, d *hl7.Decoder) (code int, err error) {
+	code = http.StatusInternalServerError // guilty until proven innocent
+
 	patient := &models.PatientModel{}
 	if err = d.Decode(patient); err != nil {
-		return "error unmarshaling patient", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling patient: %v", err)
 	}
 	p := patient.ToEntity()
 	pID, err := p.ToDB(ctx, db)
 	if err != nil {
-		return "error writing patient to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing patient to db: %v", err)
 	}
 
 	visit := &models.VisitModel{}
 	if err = d.Decode(visit); err != nil {
-		return "error unmarshaling visit", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling visit: %v", err)
 	}
 	v := visit.ToEntity()
 	sID, err := v.Site.ToDB(ctx, db)
 	if err != nil {
-		return "error writing site to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing site to db: %v", err)
 	}
 	mID, err := v.MRN.ToDB(ctx, sID, pID, db)
 	if err != nil {
-		return "error writing site to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing MRN to db: %v", err)
 	}
 
 	exam := &models.ExamModel{}
 	if err = d.Decode(exam); err != nil {
-		return "error unmarshaling exam", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling exam: %v", err)
 	}
 	e := exam.ToEntity()
 	if v.VisitNo == "" {
@@ -144,55 +170,58 @@ func UpsertORM(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 	}
 	vID, err := v.ToDB(ctx, sID, mID, db)
 	if err != nil {
-		return "error writing visit to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing visit to db: %v", err)
 	}
 
 	phID, err := e.Provider.ToDB(ctx, db)
 	if err != nil {
-		return "error writing physician to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing physician to db: %v", err)
 	}
 	prID, err := e.Procedure.ToDB(ctx, sID, db)
 	if err != nil {
-		return "error writing procedure to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing procedure to db: %v", err)
 	}
 	if _, err = e.ToDB(ctx, vID, mID, phID, sID, prID, db); err != nil {
-		return "error writing exam to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing exam to db: %v", err)
 	}
-	return "ORM message processed", http.StatusCreated, nil
+	code = http.StatusCreated
+	return code, nil
 }
 
-func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res string, code int, err error) {
+func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (code int, err error) {
+	code = http.StatusInternalServerError // guilty until proven innocent
+
 	patient := &models.PatientModel{}
 	if err = d.Decode(patient); err != nil {
-		return "error unmarshaling patient", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling patient: %v", err)
 	}
 	p := patient.ToEntity()
 	pID, err := p.ToDB(ctx, db)
 	if err != nil {
-		return "error writing patient to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing patient to db: %v", err)
 	}
 
 	visit := &models.VisitModel{}
 	if err = d.Decode(visit); err != nil {
-		return "error unmarshaling visit", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling visit: %v", err)
 	}
 	v := visit.ToEntity()
 	sID, err := v.Site.ToDB(ctx, db)
 	if err != nil {
-		return "error writing site to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing site to db: %v", err)
 	}
 	mID, err := v.MRN.ToDB(ctx, sID, pID, db)
 	if err != nil {
-		return "error writing site to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing MRN to db: %v", err)
 	}
 	vID, err := v.ToDB(ctx, sID, mID, db)
 	if err != nil {
-		return "error writing visit to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing visit to db: %v", err)
 	}
 
 	exams := []models.ExamModel{}
 	if err = d.Decode(&exams); err != nil {
-		return "error unmarshaling exams", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling exams: %v", err)
 	}
 	eg := models.ToEntities(exams)
 	if len(eg) < 1 {
@@ -201,33 +230,33 @@ func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 
 	phID, err := eg[0].Provider.ToDB(ctx, db)
 	if err != nil {
-		return "error writing physician to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing physician to db: %v", err)
 	}
 	examIDs := []int64{}
 	for i, e := range eg {
 		prID, err := eg[i].Procedure.ToDB(ctx, sID, db)
 		if err != nil {
-			return "error writing procedure to db", http.StatusInternalServerError, err
+			return code, fmt.Errorf("error writing procedure to db: %v", err)
 		}
 		eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, db)
 		if err != nil {
-			return "error writing exam to db", http.StatusInternalServerError, err
+			return code, fmt.Errorf("error writing exam to db: %v", err)
 		}
 		examIDs = append(examIDs, eID)
 	}
 
 	report := []models.ReportModel{}
 	if err = d.Decode(&report); err != nil {
-		return "error unmarshaling report", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error unmarshaling report: %v", err)
 	}
 	r := models.GetReport(report)
 	radID, err := r.Radiologist.ToDB(ctx, db)
 	if err != nil {
-		return "error writing radiologist to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing radiologist to db: %v", err)
 	}
 	rID, err := r.ToDB(ctx, db, radID)
 	if err != nil {
-		return "error writing report to db", http.StatusInternalServerError, err
+		return code, fmt.Errorf("error writing report to db: %v", err)
 	}
 	switch r.Status {
 	case objects.Final:
@@ -236,7 +265,7 @@ func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 				ID:            examID,
 				FinalReportID: pgtype.Int8{Int64: rID, Valid: true},
 			}); err != nil {
-				return "error updating exam with final report", http.StatusInternalServerError, err
+				return code, fmt.Errorf("error updated exam with final report: %v", err)
 			}
 		}
 	case objects.Addendum:
@@ -245,11 +274,12 @@ func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 				ID:               examID,
 				AddendumReportID: pgtype.Int8{Int64: rID, Valid: true},
 			}); err != nil {
-				return "error updating exam with final report", http.StatusInternalServerError, err
+				return code, fmt.Errorf("error updating exam with addendum report: %v", err)
 			}
 		}
 
 	}
 
-	return "ORU message processed", http.StatusCreated, nil
+	code = http.StatusCreated
+	return code, nil
 }

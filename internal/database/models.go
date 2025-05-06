@@ -100,9 +100,9 @@ type Physician struct {
 	Suffix     pgtype.Text
 	Prefix     pgtype.Text
 	Degree     pgtype.Text
-	Npi        string
+	Npi        pgtype.Text
 	Specialty  pgtype.Text
-	AppCode    pgtype.Text
+	AppCode    string
 }
 
 type Procedure struct {
@@ -132,7 +132,7 @@ type Site struct {
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	Code      string
-	Name      string
+	Name      pgtype.Text
 	Address   string
 	IsCms     bool
 }

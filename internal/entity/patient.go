@@ -44,7 +44,7 @@ func DBtoPatient(patient database.Patient) Patient {
 }
 
 func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
-	patient, err := db.CreatePatient(ctx, database.CreatePatientParams{
+	params := database.CreatePatientParams{
 		FirstName:  p.Name.First,
 		LastName:   p.Name.Last,
 		MiddleName: pgtype.Text{String: p.Name.Middle, Valid: true},
@@ -53,8 +53,11 @@ func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (int64, error)
 		Degree:     pgtype.Text{String: p.Name.Degree, Valid: true},
 		Dob:        pgtype.Date{Time: p.DOB, Valid: true},
 		Sex:        p.Sex,
-		Ssn:        pgtype.Text{String: p.SSN.String(), Valid: true},
-	})
+	}
+	if p.SSN != "" {
+		params.Ssn.String = p.SSN.String()
+	}
+	patient, err := db.CreatePatient(ctx, params)
 	if err != nil {
 		return 0, err
 	}

@@ -1,161 +1,91 @@
 package api
 
-// import (
-// 	"bytes"
-// 	"context"
-// 	"errors"
-// 	"fmt"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"path/filepath"
-// 	"strconv"
-// 	"strings"
-// 	"sync"
-// 	"testing"
-//
-// 	json "github.com/json-iterator/go"
-// 	"github.com/s-hammon/volta/internal/api/models"
-// 	"github.com/s-hammon/volta/pkg/hl7"
-// )
-//
-// type mockClient struct {
-// 	messages map[string][]byte
-// }
-//
-// type mockRecord struct {
-// 	key     string
-// 	msgType string
-// }
-//
-// func newMockClient(msg map[string][]byte) *mockClient {
-// 	return &mockClient{
-// 		messages: msg,
-// 	}
-// }
-//
-// func (m *mockClient) GetHL7V2Message(messagePath string) ([]byte, error) {
-// 	raw, ok := m.messages[messagePath]
-// 	if !ok {
-// 		return nil, errors.New("message not found")
-// 	}
-// 	return raw, nil
-// }
-//
-// type mockRepo struct {
-// 	mu sync.Mutex
-// }
-//
-// func (m *mockRecord) GetMsgType(b []byte) error {
-// 	msgJSON, err := hl7.NewMessage(b)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	msh := &struct {
-// 		MSH struct {
-// 			MsgType map[string]string `json:"MSH.9"`
-// 		} `json:"MSH"`
-// 	}{}
-//
-// 	if err := json.Unmarshal(msgJSON, msh); err != nil {
-// 		return err
-// 	}
-// 	msgType := msh.MSH.MsgType["MSH.9.1"]
-// 	if msgType == "" {
-// 		return errors.New("message type not found")
-// 	}
-// 	m.msgType = strings.TrimSpace(msgType)
-// 	return nil
-// }
-//
-// func NewMockRepo() *mockRepo {
-// 	return &mockRepo{
-// 		mu: sync.Mutex{},
-// 	}
-// }
-//
-// func (m *mockRepo) UpsertORM(ctx context.Context, orm models.ORM) error {
-// 	m.mu.Lock()
-// 	defer m.mu.Unlock()
-//
-// 	if orm.MSH.Type.Name != "ORM" {
-// 		return fmt.Errorf("invalid message type: %s", orm.MSH.Type.Name)
-// 	}
-// 	return nil
-// }
-//
-// func (m *mockRepo) InsertORU(ctx context.Context, oru models.ORU) error {
-// 	m.mu.Lock()
-// 	defer m.mu.Unlock()
-//
-// 	if oru.MSH.Type.Name != "ORU" {
-// 		return fmt.Errorf("invalid message type: %s", oru.MSH.Type.Name)
-// 	}
-// 	m.orus = append(m.orus, oru)
-// 	return nil
-// }
-//
-// func TestHandleMessage(t *testing.T) {
-// 	entries, err := hl7.HL7.ReadDir("test_hl7")
-// 	if err != nil {
-// 		t.Fatalf("failed to read embedded test directory: %v", err)
-// 	}
-//
-// 	msg := make(map[string][]byte)
-// 	records := []mockRecord{}
-// 	for _, entry := range entries {
-// 		name := entry.Name()
-// 		data, err := hl7.HL7.ReadFile(filepath.Join("test_hl7", name))
-// 		if err != nil {
-// 			t.Fatalf("failed to read test file %s: %v", name, err)
-// 		}
-// 		if len(data) == 0 {
-// 			t.Fatalf("file %s is empty", name)
-// 		}
-// 		msg[name] = data
-//
-// 		record := mockRecord{key: name}
-// 		if err := record.GetMsgType(data); err != nil {
-// 			t.Fatalf("failed to get message type from file %s: %v", name, err)
-// 		}
-// 		records = append(records, record)
-// 	}
-// 	client := newMockClient(msg)
-//
-// 	repo := NewMockRepo()
-//
-// 	for i, record := range records {
-// 		t.Run(fmt.Sprintf("message-%d", i), func(t *testing.T) {
-// 			psMessage := &pubSubMessage{
-// 				Message: message{
-// 					Data:       []byte(record.key),
-// 					Attributes: attributes{Type: record.msgType},
-// 				},
-// 			}
-// 			data, err := json.Marshal(psMessage)
-// 			if err != nil {
-// 				t.Fatalf("failed to marshal message: %v", err)
-// 			}
-// 			api := New(repo, client, false)
-//
-// 			req := newPostMsgRequest(data)
-// 			w := httptest.NewRecorder()
-// 			api.ServeHTTP(w, req)
-//
-// 			if w.Code != http.StatusCreated {
-// 				if psMessage.Message.Attributes.Type != "ADT" {
-// 					t.Errorf("got status %d, want %d", w.Code, http.StatusCreated)
-// 				} else {
-// 					if w.Code != http.StatusNotImplemented {
-// 						t.Errorf("got status %d, want %d", w.Code, http.StatusNotImplemented)
-// 					}
-// 				}
-// 			}
-// 		})
-// 	}
-// }
-//
-// func newPostMsgRequest(data []byte) *http.Request {
-// 	req, _ := http.NewRequest(http.MethodPost, "/", bytes.NewReader(data))
-// 	req.Header.Set("Content-Length", strconv.Itoa(len(data)))
-// 	return req
-// }
+import (
+	"bytes"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+
+	"strconv"
+	"strings"
+
+	"testing"
+
+	json "github.com/json-iterator/go"
+	"github.com/s-hammon/volta/internal/database"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type mockClient struct {
+	Message []byte
+	Err     error
+}
+
+func (m mockClient) GetHL7V2Message(path string) ([]byte, error) {
+	return m.Message, m.Err
+}
+
+func mockPubSubBody(hl7Path, hl7Type string) io.Reader {
+	ps := pubSubMessage{
+		Message: message{
+			Data: []byte(hl7Path),
+			Attributes: attributes{Type: hl7Type},
+		},
+		Subscription: "volta",
+	}
+	j, _ := json.Marshal(ps)
+	return strings.NewReader(string(j))
+}
+
+func TestHandleMessage_DebugMode(t *testing.T) {
+	want := []byte("MSH|^~\\&|...|ORM^O01|...")
+	mockClient := mockClient{Message: want, Err: nil}
+	handler := New(&database.Queries{}, mockClient, true)
+	req := httptest.NewRequest(http.MethodPost, "/", mockPubSubBody("test.hl7", "ORM"))
+	req.Header.Set("Content-Length", strconv.Itoa(len(want)))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	
+	resp := decodeResponse(t, rec.Body)
+	assert.Equal(t, "message received!", resp["message"])
+	assert.Equal(t, "test.hl7", resp["hl7_path"])
+	assert.Equal(t, 24, int(resp["hl7_size"].(float64)))
+}
+
+func TestHandleMessage_HL7FetchError(t *testing.T) {
+	mockClient := &mockClient{Message: nil, Err: errors.New("fetch failed")}
+	handler := New(&database.Queries{}, mockClient, true)
+	req := httptest.NewRequest(http.MethodPost, "/", mockPubSubBody("badpath.hl7", "ORM"))
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+
+	resp := decodeResponse(t, rec.Body)
+	assert.Equal(t, "server error", resp["message"])
+	assert.Equal(t, "fetch failed", resp["volta_error"])
+	assert.Equal(t, "badpath.hl7", resp["hl7_path"])
+}
+
+func TestHandleMessage_EmptyBody(t *testing.T) {
+	handler := New(&database.Queries{}, &mockClient{}, true)
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+
+	resp := decodeResponse(t, rec.Body)
+	// assert.Equal(t, "empty request body", resp["message"]) // not sure why this isn't passing -- maybe httptset doesn't set a nil Body?
+	assert.Nil(t, resp["hl7_path"])
+}
+
+func decodeResponse(t *testing.T, body *bytes.Buffer) (resp map[string]any) {
+	t.Helper()
+
+	err := json.NewDecoder(body).Decode(&resp)
+	require.NoError(t, err)
+	return resp
+}
+

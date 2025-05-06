@@ -2,7 +2,6 @@ package entity
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -97,7 +96,6 @@ func (e *Exam) ToDB(ctx context.Context, visitID, mrnID, physID int64, siteID, p
 	}
 	e.timestamp(&params)
 
-	fmt.Printf("%+v\n", params)
 	exam, err := db.CreateExam(ctx, params)
 	if err != nil {
 		return 0, err
