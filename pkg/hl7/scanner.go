@@ -5,12 +5,6 @@ import (
 	"fmt"
 )
 
-// a node representing a field
-type fieldNode struct {
-	idx  int
-	next *fieldNode
-}
-
 type fieldPos struct {
 	start, end int
 }

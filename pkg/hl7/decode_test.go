@@ -9,15 +9,6 @@ import (
 
 var wholeShabang = []byte("MSH|^~\\&|LabSystem|Hospital|OrderingSystem|Clinic|202501140830||ORU^R01|MSG00002|P|2.3\rPID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||19800101|M|||123 Main St^^Metropolis^NY^10001\rPV1|1|I|ICU&Room101^Hospital&BedA||||1234^Smith^John^A^^^Dr.|||Cardiology")
 
-type mockModel struct {
-	FieldDelimiter    string   `hl7:"MSH.1"`
-	EcodingCharacters string   `hl7:"MSH.2"`
-	SendingFacility   string   `hl7:"MSH.3"`
-	MessageType       cm_msg   `hl7:"MSH.9"`
-	Quantity          []string `hl7:"OBR.9"`
-	Procedure         ce       `hl7:"OBX.3"`
-}
-
 type mockObservation struct {
 	LineNo    string `hl7:"OBX.1"`
 	Procedure ce     `hl7:"OBX.3"`
@@ -31,27 +22,12 @@ type mockPatient struct {
 	Location listPL `hl7:"PV1.3"`
 }
 
-type mockVisit struct {
-	Class            string `hl7:"PV1.2"`
-	AssignedLocation listPL `hl7:"PV1.3"`
-}
-
-type cm_msg struct {
-	Name         string `hl7:"1"`
-	TriggerEvent string `hl7:"2"`
-}
-
 type ce struct {
 	Code               string `hl7:"1"`
 	Description        string `hl7:"2"`
 	AssigningAuthority string `hl7:"3"`
 	IdentifierTypeCode string `hl7:"4"`
 	AssigningFacility  string `hl7:"5"`
-}
-
-type cx struct {
-	ID         string `hl7:"1"`
-	CheckDigit string `hl7:"2"`
 }
 
 type listPL struct {
@@ -68,14 +44,6 @@ type xpn struct {
 	Last   string `hl7:"1"`
 	First  string `hl7:"2"`
 	Middle string `hl7:"3"`
-}
-
-type xcn struct {
-	ID     string `hl7:"1"`
-	Last   string `hl7:"1"`
-	First  string `hl7:"2"`
-	Middle string `hl7:"3"`
-	Degree string `hl7:"7"`
 }
 
 var multipleOrders = []byte("MSH|^~\\&|LabSystem|Hospital|OrderingSystem|Clinic|202501140830||ORU^R01|MSG00002|P|2.3\rPID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||19800101|M|||123 Main St^^Metropolis^NY^10001\rPV1|1|I|ICU&Room101^Hospital&BedA||||1234^Smith^John^A^^^Dr.|||Cardiology\rORC|CN|42069|96024||CM||20250115083500||20250115083500\rOBR|1|42069|96024|CXR^Chest X-Ray|S\rORC|RE|42070|07024||CM||20250115083500||20250115083500\rOBR|2|42070|07024|UDOP^US Doppler|S")

@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -304,13 +303,6 @@ func setupDB(t *testing.T, ctx context.Context) (api.DB, []fs.DirEntry) {
 	}
 
 	return api.NewDB(pool), hl7Messages
-}
-
-func assertEqual[T any](t *testing.T, expected, actual T) {
-	t.Helper()
-	if !reflect.DeepEqual(expected, actual) {
-		t.Fatalf("expected %v, got %v", expected, actual)
-	}
 }
 
 func assertNotNullStatusTimestamp(t *testing.T, exam database.Exam) {
