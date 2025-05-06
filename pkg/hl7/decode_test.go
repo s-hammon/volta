@@ -147,7 +147,7 @@ func TestUnmarshal(t *testing.T) {
 
 func TestNewDecoder(t *testing.T) {
 	dec := NewDecoder(multipleOrders)
-	require.Nil(t, dec.savedError)
+	require.Nil(t, dec.savedErr)
 
 	orders := []orderGroup{}
 	err := dec.Decode(&orders)
@@ -192,8 +192,8 @@ func BenchmarkDecoderEach(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				d := NewDecoder(data)
-				if d.savedError != nil {
-					b.Fatalf("unexpected error in parsing: %v", d.savedError)
+				if d.savedErr != nil {
+					b.Fatalf("unexpected error in parsing: %v", d.savedErr)
 				}
 			}
 		})
