@@ -102,8 +102,8 @@ func (d *Decoder) getFieldValue(seg string, idx, rep int) string {
 		switch idx {
 		case 1:
 			return string(d.data[3])
-		case 2:
-			return string(d.data[4:8])
+		default:
+			idx--
 		}
 	}
 	matches := GetSegments(d.segments, seg)
@@ -120,9 +120,18 @@ func setFieldValue(fVal reflect.Value, raw string) {
 	switch fVal.Kind() {
 	case reflect.String:
 		fVal.SetString(raw)
+		return
 	case reflect.Struct:
-		comps := strings.Split(raw, "^")
-		for i := 0; i < fVal.NumField(); i++ {
+		var comps []string
+		switch {
+		case strings.Contains(raw, "^"):
+			comps = strings.Split(raw, "^")
+		case strings.Contains(raw, "&"):
+			comps = strings.Split(raw, "&")
+		default:
+			comps = []string{raw}
+		}
+		for i := range fVal.NumField() {
 			sf := fVal.Type().Field(i)
 			tag := sf.Tag.Get("hl7")
 			if tag == "" {
@@ -132,8 +141,8 @@ func setFieldValue(fVal reflect.Value, raw string) {
 			if err != nil || compIdx > len(comps) {
 				continue
 			}
-			subVal := fVal.Field(i)
-			setFieldValue(subVal, comps[compIdx-1])
+			compVal := fVal.Field(i)
+			setFieldValue(compVal, comps[compIdx-1])
 		}
 	case reflect.Slice:
 		repeats := strings.Split(raw, "~")

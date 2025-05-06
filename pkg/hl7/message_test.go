@@ -18,36 +18,6 @@ var invalidMSH = bytes.Join([][]byte{[]byte("MSH"), validPID, validPV1}, []byte{
 var firstNotMSH = bytes.Join([][]byte{validPID, validMSH}, []byte{CR})
 var invalidSegmentName = []byte("ID|1||123456^^^Hospital^MR||Doe^John^A~Doe^Johnny^B||19800101|M|||123 Main St^^Metropolis^NY^10001")
 
-func BenchmarkNewMessageAll(b *testing.B) {
-	entries, err := HL7.ReadDir("test_hl7")
-	if err != nil {
-		b.Fatalf("failed to read embedded test directory: %v", err)
-	}
-
-	var messages [][]byte
-	for _, entry := range entries {
-		data, err := HL7.ReadFile(filepath.Join("test_hl7", entry.Name()))
-		if err != nil {
-			b.Fatalf("failed to read test file %s: %v", entry.Name(), err)
-		}
-		if len(data) == 0 {
-			b.Fatalf("file %s is empty", entry.Name())
-		}
-		messages = append(messages, data)
-	}
-
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			for _, msg := range messages {
-				if _, err := NewMessage(msg); err != nil {
-					b.Fatalf("unexpected error in parsing: %v", err)
-				}
-			}
-		}
-	})
-}
-
 func BenchmarkNewMessageEach(b *testing.B) {
 	entries, err := HL7.ReadDir("test_hl7")
 	if err != nil {

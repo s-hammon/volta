@@ -25,9 +25,9 @@ func FastScan(data []byte, segDelim, fldDelim byte) ([]*segment, error) {
 		if end == -1 {
 			end = len(data)
 		} else {
-			end += 1
+			end += i
 		}
-		line := bytes.TrimSpace(data[start:end])
+		line := data[start:end]
 		fields := bytes.Split(line, []byte{fldDelim})
 		if len(fields) == 0 || len(fields[0]) != 3 {
 			return nil, fmt.Errorf("invalid segment: %s", fields[0])
