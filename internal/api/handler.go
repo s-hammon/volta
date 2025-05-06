@@ -191,7 +191,7 @@ func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 	}
 
 	exams := []models.ExamModel{}
-	if err = d.Decode(exams); err != nil {
+	if err = d.Decode(&exams); err != nil {
 		return "error unmarshaling exams", http.StatusInternalServerError, err
 	}
 	eg := models.ToEntities(exams)
@@ -217,7 +217,7 @@ func UpsertORU(ctx context.Context, db *database.Queries, d *hl7.Decoder) (res s
 	}
 
 	report := []models.ReportModel{}
-	if err = d.Decode(report); err != nil {
+	if err = d.Decode(&report); err != nil {
 		return "error unmarshaling report", http.StatusInternalServerError, err
 	}
 	r := models.GetReport(report)
