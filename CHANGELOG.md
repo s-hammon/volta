@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v[0.6.2]
+
+- Removed middleware logging, will send results back to PubSub
+- Changed constraints for various models
+
 ## [v0.6.0]
 
 - New HL7 decoder
@@ -156,3 +161,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.5.4]: https://github.com/s-hammon/volta/releases/tag/v0.5.4
 [v0.5.5]: https://github.com/s-hammon/volta/releases/tag/v0.5.5
 [v0.6.0]: https://github.com/s-hammon/volta/releases/tag/v0.6.0
+[v0.6.2]: https://github.com/s-hammon/volta/releases/tag/v0.6.2
