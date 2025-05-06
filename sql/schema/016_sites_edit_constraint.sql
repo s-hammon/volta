@@ -4,7 +4,7 @@ ALTER TABLE IF EXISTS sites ALTER COLUMN name DROP NOT NULL;
 ALTER TABLE IF EXISTS sites ADD CONSTRAINT sites_code_unique UNIQUE (code);
 
 ALTER TABLE IF EXISTS physicians ALTER COLUMN npi DROP NOT NULL;
-UPDATE TABLE physicians SET app_code = 'MISSING' WHERE app_code IS NULL;
+UPDATE physicians SET app_code = 'MISSING' WHERE app_code IS NULL;
 ALTER TABLE IF EXISTS physicians ALTER COLUMN app_code SET NOT NULL;
 
 -- +goose Down
