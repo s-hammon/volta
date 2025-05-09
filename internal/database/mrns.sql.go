@@ -16,7 +16,9 @@ WITH upsert AS (
     INSERT INTO mrns (site_id, patient_id, mrn)
     VALUES ($1, $2, $3)
     ON CONFLICT (site_id, patient_id) DO UPDATE
-    SET mrn = COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
+    SET
+        updated_at = CURRENT_TIMESTAMP,
+        mrn = COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
     WHERE mrns.mrn IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
     RETURNING id
 )

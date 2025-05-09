@@ -3,7 +3,9 @@ WITH upsert AS (
     INSERT INTO procedures (site_id, code, description, specialty, modality)
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (site_id, code) DO UPDATE
-    SET description = EXCLUDED.description,
+    SET
+        updated_at = CURRENT_TIMESTAMP,
+        description = EXCLUDED.description,
         specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
         modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
     WHERE

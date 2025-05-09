@@ -23,6 +23,7 @@ WITH upsert as (
     VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
     SET
+        updated_at = CURRENT_TIMESTAMP,
         body = COALESCE(EXCLUDED.body, reports.body)
     WHERE
         COALESCE(EXCLUDED.body, reports.body) IS DISTINCT FROM EXCLUDED.body

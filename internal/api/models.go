@@ -119,7 +119,7 @@ func (o *ORM) ToOrder() *entity.Order {
 		},
 		Site: *site,
 	}
-	dt := convertCSTtoUTC(o.StatusDT)
+	dt := convertCSTtoUTC(o.OrderDT)
 	switch order.Exam.CurrentStatus {
 	case "SC":
 		order.Exam.Scheduled = dt

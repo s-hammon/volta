@@ -42,7 +42,9 @@ WITH upsert AS (
         $12
     )
     ON CONFLICT (ssn) DO UPDATE
-    SET first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name),
+    SET
+        updated_at = CURRENT_TIMESTAMP,
+        first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name),
         last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), patients.last_name),
         middle_name = COALESCE(NULLIF(EXCLUDED.middle_name, ''), patients.middle_name),
         suffix = COALESCE(NULLIF(EXCLUDED.suffix, ''), patients.suffix),

@@ -170,13 +170,21 @@ func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
 		return dbErr{"report", err}
 	}
 	for _, exam := range oru.Exams {
-		eID, err := qtx.CreateExam(ctx, createExamParam(
-			exam,
-			sID, prID,
-			vID, mID, phID,
-		))
+		var eID int64
+		eID, err = qtx.GetExamIDBySiteIDAccession(ctx, getExamIDParam(exam, sID))
 		if err != nil {
-			return dbErr{"exam", err}
+			if errors.Is(err, pgx.ErrNoRows) {
+				eID, err = qtx.CreateExam(ctx, createExamParam(
+					exam,
+					sID, prID,
+					vID, mID, phID,
+				))
+				if err != nil {
+					return dbErr{"exam", err}
+				}
+			} else {
+				return fmt.Errorf("error retrieving exam ID for accession %s: %v", exam.Accession, err)
+			}
 		}
 		switch oru.Report.Status {
 		case objects.Final:
@@ -297,6 +305,13 @@ func createReportParam(obj Report, radID int64) database.CreateReportParams {
 	params.Impression = obj.Impression
 	params.ReportStatus = obj.Status.String()
 	params.SubmittedDt = pgtype.Timestamp{Time: obj.SubmittedDT, Valid: true}
+	return params
+}
+
+func getExamIDParam(obj Exam, siteID int32) database.GetExamIDBySiteIDAccessionParams {
+	params := database.GetExamIDBySiteIDAccessionParams{}
+	params.SiteID = pgtype.Int4{Int32: siteID, Valid: true}
+	params.Accession = obj.Accession
 	return params
 }
 

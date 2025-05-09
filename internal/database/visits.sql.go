@@ -29,6 +29,7 @@ WITH upsert AS (
     )
     ON CONFLICT (site_id, mrn_id, number) DO UPDATE
     SET
+        updated_at = CURRENT_TIMESTAMP,
         outside_system_id = EXCLUDED.outside_system_id,
         patient_type = EXCLUDED.patient_type
     WHERE

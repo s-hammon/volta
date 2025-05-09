@@ -9,6 +9,7 @@ WITH upsert AS (
     VALUES ($1, $2, $3, $4)
     ON CONFLICT (code) DO UPDATE
     SET
+        updated_at = CURRENT_TIMESTAMP,
         name = EXCLUDED.name,
         address = EXCLUDED.address,
         is_cms = EXCLUDED.is_cms

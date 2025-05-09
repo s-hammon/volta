@@ -16,6 +16,7 @@ WITH upsert as (
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     ON CONFLICT (site_id, accession) DO UPDATE
     SET
+        updated_at = CURRENT_TIMESTAMP,
         visit_id = EXCLUDED.visit_id,
         mrn_id = EXCLUDED.mrn_id,
         procedure_id = EXCLUDED.procedure_id,
@@ -53,6 +54,13 @@ WHERE id = $1;
 -- name: GetAllExams :many
 SELECT *
 FROM exams;
+
+-- name: GetExamIDBySiteIDAccession :one
+SELECT id
+FROM exams
+WHERE
+    site_id = $1
+    AND accession = $2;
 
 -- name: GetExamBySiteIDAccession :one
 SELECT

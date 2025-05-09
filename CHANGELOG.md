@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## v[0.6.3]
+## [v0.6.4]
+
+- Report writes will fetch IDs for exams before trying to make new records
+- Fixed issue where Order entity was using StatusDT field instead of OrderDT
+- Fixed issue where updated_at columns were not properly updating on upserts
+
+## [v0.6.3]
 
 - Removed logging prehooks in Cobra CLI
 - Single-transaction writes for business models per HL7 message
 - Expanded tests; clean up on project repository
 
-## v[0.6.2]
+## [v0.6.2]
 
 - Removed middleware logging, will send results back to PubSub
 - Changed constraints for various models
@@ -169,3 +175,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.0]: https://github.com/s-hammon/volta/releases/tag/v0.6.0
 [v0.6.2]: https://github.com/s-hammon/volta/releases/tag/v0.6.2
 [v0.6.3]: https://github.com/s-hammon/volta/releases/tag/v0.6.3
+[v0.6.4]: https://github.com/s-hammon/volta/releases/tag/v0.6.4

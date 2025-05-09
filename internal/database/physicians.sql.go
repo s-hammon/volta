@@ -35,6 +35,7 @@ WITH upsert AS (
     )
     ON CONFLICT (first_name, last_name, app_code) DO UPDATE
     SET
+        updated_at = CURRENT_TIMESTAMP,
         middle_name = EXCLUDED.middle_name,
         suffix = EXCLUDED.suffix,
         prefix = EXCLUDED.prefix,
