@@ -17,9 +17,10 @@ WITH upsert AS (
         code, -- $1
         name, -- $2
         address, -- $3
-        is_cms -- $4
+        is_cms, -- $4
+        message_id -- $5
     )
-    VALUES ($1, $2, $3, $4)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
@@ -40,10 +41,11 @@ WHERE code = $1
 `
 
 type CreateSiteParams struct {
-	Code    string
-	Name    pgtype.Text
-	Address string
-	IsCms   bool
+	Code      string
+	Name      pgtype.Text
+	Address   string
+	IsCms     bool
+	MessageID pgtype.Int8
 }
 
 func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (int32, error) {
@@ -52,6 +54,7 @@ func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (int32, 
 		arg.Name,
 		arg.Address,
 		arg.IsCms,
+		arg.MessageID,
 	)
 	var id int32
 	err := row.Scan(&id)
@@ -59,7 +62,7 @@ func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (int32, 
 }
 
 const getSiteByCode = `-- name: GetSiteByCode :one
-SELECT id, created_at, updated_at, code, name, address, is_cms
+SELECT id, created_at, updated_at, code, name, address, is_cms, message_id
 FROM sites
 WHERE code = $1
 `
@@ -75,12 +78,13 @@ func (q *Queries) GetSiteByCode(ctx context.Context, code string) (Site, error) 
 		&i.Name,
 		&i.Address,
 		&i.IsCms,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getSiteById = `-- name: GetSiteById :one
-SELECT id, created_at, updated_at, code, name, address, is_cms
+SELECT id, created_at, updated_at, code, name, address, is_cms, message_id
 FROM sites
 WHERE id = $1
 `
@@ -96,6 +100,7 @@ func (q *Queries) GetSiteById(ctx context.Context, id int32) (Site, error) {
 		&i.Name,
 		&i.Address,
 		&i.IsCms,
+		&i.MessageID,
 	)
 	return i, err
 }

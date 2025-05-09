@@ -12,7 +12,8 @@ WITH upsert AS (
         ssn, -- $9
         home_phone, -- $10
         work_phone, -- $11
-        cell_phone -- $12
+        cell_phone, -- $12
+        message_id -- $13
     )
     VALUES (
         $1,
@@ -26,7 +27,8 @@ WITH upsert AS (
         $9,
         $10,
         $11,
-        $12
+        $12,
+        $13
     )
     ON CONFLICT (ssn) DO UPDATE
     SET
@@ -41,7 +43,8 @@ WITH upsert AS (
         sex = EXCLUDED.sex,
         home_phone = EXCLUDED.home_phone,
         work_phone = EXCLUDED.work_phone,
-        cell_phone = EXCLUDED.cell_phone
+        cell_phone = EXCLUDED.cell_phone,
+        message_id = EXCLUDED.message_id
     WHERE
         COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name) IS DISTINCT FROM EXCLUDED.first_name
         OR COALESCE(NULLIF(EXCLUDED.last_name, ''), patients.last_name) IS DISTINCT FROM EXCLUDED.last_name

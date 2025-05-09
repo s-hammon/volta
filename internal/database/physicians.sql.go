@@ -21,7 +21,8 @@ WITH upsert AS (
         prefix, -- $5
         degree, -- $6
         app_code, -- $7
-        npi -- $8
+        npi, -- $8
+        message_id -- $9
     )
     VALUES (
         $1,
@@ -31,7 +32,8 @@ WITH upsert AS (
         $5,
         $6,
         $7,
-        $8
+        $8,
+        $9
     )
     ON CONFLICT (first_name, last_name, app_code) DO UPDATE
     SET
@@ -68,6 +70,7 @@ type CreatePhysicianParams struct {
 	Degree     pgtype.Text
 	AppCode    string
 	Npi        pgtype.Text
+	MessageID  pgtype.Int8
 }
 
 func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (int64, error) {
@@ -80,6 +83,7 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 		arg.Degree,
 		arg.AppCode,
 		arg.Npi,
+		arg.MessageID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -87,7 +91,7 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 }
 
 const getPhysicianById = `-- name: GetPhysicianById :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code, message_id
 FROM physicians
 WHERE id = $1
 `
@@ -108,12 +112,13 @@ func (q *Queries) GetPhysicianById(ctx context.Context, id int64) (Physician, er
 		&i.Npi,
 		&i.Specialty,
 		&i.AppCode,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getPhysicianByNameAppCode = `-- name: GetPhysicianByNameAppCode :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code, message_id
 FROM physicians
 WHERE
     first_name = $1
@@ -143,12 +148,13 @@ func (q *Queries) GetPhysicianByNameAppCode(ctx context.Context, arg GetPhysicia
 		&i.Npi,
 		&i.Specialty,
 		&i.AppCode,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getPhysicianByNameNPI = `-- name: GetPhysicianByNameNPI :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code, message_id
 FROM physicians
 WHERE
     first_name = $1
@@ -178,6 +184,7 @@ func (q *Queries) GetPhysicianByNameNPI(ctx context.Context, arg GetPhysicianByN
 		&i.Npi,
 		&i.Specialty,
 		&i.AppCode,
+		&i.MessageID,
 	)
 	return i, err
 }
@@ -196,7 +203,7 @@ SET
     npi = $9,
     specialty = $10
 WHERE id = $1
-RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code, message_id
 `
 
 type UpdatePhysicianParams struct {
@@ -239,6 +246,7 @@ func (q *Queries) UpdatePhysician(ctx context.Context, arg UpdatePhysicianParams
 		&i.Npi,
 		&i.Specialty,
 		&i.AppCode,
+		&i.MessageID,
 	)
 	return i, err
 }

@@ -8,7 +8,8 @@ WITH upsert AS (
         prefix, -- $5
         degree, -- $6
         app_code, -- $7
-        npi -- $8
+        npi, -- $8
+        message_id -- $9
     )
     VALUES (
         $1,
@@ -18,7 +19,8 @@ WITH upsert AS (
         $5,
         $6,
         $7,
-        $8
+        $8,
+        $9
     )
     ON CONFLICT (first_name, last_name, app_code) DO UPDATE
     SET

@@ -5,9 +5,10 @@ WITH upsert as (
         body,
         impression,
         report_status,
-        submitted_dt
+        submitted_dt,
+        message_id
     )
-    VALUES ($1, $2, $3, $4, $5)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,

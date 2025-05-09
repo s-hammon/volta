@@ -27,6 +27,7 @@ type Exam struct {
 	ExamCancelledDt     pgtype.Timestamp
 	PrelimReportID      pgtype.Int8
 	OrderingPhysicianID pgtype.Int8
+	MessageID           pgtype.Int8
 }
 
 type Message struct {
@@ -62,6 +63,7 @@ type Mrn struct {
 	PatientID pgtype.Int8
 	Mrn       string
 	SiteID    int32
+	MessageID pgtype.Int8
 }
 
 type OutsideSystem struct {
@@ -88,6 +90,7 @@ type Patient struct {
 	HomePhone  pgtype.Text
 	WorkPhone  pgtype.Text
 	CellPhone  pgtype.Text
+	MessageID  pgtype.Int8
 }
 
 type Physician struct {
@@ -103,6 +106,7 @@ type Physician struct {
 	Npi        pgtype.Text
 	Specialty  pgtype.Text
 	AppCode    string
+	MessageID  pgtype.Int8
 }
 
 type Procedure struct {
@@ -114,6 +118,7 @@ type Procedure struct {
 	Description string
 	Specialty   pgtype.Text
 	Modality    pgtype.Text
+	MessageID   pgtype.Int8
 }
 
 type Report struct {
@@ -125,6 +130,7 @@ type Report struct {
 	Impression    string
 	ReportStatus  string
 	SubmittedDt   pgtype.Timestamp
+	MessageID     pgtype.Int8
 }
 
 type Site struct {
@@ -135,6 +141,7 @@ type Site struct {
 	Name      pgtype.Text
 	Address   string
 	IsCms     bool
+	MessageID pgtype.Int8
 }
 
 type Visit struct {
@@ -146,4 +153,5 @@ type Visit struct {
 	MrnID           pgtype.Int8
 	Number          string
 	PatientType     int16
+	MessageID       pgtype.Int8
 }

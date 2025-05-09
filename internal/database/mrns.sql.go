@@ -13,8 +13,8 @@ import (
 
 const createMrn = `-- name: CreateMrn :one
 WITH upsert AS (
-    INSERT INTO mrns (site_id, patient_id, mrn)
-    VALUES ($1, $2, $3)
+    INSERT INTO mrns (site_id, patient_id, mrn, message_id)
+    VALUES ($1, $2, $3, $4)
     ON CONFLICT (site_id, patient_id) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
@@ -35,17 +35,23 @@ type CreateMrnParams struct {
 	SiteID    int32
 	PatientID pgtype.Int8
 	Mrn       string
+	MessageID pgtype.Int8
 }
 
 func (q *Queries) CreateMrn(ctx context.Context, arg CreateMrnParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createMrn, arg.SiteID, arg.PatientID, arg.Mrn)
+	row := q.db.QueryRow(ctx, createMrn,
+		arg.SiteID,
+		arg.PatientID,
+		arg.Mrn,
+		arg.MessageID,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
 const getMrnById = `-- name: GetMrnById :one
-SELECT id, created_at, updated_at, patient_id, mrn, site_id
+SELECT id, created_at, updated_at, patient_id, mrn, site_id, message_id
 FROM mrns
 WHERE id = $1
 `
@@ -60,12 +66,13 @@ func (q *Queries) GetMrnById(ctx context.Context, id int64) (Mrn, error) {
 		&i.PatientID,
 		&i.Mrn,
 		&i.SiteID,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getMrnBySitePatient = `-- name: GetMrnBySitePatient :one
-SELECT id, created_at, updated_at, patient_id, mrn, site_id
+SELECT id, created_at, updated_at, patient_id, mrn, site_id, message_id
 FROM mrns
 WHERE
     site_id = $1
@@ -87,6 +94,7 @@ func (q *Queries) GetMrnBySitePatient(ctx context.Context, arg GetMrnBySitePatie
 		&i.PatientID,
 		&i.Mrn,
 		&i.SiteID,
+		&i.MessageID,
 	)
 	return i, err
 }

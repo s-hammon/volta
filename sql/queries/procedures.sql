@@ -1,7 +1,7 @@
 -- name: CreateProcedure :one
 WITH upsert AS (
-    INSERT INTO procedures (site_id, code, description, specialty, modality)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO procedures (site_id, code, description, specialty, modality, message_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,

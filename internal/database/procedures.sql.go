@@ -13,8 +13,8 @@ import (
 
 const createProcedure = `-- name: CreateProcedure :one
 WITH upsert AS (
-    INSERT INTO procedures (site_id, code, description, specialty, modality)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO procedures (site_id, code, description, specialty, modality, message_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
@@ -42,6 +42,7 @@ type CreateProcedureParams struct {
 	Description string
 	Specialty   pgtype.Text
 	Modality    pgtype.Text
+	MessageID   pgtype.Int8
 }
 
 func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (int32, error) {
@@ -51,6 +52,7 @@ func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams
 		arg.Description,
 		arg.Specialty,
 		arg.Modality,
+		arg.MessageID,
 	)
 	var id int32
 	err := row.Scan(&id)
@@ -58,7 +60,7 @@ func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams
 }
 
 const getProcedureById = `-- name: GetProcedureById :one
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
 FROM procedures
 WHERE id = $1
 `
@@ -75,12 +77,13 @@ func (q *Queries) GetProcedureById(ctx context.Context, id int32) (Procedure, er
 		&i.Description,
 		&i.Specialty,
 		&i.Modality,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getProcedureBySiteIDCode = `-- name: GetProcedureBySiteIDCode :one
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
 FROM procedures
 WHERE
     site_id = $1
@@ -104,6 +107,7 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 		&i.Description,
 		&i.Specialty,
 		&i.Modality,
+		&i.MessageID,
 	)
 	return i, err
 }

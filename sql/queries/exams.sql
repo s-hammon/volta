@@ -11,9 +11,10 @@ WITH upsert as (
         schedule_dt, -- $8
         begin_exam_dt, -- $9
         end_exam_dt, -- $10
-        exam_cancelled_dt -- $11
+        exam_cancelled_dt, -- $11
+        message_id -- $12
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     ON CONFLICT (site_id, accession) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
@@ -25,7 +26,8 @@ WITH upsert as (
         schedule_dt = COALESCE(EXCLUDED.schedule_dt, exams.schedule_dt),
         begin_exam_dt = COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt),
         end_exam_dt = COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt),
-        exam_cancelled_dt = COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt)
+        exam_cancelled_dt = COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt),
+        message_id = EXCLUDED.message_id
     WHERE
         exams.visit_id IS DISTINCT FROM EXCLUDED.visit_id
         OR exams.mrn_id IS DISTINCT FROM EXCLUDED.mrn_id

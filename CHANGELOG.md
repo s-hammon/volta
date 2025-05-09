@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.6]
+
+- Changed acession field to ORC.3
+- Added message_id FK on tables
+  * `exams` and `patients` will set to the latest message that affected change
+  * all others will set to the original message creating the record
+
 ## [v0.6.5]
 
 - Fixed pgtype Valid snafu
@@ -181,3 +188,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.3]: https://github.com/s-hammon/volta/releases/tag/v0.6.3
 [v0.6.4]: https://github.com/s-hammon/volta/releases/tag/v0.6.4
 [v0.6.5]: https://github.com/s-hammon/volta/releases/tag/v0.6.5
+[v0.6.6]: https://github.com/s-hammon/volta/releases/tag/v0.6.6

@@ -4,9 +4,10 @@ WITH upsert AS (
         code, -- $1
         name, -- $2
         address, -- $3
-        is_cms -- $4
+        is_cms, -- $4
+        message_id -- $5
     )
-    VALUES ($1, $2, $3, $4)
+    VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT (code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,

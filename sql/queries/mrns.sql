@@ -1,7 +1,7 @@
 -- name: CreateMrn :one
 WITH upsert AS (
-    INSERT INTO mrns (site_id, patient_id, mrn)
-    VALUES ($1, $2, $3)
+    INSERT INTO mrns (site_id, patient_id, mrn, message_id)
+    VALUES ($1, $2, $3, $4)
     ON CONFLICT (site_id, patient_id) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,

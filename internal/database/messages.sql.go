@@ -27,7 +27,7 @@ INSERT INTO messages (
     version_id
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, created_at, updated_at, field_separator, encoding_characters, sending_application, sending_facility, receiving_application, receiving_facility, received_at, message_type, trigger_event, control_id, processing_id, version_id
+RETURNING id
 `
 
 type CreateMessageParams struct {
@@ -45,7 +45,7 @@ type CreateMessageParams struct {
 	VersionID            string
 }
 
-func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
+func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createMessage,
 		arg.FieldSeparator,
 		arg.EncodingCharacters,
@@ -60,25 +60,9 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		arg.ProcessingID,
 		arg.VersionID,
 	)
-	var i Message
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FieldSeparator,
-		&i.EncodingCharacters,
-		&i.SendingApplication,
-		&i.SendingFacility,
-		&i.ReceivingApplication,
-		&i.ReceivingFacility,
-		&i.ReceivedAt,
-		&i.MessageType,
-		&i.TriggerEvent,
-		&i.ControlID,
-		&i.ProcessingID,
-		&i.VersionID,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getMessageByID = `-- name: GetMessageByID :one

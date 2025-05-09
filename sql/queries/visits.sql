@@ -5,14 +5,16 @@ WITH upsert AS (
         site_id,
         mrn_id,
         number,
-        patient_type
+        patient_type,
+        message_id
     )
     VALUES (
         $1,
         $2,
         $3,
         $4,
-        $5
+        $5,
+        $6
     )
     ON CONFLICT (site_id, mrn_id, number) DO UPDATE
     SET

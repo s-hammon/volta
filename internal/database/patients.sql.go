@@ -25,7 +25,8 @@ WITH upsert AS (
         ssn, -- $9
         home_phone, -- $10
         work_phone, -- $11
-        cell_phone -- $12
+        cell_phone, -- $12
+        message_id -- $13
     )
     VALUES (
         $1,
@@ -39,7 +40,8 @@ WITH upsert AS (
         $9,
         $10,
         $11,
-        $12
+        $12,
+        $13
     )
     ON CONFLICT (ssn) DO UPDATE
     SET
@@ -54,7 +56,8 @@ WITH upsert AS (
         sex = EXCLUDED.sex,
         home_phone = EXCLUDED.home_phone,
         work_phone = EXCLUDED.work_phone,
-        cell_phone = EXCLUDED.cell_phone
+        cell_phone = EXCLUDED.cell_phone,
+        message_id = EXCLUDED.message_id
     WHERE
         COALESCE(NULLIF(EXCLUDED.first_name, ''), patients.first_name) IS DISTINCT FROM EXCLUDED.first_name
         OR COALESCE(NULLIF(EXCLUDED.last_name, ''), patients.last_name) IS DISTINCT FROM EXCLUDED.last_name
@@ -90,6 +93,7 @@ type CreatePatientParams struct {
 	HomePhone  pgtype.Text
 	WorkPhone  pgtype.Text
 	CellPhone  pgtype.Text
+	MessageID  pgtype.Int8
 }
 
 func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (int64, error) {
@@ -106,6 +110,7 @@ func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (i
 		arg.HomePhone,
 		arg.WorkPhone,
 		arg.CellPhone,
+		arg.MessageID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -113,7 +118,7 @@ func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (i
 }
 
 const getPatientById = `-- name: GetPatientById :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone, message_id
 FROM patients
 WHERE id = $1
 `
@@ -137,12 +142,13 @@ func (q *Queries) GetPatientById(ctx context.Context, id int64) (Patient, error)
 		&i.HomePhone,
 		&i.WorkPhone,
 		&i.CellPhone,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getPatientByNameSSN = `-- name: GetPatientByNameSSN :one
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone, message_id
 FROM patients
 WHERE
     first_name = $1
@@ -182,6 +188,7 @@ func (q *Queries) GetPatientByNameSSN(ctx context.Context, arg GetPatientByNameS
 		&i.HomePhone,
 		&i.WorkPhone,
 		&i.CellPhone,
+		&i.MessageID,
 	)
 	return i, err
 }
@@ -203,7 +210,7 @@ SET
     work_phone = $12,
     cell_phone = $13
 WHERE id = $1
-RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone, message_id
 `
 
 type UpdatePatientParams struct {
@@ -255,6 +262,7 @@ func (q *Queries) UpdatePatient(ctx context.Context, arg UpdatePatientParams) (P
 		&i.HomePhone,
 		&i.WorkPhone,
 		&i.CellPhone,
+		&i.MessageID,
 	)
 	return i, err
 }

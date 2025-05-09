@@ -18,9 +18,10 @@ WITH upsert as (
         body,
         impression,
         report_status,
-        submitted_dt
+        submitted_dt,
+        message_id
     )
-    VALUES ($1, $2, $3, $4, $5)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (radiologist_id, impression, report_status, submitted_dt) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
@@ -46,6 +47,7 @@ type CreateReportParams struct {
 	Impression    string
 	ReportStatus  string
 	SubmittedDt   pgtype.Timestamp
+	MessageID     pgtype.Int8
 }
 
 func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (int64, error) {
@@ -55,6 +57,7 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (int
 		arg.Impression,
 		arg.ReportStatus,
 		arg.SubmittedDt,
+		arg.MessageID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -62,7 +65,7 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (int
 }
 
 const getAllReports = `-- name: GetAllReports :many
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt, message_id
 FROM reports
 `
 
@@ -84,6 +87,7 @@ func (q *Queries) GetAllReports(ctx context.Context) ([]Report, error) {
 			&i.Impression,
 			&i.ReportStatus,
 			&i.SubmittedDt,
+			&i.MessageID,
 		); err != nil {
 			return nil, err
 		}
@@ -96,7 +100,7 @@ func (q *Queries) GetAllReports(ctx context.Context) ([]Report, error) {
 }
 
 const getReportById = `-- name: GetReportById :one
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt, message_id FROM reports
 WHERE id = $1
 `
 
@@ -112,12 +116,13 @@ func (q *Queries) GetReportById(ctx context.Context, id int64) (Report, error) {
 		&i.Impression,
 		&i.ReportStatus,
 		&i.SubmittedDt,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getReportByRadID = `-- name: GetReportByRadID :one
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt, message_id FROM reports
 where radiologist_id = $1
 `
 
@@ -133,12 +138,13 @@ func (q *Queries) GetReportByRadID(ctx context.Context, radiologistID pgtype.Int
 		&i.Impression,
 		&i.ReportStatus,
 		&i.SubmittedDt,
+		&i.MessageID,
 	)
 	return i, err
 }
 
 const getReportByUniqueFields = `-- name: GetReportByUniqueFields :one
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
+SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt, message_id
 FROM reports
 WHERE
     radiologist_id = $1
@@ -171,6 +177,7 @@ func (q *Queries) GetReportByUniqueFields(ctx context.Context, arg GetReportByUn
 		&i.Impression,
 		&i.ReportStatus,
 		&i.SubmittedDt,
+		&i.MessageID,
 	)
 	return i, err
 }
