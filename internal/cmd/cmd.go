@@ -11,10 +11,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/s-hammon/volta/internal/api"
-	"github.com/s-hammon/volta/internal/database"
+	"github.com/s-hammon/volta/internal/entity"
 	"github.com/spf13/cobra"
 )
 
@@ -43,9 +42,8 @@ func init() {
 
 func Execute(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	rootCmd := &cobra.Command{
-		Use:              "volta",
-		SilenceUsage:     true,
-		PersistentPreRun: initLogger,
+		Use:          "volta",
+		SilenceUsage: true,
 	}
 	rootCmd.AddCommand(serveCmd)
 
@@ -91,39 +89,31 @@ var serveCmd = &cobra.Command{
 			return err
 		}
 
-		var db *database.Queries
 		if !debugMode {
-			pool, err := pgxpool.New(ctx, dbURL)
+			db, err = pgxpool.New(ctx, dbURL)
 			if err != nil {
 				log.Info().Err(err).Msg("failed to connect to database")
 				return err
 			}
-			if err := pool.Ping(ctx); err != nil {
+			if err := db.Ping(ctx); err != nil {
 				log.Info().Err(err).Msg("couldn't reach database")
 				return err
 			}
 			log.Info().Msg("connected to database")
-			db = database.New(pool)
 		} else {
 			log.Info().Msg("debug mode enabled; printing messages to stdout")
 		}
 
+		store := entity.NewRepo(db)
 		srv := &http.Server{
 			Addr:              net.JoinHostPort(host, port),
-			Handler:           api.New(db, client, debugMode),
+			Handler:           api.New(store, client, debugMode),
 			ReadHeaderTimeout: 3 * time.Second,
 		}
 
 		log.Info().Msg(fmt.Sprintf("starting server on %s", srv.Addr))
 		return srv.ListenAndServe()
 	},
-}
-
-func initLogger(cmd *cobra.Command, args []string) {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.DurationFieldInteger = true
-
-	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 }
 
 func cleanup() {

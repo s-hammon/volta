@@ -33,11 +33,11 @@ WITH upsert AS (
         OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
         OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
         OR physicians.specialty IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.specialty, ''), physicians.specialty)
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM physicians
+SELECT id FROM physicians
 WHERE
     first_name = $1
     AND last_name = $2

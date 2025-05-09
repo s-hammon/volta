@@ -1,10 +1,8 @@
 package entity
 
 import (
-	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 )
 
@@ -32,7 +30,6 @@ func (o ExamStatus) String() string {
 type Exam struct {
 	Base
 	Accession     string
-	MRN           MRN
 	Procedure     Procedure
 	CurrentStatus ExamStatus
 	Provider      Physician
@@ -51,14 +48,6 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 			UpdatedAt: exam.UpdatedAt.Time,
 		},
 		Accession: exam.Accession,
-		MRN: MRN{
-			Base: Base{
-				ID:        int(exam.MrnID.Int64),
-				CreatedAt: exam.MrnCreatedAt.Time,
-				UpdatedAt: exam.MrnUpdatedAt.Time,
-			},
-			Value: exam.MrnValue.String,
-		},
 		Procedure: Procedure{
 			Base: Base{
 				ID:        int(exam.ProcedureID.Int32),
@@ -84,36 +73,17 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 	}
 }
 
-func (e *Exam) ToDB(ctx context.Context, visitID, mrnID, physID int64, siteID, procedureID int32, db *database.Queries) (int64, error) {
-	params := database.CreateExamParams{
-		VisitID:             pgtype.Int8{Int64: visitID, Valid: true},
-		MrnID:               pgtype.Int8{Int64: int64(mrnID), Valid: true},
-		SiteID:              pgtype.Int4{Int32: int32(siteID), Valid: true},
-		ProcedureID:         pgtype.Int4{Int32: int32(procedureID), Valid: true},
-		OrderingPhysicianID: pgtype.Int8{Int64: physID, Valid: true},
-		Accession:           e.Accession,
-		CurrentStatus:       e.CurrentStatus.String(),
-	}
-	e.timestamp(&params)
-
-	exam, err := db.CreateExam(ctx, params)
-	if err != nil {
-		return 0, err
-	}
-	return exam.ID, nil
-}
-
 func (e *Exam) timestamp(params *database.CreateExamParams) {
 	if !e.Scheduled.IsZero() {
-		params.ScheduleDt = pgtype.Timestamp{Time: e.Scheduled, Valid: true}
+		params.ScheduleDt.Time = e.Scheduled
 	}
 	if !e.Begin.IsZero() {
-		params.BeginExamDt = pgtype.Timestamp{Time: e.Begin, Valid: true}
+		params.BeginExamDt.Time = e.Begin
 	}
 	if !e.End.IsZero() {
-		params.EndExamDt = pgtype.Timestamp{Time: e.End, Valid: true}
+		params.EndExamDt.Time = e.End
 	}
 	if !e.Cancelled.IsZero() {
-		params.ExamCancelledDt = pgtype.Timestamp{Time: e.Cancelled, Valid: true}
+		params.ExamCancelledDt.Time = e.Cancelled
 	}
 }

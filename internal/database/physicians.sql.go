@@ -46,11 +46,11 @@ WITH upsert AS (
         OR physicians.prefix IS DISTINCT FROM EXCLUDED.prefix
         OR physicians.degree IS DISTINCT FROM EXCLUDED.degree
         OR physicians.specialty IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.specialty, ''), physicians.specialty)
-    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code
+    RETURNING id
 )
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, npi, specialty, app_code FROM physicians
+SELECT id FROM physicians
 WHERE
     first_name = $1
     AND last_name = $2
@@ -69,22 +69,7 @@ type CreatePhysicianParams struct {
 	Npi        pgtype.Text
 }
 
-type CreatePhysicianRow struct {
-	ID         int64
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
-	FirstName  string
-	LastName   string
-	MiddleName pgtype.Text
-	Suffix     pgtype.Text
-	Prefix     pgtype.Text
-	Degree     pgtype.Text
-	Npi        pgtype.Text
-	Specialty  pgtype.Text
-	AppCode    string
-}
-
-func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (CreatePhysicianRow, error) {
+func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createPhysician,
 		arg.FirstName,
 		arg.LastName,
@@ -95,22 +80,9 @@ func (q *Queries) CreatePhysician(ctx context.Context, arg CreatePhysicianParams
 		arg.AppCode,
 		arg.Npi,
 	)
-	var i CreatePhysicianRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FirstName,
-		&i.LastName,
-		&i.MiddleName,
-		&i.Suffix,
-		&i.Prefix,
-		&i.Degree,
-		&i.Npi,
-		&i.Specialty,
-		&i.AppCode,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getPhysicianById = `-- name: GetPhysicianById :one

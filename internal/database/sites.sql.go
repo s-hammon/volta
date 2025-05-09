@@ -29,11 +29,11 @@ WITH upsert AS (
         sites.name IS DISTINCT FROM EXCLUDED.name
         OR sites.address IS DISTINCT FROM EXCLUDED.address
         OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
-    RETURNING id, created_at, updated_at, code, name, address, is_cms
+    RETURNING id
 )
-SELECT id, created_at, updated_at, code, name, address, is_cms FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, code, name, address, is_cms FROM sites
+SELECT id FROM sites
 WHERE code = $1
     AND NOT EXISTS (SELECT 1 FROM upsert)
 `
@@ -45,34 +45,16 @@ type CreateSiteParams struct {
 	IsCms   bool
 }
 
-type CreateSiteRow struct {
-	ID        int32
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	Code      string
-	Name      pgtype.Text
-	Address   string
-	IsCms     bool
-}
-
-func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (CreateSiteRow, error) {
+func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (int32, error) {
 	row := q.db.QueryRow(ctx, createSite,
 		arg.Code,
 		arg.Name,
 		arg.Address,
 		arg.IsCms,
 	)
-	var i CreateSiteRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Code,
-		&i.Name,
-		&i.Address,
-		&i.IsCms,
-	)
-	return i, err
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getSiteByCode = `-- name: GetSiteByCode :one

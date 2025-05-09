@@ -5,11 +5,11 @@ WITH upsert AS (
     ON CONFLICT (site_id, patient_id) DO UPDATE
     SET mrn = COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
     WHERE mrns.mrn IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM mrns
+SELECT id FROM mrns
 WHERE
     site_id = $1
     AND patient_id = $2

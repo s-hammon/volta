@@ -10,11 +10,11 @@ WITH upsert AS (
         procedures.description IS DISTINCT FROM EXCLUDED.description
         OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
         OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM procedures
+SELECT id FROM procedures
 WHERE
     site_id = $1
     AND code = $2

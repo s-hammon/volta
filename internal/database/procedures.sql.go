@@ -23,11 +23,11 @@ WITH upsert AS (
         procedures.description IS DISTINCT FROM EXCLUDED.description
         OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
         OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
-    RETURNING id, created_at, updated_at, site_id, code, description, specialty, modality
+    RETURNING id
 )
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality FROM procedures
+SELECT id FROM procedures
 WHERE
     site_id = $1
     AND code = $2
@@ -42,18 +42,7 @@ type CreateProcedureParams struct {
 	Modality    pgtype.Text
 }
 
-type CreateProcedureRow struct {
-	ID          int32
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
-	SiteID      pgtype.Int4
-	Code        string
-	Description string
-	Specialty   pgtype.Text
-	Modality    pgtype.Text
-}
-
-func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (CreateProcedureRow, error) {
+func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams) (int32, error) {
 	row := q.db.QueryRow(ctx, createProcedure,
 		arg.SiteID,
 		arg.Code,
@@ -61,18 +50,9 @@ func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams
 		arg.Specialty,
 		arg.Modality,
 	)
-	var i CreateProcedureRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.SiteID,
-		&i.Code,
-		&i.Description,
-		&i.Specialty,
-		&i.Modality,
-	)
-	return i, err
+	var id int32
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getProcedureById = `-- name: GetProcedureById :one

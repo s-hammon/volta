@@ -52,11 +52,11 @@ WITH upsert AS (
         OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
         OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
         OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM patients
+SELECT id FROM patients
 WHERE
     ssn = $9
     AND NOT EXISTS (SELECT 1 FROM upsert);

@@ -1,10 +1,6 @@
 package entity
 
-import (
-	"context"
-
-	"github.com/s-hammon/volta/internal/database"
-)
+import "github.com/s-hammon/volta/internal/database"
 
 type Site struct {
 	Base
@@ -27,21 +23,6 @@ func DBtoSite(site database.Site) Site {
 		Address: site.Address,
 		// TODO: handle phone numbers
 	}
-}
-
-func (s *Site) ToDB(ctx context.Context, db *database.Queries) (int32, error) {
-	params := database.CreateSiteParams{
-		Code:    s.Code,
-		Address: s.Address,
-	}
-	if s.Name != "" {
-		params.Name.String = s.Name
-	}
-	res, err := db.CreateSite(ctx, params)
-	if err != nil {
-		return 0, err
-	}
-	return res.ID, nil
 }
 
 func (s *Site) Equal(other Site) bool {

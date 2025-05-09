@@ -1,9 +1,6 @@
 package entity
 
 import (
-	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -36,17 +33,4 @@ func DBtoVisit(visit database.GetVisitBySiteIdNumberRow) Visit {
 		},
 		Type: objects.PatientType(visit.PatientType),
 	}
-}
-
-func (v *Visit) ToDB(ctx context.Context, siteID int32, mrnID int64, db *database.Queries) (int64, error) {
-	visit, err := db.CreateVisit(ctx, database.CreateVisitParams{
-		SiteID:      pgtype.Int4{Int32: siteID, Valid: true},
-		MrnID:       pgtype.Int8{Int64: mrnID, Valid: true},
-		Number:      v.VisitNo,
-		PatientType: v.Type.Int16(),
-	})
-	if err != nil {
-		return 0, err
-	}
-	return visit.ID, nil
 }

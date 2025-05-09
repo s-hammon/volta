@@ -21,11 +21,11 @@ WITH upsert AS (
     WHERE
         visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
         OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM visits
+SELECT id FROM visits
 WHERE
     site_id = $2
     AND mrn_id = $3

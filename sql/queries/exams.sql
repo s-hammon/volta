@@ -36,11 +36,11 @@ WITH upsert as (
         OR COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt) IS DISTINCT FROM exams.begin_exam_dt
         OR COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt) IS DISTINCT FROM exams.end_exam_dt
         OR COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt) IS DISTINCT FROM exams.exam_cancelled_dt
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM exams
+SELECT id FROM exams
 WHERE
     site_id = $4
     AND accession = $6

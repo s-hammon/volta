@@ -49,11 +49,11 @@ WITH upsert as (
         OR COALESCE(EXCLUDED.begin_exam_dt, exams.begin_exam_dt) IS DISTINCT FROM exams.begin_exam_dt
         OR COALESCE(EXCLUDED.end_exam_dt, exams.end_exam_dt) IS DISTINCT FROM exams.end_exam_dt
         OR COALESCE(EXCLUDED.exam_cancelled_dt, exams.exam_cancelled_dt) IS DISTINCT FROM exams.exam_cancelled_dt
-    RETURNING id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id
+    RETURNING id
 )
-SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, outside_system_id, visit_id, mrn_id, site_id, procedure_id, final_report_id, addendum_report_id, accession, current_status, schedule_dt, begin_exam_dt, end_exam_dt, exam_cancelled_dt, prelim_report_id, ordering_physician_id FROM exams
+SELECT id FROM exams
 WHERE
     site_id = $4
     AND accession = $6
@@ -74,28 +74,7 @@ type CreateExamParams struct {
 	ExamCancelledDt     pgtype.Timestamp
 }
 
-type CreateExamRow struct {
-	ID                  int64
-	CreatedAt           pgtype.Timestamp
-	UpdatedAt           pgtype.Timestamp
-	OutsideSystemID     pgtype.Int4
-	VisitID             pgtype.Int8
-	MrnID               pgtype.Int8
-	SiteID              pgtype.Int4
-	ProcedureID         pgtype.Int4
-	FinalReportID       pgtype.Int8
-	AddendumReportID    pgtype.Int8
-	Accession           string
-	CurrentStatus       string
-	ScheduleDt          pgtype.Timestamp
-	BeginExamDt         pgtype.Timestamp
-	EndExamDt           pgtype.Timestamp
-	ExamCancelledDt     pgtype.Timestamp
-	PrelimReportID      pgtype.Int8
-	OrderingPhysicianID pgtype.Int8
-}
-
-func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateExamRow, error) {
+func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createExam,
 		arg.VisitID,
 		arg.MrnID,
@@ -109,28 +88,9 @@ func (q *Queries) CreateExam(ctx context.Context, arg CreateExamParams) (CreateE
 		arg.EndExamDt,
 		arg.ExamCancelledDt,
 	)
-	var i CreateExamRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.OutsideSystemID,
-		&i.VisitID,
-		&i.MrnID,
-		&i.SiteID,
-		&i.ProcedureID,
-		&i.FinalReportID,
-		&i.AddendumReportID,
-		&i.Accession,
-		&i.CurrentStatus,
-		&i.ScheduleDt,
-		&i.BeginExamDt,
-		&i.EndExamDt,
-		&i.ExamCancelledDt,
-		&i.PrelimReportID,
-		&i.OrderingPhysicianID,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getAllExams = `-- name: GetAllExams :many

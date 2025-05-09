@@ -34,11 +34,11 @@ WITH upsert AS (
     WHERE
         visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
         OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
-    RETURNING id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type
+    RETURNING id
 )
-SELECT id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type FROM visits
+SELECT id FROM visits
 WHERE
     site_id = $2
     AND mrn_id = $3
@@ -54,18 +54,7 @@ type CreateVisitParams struct {
 	PatientType     int16
 }
 
-type CreateVisitRow struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
-}
-
-func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (CreateVisitRow, error) {
+func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createVisit,
 		arg.OutsideSystemID,
 		arg.SiteID,
@@ -73,18 +62,9 @@ func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (Creat
 		arg.Number,
 		arg.PatientType,
 	)
-	var i CreateVisitRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.OutsideSystemID,
-		&i.SiteID,
-		&i.MrnID,
-		&i.Number,
-		&i.PatientType,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getVisitById = `-- name: GetVisitById :one

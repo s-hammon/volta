@@ -26,12 +26,12 @@ WITH upsert as (
         body = COALESCE(EXCLUDED.body, reports.body)
     WHERE
         COALESCE(EXCLUDED.body, reports.body) IS DISTINCT FROM EXCLUDED.body
-    RETURNING id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt
+    RETURNING id
 )
 
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, radiologist_id, body, impression, report_status, submitted_dt FROM reports
+SELECT id FROM reports
 WHERE
     radiologist_id = $1
     AND impression = $3
@@ -47,18 +47,7 @@ type CreateReportParams struct {
 	SubmittedDt   pgtype.Timestamp
 }
 
-type CreateReportRow struct {
-	ID            int64
-	CreatedAt     pgtype.Timestamp
-	UpdatedAt     pgtype.Timestamp
-	RadiologistID pgtype.Int8
-	Body          string
-	Impression    string
-	ReportStatus  string
-	SubmittedDt   pgtype.Timestamp
-}
-
-func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (CreateReportRow, error) {
+func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createReport,
 		arg.RadiologistID,
 		arg.Body,
@@ -66,18 +55,9 @@ func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) (Cre
 		arg.ReportStatus,
 		arg.SubmittedDt,
 	)
-	var i CreateReportRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RadiologistID,
-		&i.Body,
-		&i.Impression,
-		&i.ReportStatus,
-		&i.SubmittedDt,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getAllReports = `-- name: GetAllReports :many

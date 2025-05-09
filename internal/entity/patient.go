@@ -1,10 +1,8 @@
 package entity
 
 import (
-	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -43,44 +41,11 @@ func DBtoPatient(patient database.Patient) Patient {
 	}
 }
 
-func (p *Patient) ToDB(ctx context.Context, db *database.Queries) (int64, error) {
-	params := database.CreatePatientParams{
-		FirstName:  p.Name.First,
-		LastName:   p.Name.Last,
-		MiddleName: pgtype.Text{String: p.Name.Middle, Valid: true},
-		Suffix:     pgtype.Text{String: p.Name.Suffix, Valid: true},
-		Prefix:     pgtype.Text{String: p.Name.Prefix, Valid: true},
-		Degree:     pgtype.Text{String: p.Name.Degree, Valid: true},
-		Dob:        pgtype.Date{Time: p.DOB, Valid: true},
-		Sex:        p.Sex,
-	}
-	if p.SSN != "" {
-		params.Ssn.String = p.SSN.String()
-	}
-	patient, err := db.CreatePatient(ctx, params)
-	if err != nil {
-		return 0, err
-	}
-	return patient.ID, nil
-}
-
 type MRN struct {
 	Base
 	Value string
 	// TODO: handle assigning authority
 	AssigningAuthority string
-}
-
-func (m *MRN) ToDB(ctx context.Context, siteID int32, patientID int64, db *database.Queries) (int64, error) {
-	mrn, err := db.CreateMrn(ctx, database.CreateMrnParams{
-		SiteID:    siteID,
-		PatientID: pgtype.Int8{Int64: patientID, Valid: true},
-		Mrn:       m.Value,
-	})
-	if err != nil {
-		return 0, err
-	}
-	return mrn.ID, nil
 }
 
 func (m *MRN) Equal(other MRN) bool {

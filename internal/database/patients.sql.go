@@ -65,11 +65,11 @@ WITH upsert AS (
         OR patients.home_phone IS DISTINCT FROM EXCLUDED.home_phone
         OR patients.work_phone IS DISTINCT FROM EXCLUDED.work_phone
         OR patients.cell_phone IS DISTINCT FROM EXCLUDED.cell_phone
-    RETURNING id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone
+    RETURNING id
 )
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, first_name, last_name, middle_name, suffix, prefix, degree, dob, sex, ssn, home_phone, work_phone, cell_phone FROM patients
+SELECT id FROM patients
 WHERE
     ssn = $9
     AND NOT EXISTS (SELECT 1 FROM upsert)
@@ -90,25 +90,7 @@ type CreatePatientParams struct {
 	CellPhone  pgtype.Text
 }
 
-type CreatePatientRow struct {
-	ID         int64
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
-	FirstName  string
-	LastName   string
-	MiddleName pgtype.Text
-	Suffix     pgtype.Text
-	Prefix     pgtype.Text
-	Degree     pgtype.Text
-	Dob        pgtype.Date
-	Sex        string
-	Ssn        pgtype.Text
-	HomePhone  pgtype.Text
-	WorkPhone  pgtype.Text
-	CellPhone  pgtype.Text
-}
-
-func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (CreatePatientRow, error) {
+func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createPatient,
 		arg.FirstName,
 		arg.LastName,
@@ -123,25 +105,9 @@ func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (C
 		arg.WorkPhone,
 		arg.CellPhone,
 	)
-	var i CreatePatientRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FirstName,
-		&i.LastName,
-		&i.MiddleName,
-		&i.Suffix,
-		&i.Prefix,
-		&i.Degree,
-		&i.Dob,
-		&i.Sex,
-		&i.Ssn,
-		&i.HomePhone,
-		&i.WorkPhone,
-		&i.CellPhone,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getPatientById = `-- name: GetPatientById :one

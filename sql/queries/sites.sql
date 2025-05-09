@@ -16,11 +16,11 @@ WITH upsert AS (
         sites.name IS DISTINCT FROM EXCLUDED.name
         OR sites.address IS DISTINCT FROM EXCLUDED.address
         OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
-    RETURNING *
+    RETURNING id
 )
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM sites
+SELECT id FROM sites
 WHERE code = $1
     AND NOT EXISTS (SELECT 1 FROM upsert);
 

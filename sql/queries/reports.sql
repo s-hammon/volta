@@ -13,12 +13,12 @@ WITH upsert as (
         body = COALESCE(EXCLUDED.body, reports.body)
     WHERE
         COALESCE(EXCLUDED.body, reports.body) IS DISTINCT FROM EXCLUDED.body
-    RETURNING *
+    RETURNING id
 )
 
-SELECT * FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT * FROM reports
+SELECT id FROM reports
 WHERE
     radiologist_id = $1
     AND impression = $3

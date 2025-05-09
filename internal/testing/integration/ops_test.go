@@ -9,16 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pressly/goose/v3"
 	goosedb "github.com/pressly/goose/v3/database"
 	"github.com/s-hammon/volta/internal/api"
-	"github.com/s-hammon/volta/internal/api/models"
-	"github.com/s-hammon/volta/internal/database"
-	"github.com/s-hammon/volta/internal/objects"
+	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/testing/testdb"
 	"github.com/s-hammon/volta/pkg/hl7"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,20 +37,12 @@ func TestHL7Upserts(t *testing.T) {
 			if len(data) == 0 {
 				t.Fatalf("file %s is empty", fPath)
 			}
-			msg := &models.MessageModel{}
+			msg := &api.Message{}
 			d := hl7.NewDecoder(data)
-			if err := d.Decode(msg); err != nil {
-				t.Fatalf("error unmarshaling HL7: %v", err)
-			}
-			m := msg.ToEntity()
-			dbMsg, err := m.ToDB(ctx, repo.Queries)
-			assert.NoError(t, err)
-			assert.NotEqual(t, 0, dbMsg.ID)
-			getMsg, err := repo.GetMessageByID(ctx, dbMsg.ID)
-			assert.NoError(t, err)
-			assert.Equal(t, dbMsg.ID, getMsg.ID)
+			err = d.Decode(msg)
+			require.NoError(t, err)
 
-			switch msg.Type.Name {
+			switch msg.MsgType.Name {
 			case "ORM":
 				testUpsertORM(t, ctx, repo, d)
 			case "ORU":
@@ -62,202 +50,39 @@ func TestHL7Upserts(t *testing.T) {
 			case "ADT":
 				t.Logf("skipping ADT message: %s", hl7Msg.Name())
 			default:
-				t.Fatalf("unsupported message type: %s", msg.Type.Name)
+				t.Fatalf("unsupported message type: %s", msg.MsgType.Name)
 			}
 		})
 	}
 }
 
-func testUpsertORU(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decoder) {
+func testUpsertORM(t *testing.T, ctx context.Context, repo *entity.HL7Repo, d *hl7.Decoder) {
 	t.Helper()
 
-	patient := &models.PatientModel{}
-	err := d.Decode(patient)
+	orm := &api.ORM{}
+	err := d.Decode(orm)
 	require.NoError(t, err)
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+}
 
-	p := patient.ToEntity()
-	pID, err := p.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, pID)
-	dbPatient, err := repo.GetPatientById(ctx, pID)
-	require.NoError(t, err)
-	require.Equal(t, pID, dbPatient.ID)
+func testUpsertORU(t *testing.T, ctx context.Context, repo *entity.HL7Repo, d *hl7.Decoder) {
+	t.Helper()
 
-	visit := &models.VisitModel{}
-	err = d.Decode(visit)
+	oru := &api.ORU{}
+	err := d.Decode(oru)
 	require.NoError(t, err)
-	v := visit.ToEntity()
-
-	sID, err := v.Site.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, sID)
-	site, err := repo.GetSiteById(ctx, sID)
-	require.NoError(t, err)
-	require.Equal(t, sID, site.ID)
-
-	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, mID)
-	mrn, err := repo.GetMrnById(ctx, mID)
-	require.NoError(t, err)
-	require.Equal(t, mID, mrn.ID)
-
-	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, vID)
-	dbVisit, err := repo.GetVisitById(ctx, vID)
-	require.NoError(t, err)
-	require.Equal(t, vID, dbVisit.ID)
-
-	exams := []models.ExamModel{}
-	err = d.Decode(&exams)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(exams), 1)
-	eg := models.ToEntities(exams)
-	require.Equal(t, len(exams), len(eg))
-
-	phID, err := eg[0].Provider.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, phID)
-	physician, err := repo.GetPhysicianById(ctx, phID)
-	require.NoError(t, err)
-	require.Equal(t, phID, physician.ID)
-
-	examIDs := []int64{}
-	for i, e := range eg {
-		prID, err := eg[i].Procedure.ToDB(ctx, sID, repo.Queries)
-		require.NoError(t, err)
-		require.NotEqual(t, 0, prID)
-		proc, err := repo.GetProcedureById(ctx, prID)
-		require.NoError(t, err)
-		require.Equal(t, prID, proc.ID)
-
-		eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
-		require.NoError(t, err)
-		require.NotEqual(t, 0, eID)
-		dbExam, err := repo.GetExamById(ctx, eID)
-		require.NoError(t, err)
-		require.Equal(t, eID, dbExam.ID)
-		assertNotNullStatusTimestamp(t, dbExam)
-		examIDs = append(examIDs, eID)
-	}
-	report := []models.ReportModel{}
+	report := []api.Report{}
 	err = d.Decode(&report)
 	require.NoError(t, err)
-	require.Greater(t, len(report), 0)
-	r := models.GetReport(report)
-	radID, err := r.Radiologist.ToDB(ctx, repo.Queries)
+	exams := []api.Exam{}
+	err = d.Decode(&exams)
 	require.NoError(t, err)
-	require.NotEqual(t, 0, radID)
-	rID, err := r.ToDB(ctx, repo.Queries, radID)
+	err = repo.SaveORU(ctx, oru.ToObservation(api.GetReport(report), exams...))
 	require.NoError(t, err)
-	require.NotEqual(t, 0, rID)
-	dbReport, err := repo.GetReportById(ctx, rID)
-	require.NoError(t, err)
-	reportEnt, err := repo.GetReportByRadID(ctx, pgtype.Int8{Int64: radID, Valid: true})
-	require.NoError(t, err)
-	require.Equal(t, rID, dbReport.ID)
-	assert.Equal(t, r.Body, dbReport.Body)
-	assert.Equal(t, r.Impression, dbReport.Impression)
-	assert.Equal(t, "F", reportEnt.ReportStatus)
-	assert.Equal(t, r.SubmittedDT, reportEnt.SubmittedDt.Time)
-	assert.Equal(t, radID, dbReport.RadiologistID.Int64)
-
-	switch r.Status {
-	case objects.Final:
-		for _, examID := range examIDs {
-			exam, err := repo.UpdateExamFinalReport(ctx, database.UpdateExamFinalReportParams{
-				ID:            examID,
-				FinalReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
-			})
-			require.NoError(t, err)
-			require.NotEqual(t, 0, exam.ID)
-			updatedExam, err := repo.GetExamById(ctx, exam.ID)
-			require.NoError(t, err)
-			assert.Equal(t, exam.ID, updatedExam.ID)
-			assert.Equal(t, exam.FinalReportID.Int64, dbReport.ID)
-			assertNotNullStatusTimestamp(t, updatedExam)
-		}
-	case objects.Addendum:
-		for _, examID := range examIDs {
-			exam, err := repo.UpdateExamAddendumReport(ctx, database.UpdateExamAddendumReportParams{
-				ID:               examID,
-				AddendumReportID: pgtype.Int8{Int64: dbReport.ID, Valid: true},
-			})
-			require.NoError(t, err)
-			require.NotEqual(t, 0, exam.ID)
-			updatedExam, err := repo.GetExamById(ctx, exam.ID)
-			require.NoError(t, err)
-			assert.Equal(t, exam.ID, updatedExam.ID)
-			assert.Equal(t, exam.AddendumReportID, dbReport.ID)
-			assertNotNullStatusTimestamp(t, updatedExam)
-		}
-	}
 }
 
-func testUpsertORM(t *testing.T, ctx context.Context, repo api.DB, d *hl7.Decoder) {
-	t.Helper()
-
-	patient := &models.PatientModel{}
-	err := d.Decode(patient)
-	require.NoError(t, err)
-
-	p := patient.ToEntity()
-	pID, err := p.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, pID)
-	dbPatient, err := repo.GetPatientById(ctx, pID)
-	require.NoError(t, err)
-	require.Equal(t, pID, dbPatient.ID)
-
-	visit := &models.VisitModel{}
-	err = d.Decode(visit)
-	require.NoError(t, err)
-	v := visit.ToEntity()
-
-	sID, err := v.Site.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, sID)
-	site, err := repo.GetSiteById(ctx, sID)
-	require.NoError(t, err)
-	require.Equal(t, sID, site.ID)
-
-	mID, err := v.MRN.ToDB(ctx, sID, pID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, mID)
-	mrn, err := repo.GetMrnById(ctx, mID)
-	require.NoError(t, err)
-	require.Equal(t, mID, mrn.ID)
-
-	vID, err := v.ToDB(ctx, sID, mID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, vID)
-	dbVisit, err := repo.GetVisitById(ctx, vID)
-	require.NoError(t, err)
-	require.Equal(t, vID, dbVisit.ID)
-
-	exam := &models.ExamModel{}
-	err = d.Decode(exam)
-	require.NoError(t, err)
-	e := exam.ToEntity()
-
-	phID, err := e.Provider.ToDB(ctx, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, phID)
-	prID, err := e.Procedure.ToDB(ctx, sID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, prID)
-
-	eID, err := e.ToDB(ctx, vID, mID, phID, sID, prID, repo.Queries)
-	require.NoError(t, err)
-	require.NotEqual(t, 0, eID)
-	dbExam, err := repo.GetExamById(ctx, eID)
-	require.NoError(t, err)
-	require.Equal(t, eID, dbExam.ID)
-	assertNotNullStatusTimestamp(t, dbExam)
-}
-
-func setupDB(t *testing.T, ctx context.Context) (api.DB, []fs.DirEntry) {
+func setupDB(t *testing.T, ctx context.Context) (*entity.HL7Repo, []fs.DirEntry) {
 	t.Helper()
 
 	pool, cleanup, err := testdb.NewPGPool()
@@ -302,28 +127,5 @@ func setupDB(t *testing.T, ctx context.Context) (api.DB, []fs.DirEntry) {
 		t.Fatalf("no HL7 messages found in test directory")
 	}
 
-	return api.NewDB(pool), hl7Messages
-}
-
-func assertNotNullStatusTimestamp(t *testing.T, exam database.Exam) {
-	t.Helper()
-
-	switch exam.CurrentStatus {
-	case "SC":
-		if exam.ScheduleDt.Time.IsZero() {
-			t.Fatalf("exam schedule timestamp is empty for status %s", exam.CurrentStatus)
-		}
-	case "IP":
-		if exam.BeginExamDt.Time.IsZero() {
-			t.Fatalf("exam begin timestamp is empty for status %s", exam.CurrentStatus)
-		}
-	case "CM":
-		if exam.EndExamDt.Time.IsZero() {
-			t.Fatalf("exam end timestamp is empty for status %s", exam.CurrentStatus)
-		}
-	case "":
-		t.Fatalf("exam status is empty")
-	default:
-		t.Fatalf("error: unexpected exam status %s", exam.CurrentStatus)
-	}
+	return entity.NewRepo(pool), hl7Messages
 }

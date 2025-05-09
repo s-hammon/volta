@@ -18,11 +18,11 @@ WITH upsert AS (
     ON CONFLICT (site_id, patient_id) DO UPDATE
     SET mrn = COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
     WHERE mrns.mrn IS DISTINCT FROM COALESCE(NULLIF(EXCLUDED.mrn, ''), mrns.mrn)
-    RETURNING id, created_at, updated_at, patient_id, mrn, site_id
+    RETURNING id
 )
-SELECT id, created_at, updated_at, patient_id, mrn, site_id FROM upsert
+SELECT id FROM upsert
 UNION ALL
-SELECT id, created_at, updated_at, patient_id, mrn, site_id FROM mrns
+SELECT id FROM mrns
 WHERE
     site_id = $1
     AND patient_id = $2
@@ -35,27 +35,11 @@ type CreateMrnParams struct {
 	Mrn       string
 }
 
-type CreateMrnRow struct {
-	ID        int64
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	PatientID pgtype.Int8
-	Mrn       string
-	SiteID    int32
-}
-
-func (q *Queries) CreateMrn(ctx context.Context, arg CreateMrnParams) (CreateMrnRow, error) {
+func (q *Queries) CreateMrn(ctx context.Context, arg CreateMrnParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createMrn, arg.SiteID, arg.PatientID, arg.Mrn)
-	var i CreateMrnRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.PatientID,
-		&i.Mrn,
-		&i.SiteID,
-	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getMrnById = `-- name: GetMrnById :one
