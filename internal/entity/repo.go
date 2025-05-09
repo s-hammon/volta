@@ -23,12 +23,12 @@ func (e dbErr) Error() string {
 }
 
 type HL7Repo struct {
-	db      *pgxpool.Pool
-	queries *database.Queries
+	DB      *pgxpool.Pool
+	Queries *database.Queries
 }
 
 func NewRepo(db *pgxpool.Pool) *HL7Repo {
-	return &HL7Repo{db: db, queries: database.New(db)}
+	return &HL7Repo{DB: db, Queries: database.New(db)}
 }
 
 type Order struct {
@@ -51,7 +51,7 @@ type Observation struct {
 }
 
 func (h *HL7Repo) SaveORM(ctx context.Context, orm *Order) error {
-	tx, err := h.db.Begin(ctx)
+	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %v", err)
 	}
@@ -62,7 +62,7 @@ func (h *HL7Repo) SaveORM(ctx context.Context, orm *Order) error {
 		}
 	}()
 
-	qtx := h.queries.WithTx(tx)
+	qtx := h.Queries.WithTx(tx)
 	var sID, prID int32
 	var pID, vID, mID, phID int64
 	// TODO: bundle below 4 into goroutines
@@ -112,7 +112,7 @@ func (h *HL7Repo) SaveORM(ctx context.Context, orm *Order) error {
 }
 
 func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
-	tx, err := h.db.Begin(ctx)
+	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %v", err)
 	}
@@ -123,7 +123,7 @@ func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
 		}
 	}()
 
-	qtx := h.queries.WithTx(tx)
+	qtx := h.Queries.WithTx(tx)
 	var sID, prID int32
 	var pID, vID, mID, phID, radID, rID int64
 	// TODO: bundle below 4 into goroutines
@@ -318,13 +318,13 @@ func getExamIDParam(obj Exam, siteID int32) database.GetExamIDBySiteIDAccessionP
 func updateExamFinalParam(examID, reportID int64) database.UpdateExamFinalReportParams {
 	params := database.UpdateExamFinalReportParams{}
 	params.ID = examID
-	params.FinalReportID = pgtype.Int8{Int64: reportID}
+	params.FinalReportID = pgtype.Int8{Int64: reportID, Valid: true}
 	return params
 }
 
 func updateExamAddendumParam(examID, reportID int64) database.UpdateExamAddendumReportParams {
 	params := database.UpdateExamAddendumReportParams{}
 	params.ID = examID
-	params.AddendumReportID = pgtype.Int8{Int64: reportID}
+	params.AddendumReportID = pgtype.Int8{Int64: reportID, Valid: true}
 	return params
 }

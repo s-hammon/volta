@@ -8,13 +8,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pressly/goose/v3"
 	goosedb "github.com/pressly/goose/v3/database"
 	"github.com/s-hammon/volta/internal/api"
+	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/testing/testdb"
 	"github.com/s-hammon/volta/pkg/hl7"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,6 +58,137 @@ func TestHL7Upserts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExamTimestampSequence(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repo, _ := setupDB(t, ctx)
+
+	data, err := hl7.HL7.ReadFile("test_hl7/5.hl7")
+	require.NoError(t, err, "couldn't read test file at 5.hl7: %v", err)
+	require.Greater(t, len(data), 0, "file is empty")
+
+	orm := &api.ORM{}
+	d := hl7.NewDecoder(data)
+	err = d.Decode(orm)
+	require.NoError(t, err)
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	res, err := repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	require.True(t, res.ScheduleDt.Valid)
+	require.False(t, res.BeginExamDt.Valid)
+	require.False(t, res.EndExamDt.Valid)
+	require.False(t, res.ExamCancelledDt.Valid)
+	exam := entity.DBtoExam(res)
+	require.Equal(t, 1, exam.Base.ID)
+
+	assert.Equal(t, "SC", exam.CurrentStatus.String())
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Begin)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.End)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
+
+	orm.OrderDT = "20250404103000"
+	orm.OrderStatus = "IP"
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	require.True(t, res.ScheduleDt.Valid)
+	require.True(t, res.BeginExamDt.Valid)
+	require.False(t, res.EndExamDt.Valid)
+	require.False(t, res.ExamCancelledDt.Valid)
+	exam = entity.DBtoExam(res)
+	require.Equal(t, 1, exam.Base.ID)
+
+	assert.Equal(t, "IP", exam.CurrentStatus.String())
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 30, 0, 0, time.UTC), exam.Begin)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.End)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
+
+	orm.OrderDT = "20250404110000"
+	orm.OrderStatus = "CM"
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	require.True(t, res.ScheduleDt.Valid)
+	require.True(t, res.BeginExamDt.Valid)
+	require.True(t, res.EndExamDt.Valid)
+	require.False(t, res.ExamCancelledDt.Valid)
+	exam = entity.DBtoExam(res)
+	require.Equal(t, 1, exam.Base.ID)
+
+	assert.Equal(t, "CM", exam.CurrentStatus.String())
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 30, 0, 0, time.UTC), exam.Begin)
+	assert.Equal(t, time.Date(2025, time.April, 4, 16, 0, 0, 0, time.UTC), exam.End)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
+
+	orm.OrderDT = "20250404100951"
+	orm.OrderStatus = "SC"
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	require.True(t, res.ScheduleDt.Valid)
+	require.True(t, res.BeginExamDt.Valid)
+	require.True(t, res.EndExamDt.Valid)
+	require.False(t, res.ExamCancelledDt.Valid)
+	exam = entity.DBtoExam(res)
+	require.Equal(t, 1, exam.Base.ID)
+
+	assert.Equal(t, "CM", exam.CurrentStatus.String())
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 30, 0, 0, time.UTC), exam.Begin)
+	assert.Equal(t, time.Date(2025, time.April, 4, 16, 0, 0, 0, time.UTC), exam.End)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
+
+	data, err = hl7.HL7.ReadFile("test_hl7/9.hl7")
+	require.NoError(t, err, "couldn't read test file at 9.hl7: %v", err)
+	require.Greater(t, len(data), 0, "file is empty")
+
+	d = hl7.NewDecoder(data)
+	testUpsertORU(t, ctx, repo, d)
+
+	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	require.True(t, res.ScheduleDt.Valid)
+	require.True(t, res.BeginExamDt.Valid)
+	require.True(t, res.EndExamDt.Valid)
+	require.False(t, res.ExamCancelledDt.Valid)
+	require.Equal(t, int64(1), res.FinalReportID.Int64)
+	exam = entity.DBtoExam(res)
+	require.Equal(t, 1, exam.Base.ID)
+
+	assert.Equal(t, "CM", exam.CurrentStatus.String())
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
+	assert.Equal(t, time.Date(2025, time.April, 4, 15, 30, 0, 0, time.UTC), exam.Begin)
+	assert.Equal(t, time.Date(2025, time.April, 4, 16, 0, 0, 0, time.UTC), exam.End)
+	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
 }
 
 func testUpsertORM(t *testing.T, ctx context.Context, repo *entity.HL7Repo, d *hl7.Decoder) {

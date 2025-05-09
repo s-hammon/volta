@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.5]
+
+- Fixed pgtype Valid snafu
+
 ## [v0.6.4]
 
 - Report writes will fetch IDs for exams before trying to make new records
@@ -176,3 +180,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.2]: https://github.com/s-hammon/volta/releases/tag/v0.6.2
 [v0.6.3]: https://github.com/s-hammon/volta/releases/tag/v0.6.3
 [v0.6.4]: https://github.com/s-hammon/volta/releases/tag/v0.6.4
+[v0.6.5]: https://github.com/s-hammon/volta/releases/tag/v0.6.5

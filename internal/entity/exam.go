@@ -3,6 +3,7 @@ package entity
 import (
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/s-hammon/volta/internal/database"
 )
 
@@ -19,8 +20,9 @@ func NewExamStatus(s string) ExamStatus {
 	switch s {
 	case "SC", "IP", "CM", "CA":
 		return ExamStatus(s)
+	default:
+		return ExamScheduled
 	}
-	return ExamScheduled
 }
 
 func (o ExamStatus) String() string {
@@ -57,6 +59,7 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 			Code:        exam.ProcedureCode.String,
 			Description: exam.ProcedureDescription.String,
 		},
+		CurrentStatus: NewExamStatus(exam.CurrentStatus),
 		Site: Site{
 			Base: Base{
 				ID:        int(exam.SiteID.Int32),
@@ -75,15 +78,15 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 
 func (e *Exam) timestamp(params *database.CreateExamParams) {
 	if !e.Scheduled.IsZero() {
-		params.ScheduleDt.Time = e.Scheduled
+		params.ScheduleDt = pgtype.Timestamp{Time: e.Scheduled, Valid: true}
 	}
 	if !e.Begin.IsZero() {
-		params.BeginExamDt.Time = e.Begin
+		params.BeginExamDt = pgtype.Timestamp{Time: e.Begin, Valid: true}
 	}
 	if !e.End.IsZero() {
-		params.EndExamDt.Time = e.End
+		params.EndExamDt = pgtype.Timestamp{Time: e.End, Valid: true}
 	}
 	if !e.Cancelled.IsZero() {
-		params.ExamCancelledDt.Time = e.Cancelled
+		params.ExamCancelledDt = pgtype.Timestamp{Time: e.Cancelled, Valid: true}
 	}
 }
