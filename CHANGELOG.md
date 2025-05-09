@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## v[0.6.3]
+
+- Removed logging prehooks in Cobra CLI
+- Single-transaction writes for business models per HL7 message
+- Expanded tests; clean up on project repository
+
 ## v[0.6.2]
 
 - Removed middleware logging, will send results back to PubSub
@@ -162,3 +168,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.5.5]: https://github.com/s-hammon/volta/releases/tag/v0.5.5
 [v0.6.0]: https://github.com/s-hammon/volta/releases/tag/v0.6.0
 [v0.6.2]: https://github.com/s-hammon/volta/releases/tag/v0.6.2
+[v0.6.3]: https://github.com/s-hammon/volta/releases/tag/v0.6.3
