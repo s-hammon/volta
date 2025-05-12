@@ -100,6 +100,7 @@ func (o *ORM) ToOrder() *entity.Order {
 			Value:              o.MRN.ID,
 			AssigningAuthority: o.MRN.AssigningAuthority,
 		},
+		Type: objects.NewPatientType(o.PatientClass),
 	}
 	order.Procedure = entity.Procedure{
 		Site:        *site,

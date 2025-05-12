@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.9]
+
+- Fixed patient type assignment for visits
+
 ## [v0.6.8]
 
 - Switched accession back to ORC.2; handling STRIC case in Corepoint
@@ -200,3 +204,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.6]: https://github.com/s-hammon/volta/releases/tag/v0.6.6
 [v0.6.7]: https://github.com/s-hammon/volta/releases/tag/v0.6.7
 [v0.6.8]: https://github.com/s-hammon/volta/releases/tag/v0.6.8
+[v0.6.9]: https://github.com/s-hammon/volta/releases/tag/v0.6.9

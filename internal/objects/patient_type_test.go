@@ -1,6 +1,10 @@
 package objects
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestPatientTypeInt16(t *testing.T) {
 	tests := []struct {
@@ -15,9 +19,8 @@ func TestPatientTypeInt16(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := test.pType.Int16(); got != test.want {
-				t.Errorf("got %v, want %v", got, test.want)
-			}
+			got := test.pType.Int16()
+			require.Equal(t, test.want, got)
 		})
 	}
 }

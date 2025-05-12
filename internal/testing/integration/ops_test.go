@@ -60,6 +60,28 @@ func TestHL7Upserts(t *testing.T) {
 	}
 }
 
+func TestORMVisit(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repo, _ := setupDB(t, ctx)
+
+	data, err := hl7.HL7.ReadFile("test_hl7/5.hl7")
+	require.NoError(t, err, "couldn't read test file at 5.hl7: %v", err)
+	require.Greater(t, len(data), 0, "file is empty")
+
+	orm := &api.ORM{}
+	d := hl7.NewDecoder(data)
+	err = d.Decode(orm)
+	require.NoError(t, err)
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	v, err := repo.Queries.GetVisitById(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, int16(1), v.PatientType)
+}
+
 func TestORMProcedure(t *testing.T) {
 	t.Parallel()
 
