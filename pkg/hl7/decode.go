@@ -119,7 +119,7 @@ func setFieldValue(fVal reflect.Value, raw string) {
 	}
 	switch fVal.Kind() {
 	case reflect.String:
-		fVal.SetString(raw)
+		fVal.SetString(replaceEscapes(raw))
 		return
 	case reflect.Struct:
 		var comps []string
