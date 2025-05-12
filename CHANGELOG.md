@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.7]
+
+- Added escape conversion for writing from HL7 string
+
 ## [v0.6.6]
 
 - Changed acession field to ORC.3
@@ -189,3 +193,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.4]: https://github.com/s-hammon/volta/releases/tag/v0.6.4
 [v0.6.5]: https://github.com/s-hammon/volta/releases/tag/v0.6.5
 [v0.6.6]: https://github.com/s-hammon/volta/releases/tag/v0.6.6
+[v0.6.7]: https://github.com/s-hammon/volta/releases/tag/v0.6.7
