@@ -55,6 +55,7 @@ type ORM struct {
 	PatientClass     string `hl7:"PV1.2"`
 	AssignedLocation PL     `hl7:"PV1.3"`
 	Accession        string `hl7:"ORC.2"`
+	FillerOrderNo    string `hl7:"ORC.3"`
 	OrderStatus      string `hl7:"ORC.5"`
 	OrderDT          string `hl7:"ORC.9"`
 	OrderingProvider XCN    `hl7:"ORC.12"`
@@ -101,7 +102,7 @@ func (o *ORM) ToOrder() *entity.Order {
 		},
 	}
 	order.Exam = entity.Exam{
-		Accession: o.Accession,
+		Accession: coalesce(o.Accession, o.FillerOrderNo),
 		Procedure: entity.Procedure{
 			Site: *site,
 		},
