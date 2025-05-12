@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Switched accession back to ORC.2; handling STRIC case in Corepoint
+- Fixed issue with procedure not writing to db on new/updated order
 
 ## [v0.6.7]
 

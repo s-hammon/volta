@@ -209,7 +209,7 @@ func createMessageParam(obj Message) database.CreateMessageParams {
 	params.SendingFacility = obj.SendingFac
 	params.ReceivingApplication = obj.ReceivingApp
 	params.ReceivingFacility = obj.ReceivingFac
-	params.ReceivedAt.Time = obj.DateTime
+	params.ReceivedAt = pgtype.Timestamp{Time: obj.DateTime, Valid: true}
 	params.MessageType = obj.Type
 	params.TriggerEvent = obj.TriggerEvent
 	params.ControlID = obj.ControlID

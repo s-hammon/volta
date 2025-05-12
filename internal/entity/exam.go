@@ -43,6 +43,16 @@ type Exam struct {
 }
 
 func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
+	site := Site{
+		Base: Base{
+			ID:        int(exam.SiteID.Int32),
+			CreatedAt: exam.SiteCreatedAt.Time,
+			UpdatedAt: exam.SiteUpdatedAt.Time,
+		},
+		Code:    exam.SiteCode.String,
+		Name:    exam.SiteName.String,
+		Address: exam.SiteAddress.String,
+	}
 	return Exam{
 		Base: Base{
 			ID:        int(exam.ID),
@@ -56,23 +66,15 @@ func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
 				CreatedAt: exam.ProcedureCreatedAt.Time,
 				UpdatedAt: exam.ProcedureUpdatedAt.Time,
 			},
+			Site:        site,
 			Code:        exam.ProcedureCode.String,
 			Description: exam.ProcedureDescription.String,
 		},
 		CurrentStatus: NewExamStatus(exam.CurrentStatus),
-		Site: Site{
-			Base: Base{
-				ID:        int(exam.SiteID.Int32),
-				CreatedAt: exam.SiteCreatedAt.Time,
-				UpdatedAt: exam.SiteUpdatedAt.Time,
-			},
-			Code:    exam.SiteCode.String,
-			Name:    exam.SiteName.String,
-			Address: exam.SiteAddress.String,
-		},
-		Scheduled: exam.ScheduleDt.Time,
-		Begin:     exam.BeginExamDt.Time,
-		End:       exam.EndExamDt.Time,
+		Site:          site,
+		Scheduled:     exam.ScheduleDt.Time,
+		Begin:         exam.BeginExamDt.Time,
+		End:           exam.EndExamDt.Time,
 	}
 }
 

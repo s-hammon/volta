@@ -60,6 +60,45 @@ func TestHL7Upserts(t *testing.T) {
 	}
 }
 
+func TestORMProcedure(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repo, _ := setupDB(t, ctx)
+
+	data, err := hl7.HL7.ReadFile("test_hl7/5.hl7")
+	require.NoError(t, err, "couldn't read test file at 5.hl7: %v", err)
+	require.Greater(t, len(data), 0, "file is empty")
+
+	orm := &api.ORM{}
+	d := hl7.NewDecoder(data)
+	err = d.Decode(orm)
+	require.NoError(t, err)
+	err = repo.SaveORM(ctx, orm.ToOrder())
+	require.NoError(t, err)
+
+	msg, err := repo.Queries.GetMessageByID(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), msg.ReceivedAt.Time)
+
+	site, err := repo.Queries.GetSiteById(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, "BMCNE", site.Code)
+
+	proc, err := repo.Queries.GetProcedureById(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, "MAMSTOM2", proc.Code)
+
+	res, err := repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
+		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
+		Accession: "29737914",
+	})
+	require.NoError(t, err)
+	exam := entity.DBtoExam(res)
+	require.Equal(t, "MAMSTOM2", exam.Procedure.Code)
+	require.Equal(t, "Mammogram Digital Screening Bilateral w/CAD & DBT", exam.Procedure.Description)
+}
+
 func TestExamTimestampSequence(t *testing.T) {
 	t.Parallel()
 

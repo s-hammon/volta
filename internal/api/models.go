@@ -101,10 +101,17 @@ func (o *ORM) ToOrder() *entity.Order {
 			AssigningAuthority: o.MRN.AssigningAuthority,
 		},
 	}
+	order.Procedure = entity.Procedure{
+		Site:        *site,
+		Code:        o.Service.Identifier,
+		Description: o.Service.Text,
+	}
 	order.Exam = entity.Exam{
 		Accession: coalesce(o.Accession, o.FillerOrderNo),
 		Procedure: entity.Procedure{
-			Site: *site,
+			Site:        *site,
+			Code:        o.Service.Identifier,
+			Description: o.Service.Text,
 		},
 		CurrentStatus: entity.NewExamStatus(o.OrderStatus),
 		Provider: entity.Physician{
@@ -213,7 +220,9 @@ type Exam struct {
 func (e *Exam) ToEntity(site entity.Site) (exam entity.Exam) {
 	exam.Accession = coalesce(e.Accession, e.FillerOrderNo)
 	exam.Procedure = entity.Procedure{
-		Site: site,
+		Site:        site,
+		Code:        e.Service.Identifier,
+		Description: e.Service.Text,
 	}
 	exam.CurrentStatus = entity.NewExamStatus(e.OrderStatus)
 	exam.Provider = entity.Physician{
