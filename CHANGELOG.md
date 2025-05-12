@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Switched accession back to ORC.2; handling STRIC case in Corepoint
+
 ## [v0.6.7]
 
 - Added escape conversion for writing from HL7 string
