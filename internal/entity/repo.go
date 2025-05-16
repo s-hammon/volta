@@ -145,10 +145,6 @@ func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
 	}
 
 	// TODO: see if we can use chans to fire these off when above are finished -- basically create a DAG
-	prID, err = qtx.CreateProcedure(ctx, createProcedureParam(oru.Procedure, sID, msgID))
-	if err != nil {
-		return dbErr{"procedure", err}
-	}
 	mID, err = qtx.CreateMrn(ctx, createMrnParam(oru.Visit.MRN, sID, pID, msgID))
 	if err != nil {
 		return dbErr{"MRN", err}
@@ -170,6 +166,10 @@ func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
 		return dbErr{"report", err}
 	}
 	for _, exam := range oru.Exams {
+		prID, err = qtx.CreateProcedure(ctx, createProcedureParam(exam.Procedure, sID, msgID))
+		if err != nil {
+			return dbErr{"procedure", err}
+		}
 		var eID int64
 		eID, err = qtx.GetExamIDBySiteIDAccession(ctx, getExamIDParam(exam, sID))
 		if err != nil {
