@@ -5,13 +5,9 @@ WITH upsert AS (
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description),
-        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
-        modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
+        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description)
     WHERE
         COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description) IS DISTINCT FROM EXCLUDED.description
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
     RETURNING id
 )
 SELECT id FROM upsert
@@ -33,3 +29,14 @@ FROM procedures
 WHERE
     site_id = $1
     AND code = $2;
+
+-- name: GetProceduresForSpecialtyUpdate :many
+SELECT
+    id,
+    code,
+    description
+FROM procedures
+WHERE
+    specialty is null
+    AND id > $1
+ORDER BY id; -- so one can move cursor value $1 to max(id)

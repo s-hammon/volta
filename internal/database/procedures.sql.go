@@ -18,13 +18,9 @@ WITH upsert AS (
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description),
-        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
-        modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
+        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description)
     WHERE
         COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description) IS DISTINCT FROM EXCLUDED.description
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
     RETURNING id
 )
 SELECT id FROM upsert
@@ -110,4 +106,42 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 		&i.MessageID,
 	)
 	return i, err
+}
+
+const getProceduresForSpecialtyUpdate = `-- name: GetProceduresForSpecialtyUpdate :many
+SELECT
+    id,
+    code,
+    description
+FROM procedures
+WHERE
+    specialty is null
+    AND id > $1
+ORDER BY id
+`
+
+type GetProceduresForSpecialtyUpdateRow struct {
+	ID          int32
+	Code        string
+	Description string
+}
+
+func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32) ([]GetProceduresForSpecialtyUpdateRow, error) {
+	rows, err := q.db.Query(ctx, getProceduresForSpecialtyUpdate, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetProceduresForSpecialtyUpdateRow
+	for rows.Next() {
+		var i GetProceduresForSpecialtyUpdateRow
+		if err := rows.Scan(&i.ID, &i.Code, &i.Description); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -54,11 +55,19 @@ func TestHandleMEssage_ORM_Success(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	res := w.Result()
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Println("couldn't close body:", err.Error())
+		}
+	}()
 
 	require.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotNil(t, res.Body)
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Println("couldn't close body:", err.Error())
+		}
+	}()
 
 	respBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
