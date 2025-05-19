@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -57,6 +58,33 @@ func TestHL7Upserts(t *testing.T) {
 				t.Fatalf("unsupported message type: %s", msg.MsgType.Name)
 			}
 		})
+	}
+
+	procs, err := repo.Queries.GetProceduresForSpecialtyUpdate(ctx, 0)
+	require.NoError(t, err)
+	fmt.Printf("%+v", procs)
+	assert.Equal(t, 6, len(procs))
+	for _, proc := range procs {
+		require.Equal(t, "", proc.Specialty.String)
+	}
+	procs[0].Specialty = pgtype.Text{String: "Breast"}
+	procs[1].Specialty = pgtype.Text{String: "MSK"}
+	procs[2].Specialty = pgtype.Text{String: "MSK"}
+	procs[3].Specialty = pgtype.Text{String: "MSK"}
+	procs[4].Specialty = pgtype.Text{String: "Vascular"}
+	procs[5].Specialty = pgtype.Text{String: "Breast"}
+
+	for i, proc := range procs {
+		req := database.UpdateProcedureSpecialtyParams{
+			ID:        proc.ID,
+			Specialty: proc.Specialty,
+		}
+		err = repo.Queries.UpdateProcedureSpecialty(ctx, req)
+		require.NoError(t, err)
+
+		res, err := repo.Queries.GetProcedureById(ctx, procs[i].ID)
+		require.NoError(t, err)
+		require.NotEqual(t, "", res.Specialty)
 	}
 }
 

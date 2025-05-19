@@ -31,12 +31,15 @@ WHERE
     AND code = $2;
 
 -- name: GetProceduresForSpecialtyUpdate :many
-SELECT
-    id,
-    code,
-    description
+SELECT *
 FROM procedures
 WHERE
     specialty is null
     AND id > $1
-ORDER BY id; -- so one can move cursor value $1 to max(id)
+ORDER BY id -- so one can move cursor value $1 to max(id)
+LIMIT 100;
+
+-- name: UpdateProcedureSpecialty :exec
+UPDATE procedures
+SET specialty = $2
+WHERE id = $1;

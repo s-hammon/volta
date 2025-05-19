@@ -109,33 +109,35 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 }
 
 const getProceduresForSpecialtyUpdate = `-- name: GetProceduresForSpecialtyUpdate :many
-SELECT
-    id,
-    code,
-    description
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
 FROM procedures
 WHERE
     specialty is null
     AND id > $1
-ORDER BY id
+ORDER BY id -- so one can move cursor value $1 to max(id)
+LIMIT 100
 `
 
-type GetProceduresForSpecialtyUpdateRow struct {
-	ID          int32
-	Code        string
-	Description string
-}
-
-func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32) ([]GetProceduresForSpecialtyUpdateRow, error) {
+func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32) ([]Procedure, error) {
 	rows, err := q.db.Query(ctx, getProceduresForSpecialtyUpdate, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProceduresForSpecialtyUpdateRow
+	var items []Procedure
 	for rows.Next() {
-		var i GetProceduresForSpecialtyUpdateRow
-		if err := rows.Scan(&i.ID, &i.Code, &i.Description); err != nil {
+		var i Procedure
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SiteID,
+			&i.Code,
+			&i.Description,
+			&i.Specialty,
+			&i.Modality,
+			&i.MessageID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -144,4 +146,20 @@ func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32)
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProcedureSpecialty = `-- name: UpdateProcedureSpecialty :exec
+UPDATE procedures
+SET specialty = $2
+WHERE id = $1
+`
+
+type UpdateProcedureSpecialtyParams struct {
+	ID        int32
+	Specialty pgtype.Text
+}
+
+func (q *Queries) UpdateProcedureSpecialty(ctx context.Context, arg UpdateProcedureSpecialtyParams) error {
+	_, err := q.db.Exec(ctx, updateProcedureSpecialty, arg.ID, arg.Specialty)
+	return err
 }
