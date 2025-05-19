@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.11]
+
+- Two new endpoints for managing AI-assigned specialty to procedure
+  - `GET /procedure/specialty`
+  - `PUT /procedure`
+- Misc fixes to repo
+
 ## [v0.6.10]
 
 - Fixed procedure creation for Observations
@@ -28,8 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed acession field to ORC.3
 - Added message_id FK on tables
-  * `exams` and `patients` will set to the latest message that affected change
-  * all others will set to the original message creating the record
+  - `exams` and `patients` will set to the latest message that affected change
+  - all others will set to the original message creating the record
 
 ## [v0.6.5]
 
@@ -210,3 +217,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.8]: https://github.com/s-hammon/volta/releases/tag/v0.6.8
 [v0.6.9]: https://github.com/s-hammon/volta/releases/tag/v0.6.9
 [v0.6.10]: https://github.com/s-hammon/volta/releases/tag/v0.6.10
+[v0.6.11]: https://github.com/s-hammon/volta/releases/tag/v0.6.11
