@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -57,6 +58,33 @@ func TestHL7Upserts(t *testing.T) {
 				t.Fatalf("unsupported message type: %s", msg.MsgType.Name)
 			}
 		})
+	}
+
+	procs, err := repo.Queries.GetProceduresForSpecialtyUpdate(ctx, 0)
+	require.NoError(t, err)
+	fmt.Printf("%+v", procs)
+	assert.Equal(t, 6, len(procs))
+	for _, proc := range procs {
+		require.Equal(t, "", proc.Specialty.String)
+	}
+	procs[0].Specialty = pgtype.Text{String: "Breast"}
+	procs[1].Specialty = pgtype.Text{String: "MSK"}
+	procs[2].Specialty = pgtype.Text{String: "MSK"}
+	procs[3].Specialty = pgtype.Text{String: "MSK"}
+	procs[4].Specialty = pgtype.Text{String: "Vascular"}
+	procs[5].Specialty = pgtype.Text{String: "Breast"}
+
+	for i, proc := range procs {
+		req := database.UpdateProcedureSpecialtyParams{
+			ID:        proc.ID,
+			Specialty: proc.Specialty,
+		}
+		err = repo.Queries.UpdateProcedureSpecialty(ctx, req)
+		require.NoError(t, err)
+
+		res, err := repo.Queries.GetProcedureById(ctx, procs[i].ID)
+		require.NoError(t, err)
+		require.NotEqual(t, "", res.Specialty)
 	}
 }
 
@@ -148,7 +176,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam := entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "SC", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -171,7 +199,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "IP", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -194,7 +222,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.True(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -217,7 +245,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.True(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -243,7 +271,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.ExamCancelledDt.Valid)
 	require.Equal(t, int64(1), res.FinalReportID.Int64)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)

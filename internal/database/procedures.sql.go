@@ -18,13 +18,9 @@ WITH upsert AS (
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description),
-        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
-        modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
+        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description)
     WHERE
         COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description) IS DISTINCT FROM EXCLUDED.description
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
     RETURNING id
 )
 SELECT id FROM upsert
@@ -110,4 +106,60 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 		&i.MessageID,
 	)
 	return i, err
+}
+
+const getProceduresForSpecialtyUpdate = `-- name: GetProceduresForSpecialtyUpdate :many
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+FROM procedures
+WHERE
+    specialty is null
+    AND id > $1
+ORDER BY id -- so one can move cursor value $1 to max(id)
+LIMIT 100
+`
+
+func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32) ([]Procedure, error) {
+	rows, err := q.db.Query(ctx, getProceduresForSpecialtyUpdate, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Procedure
+	for rows.Next() {
+		var i Procedure
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SiteID,
+			&i.Code,
+			&i.Description,
+			&i.Specialty,
+			&i.Modality,
+			&i.MessageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProcedureSpecialty = `-- name: UpdateProcedureSpecialty :exec
+UPDATE procedures
+SET specialty = $2
+WHERE id = $1
+`
+
+type UpdateProcedureSpecialtyParams struct {
+	ID        int32
+	Specialty pgtype.Text
+}
+
+func (q *Queries) UpdateProcedureSpecialty(ctx context.Context, arg UpdateProcedureSpecialtyParams) error {
+	_, err := q.db.Exec(ctx, updateProcedureSpecialty, arg.ID, arg.Specialty)
+	return err
 }
