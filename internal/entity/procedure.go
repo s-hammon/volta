@@ -13,11 +13,11 @@ import (
 
 type Procedure struct {
 	Base
-	Site        Site
-	Code        string
-	Description string
-	Specialty   objects.Specialty
-	Modality    objects.Modality
+	Site        Site              `json:"site,omitempty"`
+	Code        string            `json:"code"`
+	Description string            `json:"description"`
+	Specialty   objects.Specialty `json:"specialty,omitempty"`
+	Modality    objects.Modality  `json:"modality,omitempty"`
 }
 
 func (h *HL7Repo) GetProcedures(ctx context.Context, cursorID int32) ([]byte, error) {

@@ -4,10 +4,10 @@ import "github.com/s-hammon/volta/internal/database"
 
 type Site struct {
 	Base
-	Code    string
-	Name    string
-	Address string
-	Phone   string
+	Code    string `json:"code"`
+	Name    string `json:"name,omitempty"`
+	Address string `json:"address,omitempty"`
+	Phone   string `json:"phone,omitempty"`
 	// TODO: other fields
 }
 

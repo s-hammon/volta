@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /procedure/specialty`
   - `PUT /procedure`
 - Misc fixes to repo
+- Added JSON tags to `Base`, `Site`, and `Procedure` entities
 
 ## [v0.6.10]
 
