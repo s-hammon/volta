@@ -34,7 +34,7 @@ func (m *mockHL7Store) SaveORU(ctx context.Context, obs *entity.Observation) err
 
 func (m *mockHL7Store) GetProcedures(ctx context.Context, cursorID int32) (ret []byte, error error) {
 	// mock no records
-	if cursorID == 100 {
+	if cursorID == 404 {
 		return nil, pgx.ErrNoRows
 	}
 	if cursorID == 11 {

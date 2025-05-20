@@ -241,8 +241,5 @@ func convertCursor(s string) (int32, error) {
 	if i < 0 {
 		return 0, fmt.Errorf("integer must be positive, got %s", s)
 	}
-	if i > 100 {
-		i = 100
-	}
 	return int32(i), nil
 }
