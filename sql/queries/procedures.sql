@@ -49,3 +49,19 @@ SET
     updated_at = CURRENT_TIMESTAMP,
     specialty = $2
 WHERE id = $1;
+
+-- name: GetProceduresForModalityAssignment :many
+SELECT *
+FROM procedures
+WHERE
+    id > $1
+    AND modality IS NULL
+ORDER BY id
+LIMIT 100;
+
+-- name: UpdateProcedureModality :exec
+UPDATE procedures
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    modality = $2
+WHERE id = $1;

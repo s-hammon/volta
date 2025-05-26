@@ -54,11 +54,19 @@ func TestHandleMEssage_ORM_Success(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	res := w.Result()
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			t.Fatalf("couldn't close request body: %v", err)
+		}
+	}()
 
 	require.Equal(t, http.StatusCreated, res.StatusCode)
 	assert.NotNil(t, res.Body)
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			t.Fatalf("couldn't close request body: %v", err)
+		}
+	}()
 
 	respBody, err := io.ReadAll(res.Body)
 	require.NoError(t, err)

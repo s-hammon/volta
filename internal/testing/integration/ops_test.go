@@ -148,7 +148,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam := entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "SC", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -171,7 +171,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "IP", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -194,7 +194,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.True(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -217,7 +217,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.True(t, res.EndExamDt.Valid)
 	require.False(t, res.ExamCancelledDt.Valid)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)
@@ -243,7 +243,7 @@ func TestExamTimestampSequence(t *testing.T) {
 	require.False(t, res.ExamCancelledDt.Valid)
 	require.Equal(t, int64(1), res.FinalReportID.Int64)
 	exam = entity.DBtoExam(res)
-	require.Equal(t, 1, exam.Base.ID)
+	require.Equal(t, 1, exam.ID)
 
 	assert.Equal(t, "CM", exam.CurrentStatus.String())
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 9, 51, 0, time.UTC), exam.Scheduled)

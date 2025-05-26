@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- New Cloud Run Function for assigning procedure specialty & modality
+
+## [v0.6.11]
+
+- Expanded `HL7Store` interface methods
+- Added `PUT /procedure` and `GET /procedure/specialty` endpoints and hanlders
+
 ## [v0.6.10]
 
 - Fixed procedure creation for Observations
@@ -28,8 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed acession field to ORC.3
 - Added message_id FK on tables
-  * `exams` and `patients` will set to the latest message that affected change
-  * all others will set to the original message creating the record
+  - `exams` and `patients` will set to the latest message that affected change
+  - all others will set to the original message creating the record
 
 ## [v0.6.5]
 

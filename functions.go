@@ -41,8 +41,16 @@ const (
 	all mode = "all"
 )
 
+type model string
+
+const (
+	specialty model = "specialty"
+	modality  model = "modality"
+)
+
 type ConfigBody struct {
-	Mode mode `json:"mode"`
+	Model model `json:"model"`
+	Mode  mode  `json:"mode"`
 }
 
 type Result struct {
@@ -62,11 +70,8 @@ func init() {
 
 	var err error
 	db, err = pgxpool.New(context.Background(), dbURL)
-	if err != nil {
+	if err != nil || db.Ping(context.Background()) != nil {
 		log.Fatalf("couldn't create connection to '%s': %v", dbURL, err)
-	}
-	if err = db.Ping(context.Background()); err != nil {
-		log.Fatalf("couldn't reach database: %v", err)
 	}
 	log.Println("connected to database")
 }
@@ -92,12 +97,12 @@ func AssignSpecialty(w http.ResponseWriter, r *http.Request) {
 	case one:
 		ctxOne, cancel := context.WithTimeout(ctx, singleModeTimeout)
 		defer cancel()
-		submitted, updated, err = assignOne(ctxOne, q, client)
+		submitted, updated, err = assignOne(ctxOne, q, client, cfg.Model)
 	case all:
 		// do job for all missing
 		ctxAll, cancel := context.WithTimeout(ctx, allModeTimeout)
 		defer cancel()
-		submitted, updated, err = assignAll(ctxAll, q, client)
+		submitted, updated, err = assignAll(ctxAll, q, client, cfg.Model)
 	default:
 		http.Error(w, "mode must be 'one' or 'all'", http.StatusBadRequest)
 		return
@@ -111,7 +116,7 @@ func AssignSpecialty(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, Result{submitted, updated})
 }
 
-func handleJob(ctx context.Context, q *database.Queries, c *http.Client, procs []database.Procedure) (int, int, error) {
+func handleJob(ctx context.Context, q *database.Queries, c *http.Client, procs []database.Procedure, model model) (int, int, error) {
 	if len(procs) == 0 {
 		return 0, 0, nil
 	}
@@ -124,7 +129,11 @@ func handleJob(ctx context.Context, q *database.Queries, c *http.Client, procs [
 	if err != nil {
 		return 0, 0, fmt.Errorf("error making request to '%s': %v", req.URL.String(), err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("couldn't close request body: %v", err)
+		}
+	}()
 
 	preds, err := getPredictions(resp)
 	if err != nil {
@@ -151,10 +160,19 @@ func handleJob(ctx context.Context, q *database.Queries, c *http.Client, procs [
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			err := q.UpdateProcedureSpecialty(ctx, database.UpdateProcedureSpecialtyParams{
-				ID:        id,
-				Specialty: pgtype.Text{String: pred, Valid: true},
-			})
+			var err error
+			switch model {
+			case specialty:
+				err = q.UpdateProcedureSpecialty(ctx, database.UpdateProcedureSpecialtyParams{
+					ID:        id,
+					Specialty: pgtype.Text{String: pred, Valid: true},
+				})
+			case modality:
+				err = q.UpdateProcedureModality(ctx, database.UpdateProcedureModalityParams{
+					ID:       id,
+					Modality: pgtype.Text{String: pred, Valid: true},
+				})
+			}
 
 			mu.Lock()
 			defer mu.Unlock()
@@ -171,18 +189,6 @@ func handleJob(ctx context.Context, q *database.Queries, c *http.Client, procs [
 
 type Predictions struct {
 	Prediction []string `json:"prediction"`
-}
-
-func getPredictions(r *http.Response) ([]string, error) {
-	if r.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("makoto returned %d", r.StatusCode)
-	}
-	d := json.NewDecoder(r.Body)
-	var pr Predictions
-	if err := d.Decode(&pr); err != nil {
-		return nil, fmt.Errorf("decode JSON: %v", err)
-	}
-	return pr.Prediction, nil
 }
 
 func newPredictRequest(ctx context.Context, procs []database.Procedure) (*http.Request, error) {
@@ -209,8 +215,19 @@ func newPredictRequest(ctx context.Context, procs []database.Procedure) (*http.R
 	return req, nil
 }
 
+func getPredictions(r *http.Response) ([]string, error) {
+	if r.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("makoto returned %d", r.StatusCode)
+	}
+	var pr Predictions
+	if err := json.NewDecoder(r.Body).Decode(&pr); err != nil {
+		return nil, fmt.Errorf("decode JSON: %v", err)
+	}
+	return pr.Prediction, nil
+}
+
 func getMaxID(procedures []database.Procedure) int32 {
-	maxID := procedures[0].ID
+	var maxID int32
 	for _, proc := range procedures {
 		if proc.ID > maxID {
 			maxID = proc.ID
@@ -219,29 +236,45 @@ func getMaxID(procedures []database.Procedure) int32 {
 	return maxID
 }
 
-func assignOne(ctx context.Context, q *database.Queries, client *http.Client) (int, int, error) {
-	procs, err := q.GetProceduresForSpecialtyAssignment(ctx, 0)
+func assignOne(ctx context.Context, q *database.Queries, client *http.Client, model model) (int, int, error) {
+	var (
+		procs []database.Procedure
+		err   error
+	)
+	switch model {
+	case specialty:
+		procs, err = q.GetProceduresForSpecialtyAssignment(ctx, 0)
+	case modality:
+		procs, err = q.GetProceduresForSpecialtyAssignment(ctx, 0)
+	}
 	if err != nil {
 		return 0, 0, err
 	}
 	if len(procs) == 0 {
 		return 0, 0, nil
 	}
-	return handleJob(ctx, q, client, procs)
+	return handleJob(ctx, q, client, procs, model)
 }
 
-func assignAll(ctx context.Context, q *database.Queries, client *http.Client) (int, int, error) {
+func assignAll(ctx context.Context, q *database.Queries, client *http.Client, model model) (int, int, error) {
 	sem := make(chan struct{}, maxWorkers)
 	g, ctx := errgroup.WithContext(ctx)
 
 	var (
 		mu                 sync.Mutex
 		submitted, updated int
+		getFn              func(context.Context, int32) ([]database.Procedure, error)
 	)
+	switch model {
+	case specialty:
+		getFn = q.GetProceduresForSpecialtyAssignment
+	case modality:
+		getFn = q.GetProceduresForModalityAssignment
+	}
 
 	cursor := int32(0)
 	for {
-		procs, err := q.GetProceduresForSpecialtyAssignment(ctx, cursor)
+		procs, err := getFn(ctx, cursor)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -255,7 +288,7 @@ func assignAll(ctx context.Context, q *database.Queries, client *http.Client) (i
 		g.Go(func() error {
 			defer func() { <-sem }()
 
-			sub, upd, err := handleJob(ctx, q, client, p)
+			sub, upd, err := handleJob(ctx, q, client, p, model)
 			mu.Lock()
 			submitted += sub
 			updated += upd
@@ -276,14 +309,18 @@ func writeJSON(w http.ResponseWriter, v any) {
 	}
 }
 
-func parseConfig(r io.Reader) (cfg ConfigBody, err error) {
+func parseConfig(r io.Reader) (ConfigBody, error) {
+	var cfg ConfigBody
 	d := json.NewDecoder(io.LimitReader(r, defaultBodyLimit))
 	d.DisallowUnknownFields()
-	if err = d.Decode(&cfg); err != nil {
-		return cfg, fmt.Errorf("invalid JSON request: %v", err)
+	if err := d.Decode(&cfg); err != nil {
+		return ConfigBody{}, fmt.Errorf("invalid JSON: %v", err)
+	}
+	if cfg.Model != specialty && cfg.Model != modality {
+		return ConfigBody{}, errors.New("model must be 'specialty' or 'modality'")
 	}
 	if cfg.Mode != one && cfg.Mode != all {
-		return cfg, errors.New("mode must be 'one' or 'all'")
+		return ConfigBody{}, errors.New("mode must be 'one' or 'all'")
 	}
 	return cfg, nil
 }

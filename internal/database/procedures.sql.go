@@ -112,6 +112,46 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 	return i, err
 }
 
+const getProceduresForModalityAssignment = `-- name: GetProceduresForModalityAssignment :many
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+FROM procedures
+WHERE
+    id > $1
+    AND modality IS NULL
+ORDER BY id
+LIMIT 100
+`
+
+func (q *Queries) GetProceduresForModalityAssignment(ctx context.Context, id int32) ([]Procedure, error) {
+	rows, err := q.db.Query(ctx, getProceduresForModalityAssignment, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Procedure
+	for rows.Next() {
+		var i Procedure
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SiteID,
+			&i.Code,
+			&i.Description,
+			&i.Specialty,
+			&i.Modality,
+			&i.MessageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProceduresForSpecialtyAssignment = `-- name: GetProceduresForSpecialtyAssignment :many
 SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
 FROM procedures
@@ -150,6 +190,24 @@ func (q *Queries) GetProceduresForSpecialtyAssignment(ctx context.Context, id in
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProcedureModality = `-- name: UpdateProcedureModality :exec
+UPDATE procedures
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    modality = $2
+WHERE id = $1
+`
+
+type UpdateProcedureModalityParams struct {
+	ID       int32
+	Modality pgtype.Text
+}
+
+func (q *Queries) UpdateProcedureModality(ctx context.Context, arg UpdateProcedureModalityParams) error {
+	_, err := q.db.Exec(ctx, updateProcedureModality, arg.ID, arg.Modality)
+	return err
 }
 
 const updateProcedureSpecialty = `-- name: UpdateProcedureSpecialty :exec
