@@ -12,7 +12,6 @@ type Exam struct {
 	ID                  int64
 	CreatedAt           pgtype.Timestamp
 	UpdatedAt           pgtype.Timestamp
-	OutsideSystemID     pgtype.Int4
 	VisitID             pgtype.Int8
 	MrnID               pgtype.Int8
 	SiteID              pgtype.Int4
@@ -64,14 +63,6 @@ type Mrn struct {
 	Mrn       string
 	SiteID    int32
 	MessageID pgtype.Int8
-}
-
-type OutsideSystem struct {
-	ID         int32
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
-	MetasiteID pgtype.Int4
-	Name       string
 }
 
 type Patient struct {
@@ -134,24 +125,24 @@ type Report struct {
 }
 
 type Site struct {
-	ID        int32
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	Code      string
-	Name      pgtype.Text
-	Address   string
-	IsCms     bool
-	MessageID pgtype.Int8
+	ID         int32
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
+	Code       string
+	Name       pgtype.Text
+	Address    string
+	IsCms      bool
+	MessageID  pgtype.Int8
+	MetasiteID pgtype.Int4
 }
 
 type Visit struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
-	MessageID       pgtype.Int8
+	ID          int64
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+	SiteID      pgtype.Int4
+	MrnID       pgtype.Int8
+	Number      string
+	PatientType int16
+	MessageID   pgtype.Int8
 }

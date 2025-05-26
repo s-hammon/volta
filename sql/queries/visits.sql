@@ -1,38 +1,34 @@
 -- name: CreateVisit :one
 WITH upsert AS (
     INSERT INTO visits (
-        outside_system_id,
-        site_id,
-        mrn_id,
-        number,
-        patient_type,
-        message_id
+        site_id, -- $1
+        mrn_id, -- $2
+        number, -- $3
+        patient_type, -- $4
+        message_id -- $5
     )
     VALUES (
         $1,
         $2,
         $3,
         $4,
-        $5,
-        $6
+        $5
     )
     ON CONFLICT (site_id, mrn_id, number) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        outside_system_id = EXCLUDED.outside_system_id,
         patient_type = EXCLUDED.patient_type
     WHERE
-        visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
-        OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
+        visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
     RETURNING id
 )
 SELECT id FROM upsert
 UNION ALL
 SELECT id FROM visits
 WHERE
-    site_id = $2
-    AND mrn_id = $3
-    AND number = $4
+    site_id = $1
+    AND mrn_id = $2
+    AND number = $3
     AND NOT EXISTS (SELECT 1 FROM upsert);
 
 -- name: GetVisitById :one
@@ -75,10 +71,9 @@ WHERE
 UPDATE visits
 SET
     updated_at = CURRENT_TIMESTAMP,
-    outside_system_id = $2,
-    site_id = $3,
-    mrn_id = $4,
-    number = $5,
-    patient_type = $6
+    site_id = $2,
+    mrn_id = $3,
+    number = $4,
+    patient_type = $5
 WHERE id = $1
 RETURNING *;

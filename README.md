@@ -41,31 +41,30 @@ type Repository interface {
 Currently, the following HL7 messages and business objects are supported:
 
 - ORM
-    * message header info
-    * sites
-    * patients
-    * MRNs
-    * procedures
-    * visits
-    * physicians
-    * orders
-    * exams
+  - message header info
+  - sites
+  - patients
+  - MRNs
+  - procedures
+  - visits
+  - physicians
+  - orders
+  - exams
 - ORU
-    * message header info
-    * sites
-    * patients
-    * MRNs
-    * procedures
-    * visits
-    * physicians
-    * orders
-    * exams
-    * reports
+  - message header info
+  - sites
+  - patients
+  - MRNs
+  - procedures
+  - visits
+  - physicians
+  - orders
+  - exams
+  - reports
 
 **Database Schema**
 
 ![PostgreSQL data model schema](assets/diagrams/relationships.real.large.png)
-
 
 ### **Requirements**
 
@@ -109,4 +108,3 @@ You can specify the hostname/port with the `-H`/`-p` flags, respectively. Otherw
 # Application Default Credentials
 
 This project feches HL7 messages from the [Google Cloud Healthcare API](https://cloud.google.com/healthcare-api/docs), which requires setting up Application Default Credentials (ADC) in the development and production environments. This service does not use/issue API keys, for reasons I'm sure that are related to SOC2 standards. To learn/review how to set up ADC, please check out [Set up Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc).
-

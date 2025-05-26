@@ -14,53 +14,47 @@ import (
 const createVisit = `-- name: CreateVisit :one
 WITH upsert AS (
     INSERT INTO visits (
-        outside_system_id,
-        site_id,
-        mrn_id,
-        number,
-        patient_type,
-        message_id
+        site_id, -- $1
+        mrn_id, -- $2
+        number, -- $3
+        patient_type, -- $4
+        message_id -- $5
     )
     VALUES (
         $1,
         $2,
         $3,
         $4,
-        $5,
-        $6
+        $5
     )
     ON CONFLICT (site_id, mrn_id, number) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        outside_system_id = EXCLUDED.outside_system_id,
         patient_type = EXCLUDED.patient_type
     WHERE
-        visits.outside_system_id IS DISTINCT FROM EXCLUDED.outside_system_id
-        OR visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
+        visits.patient_type IS DISTINCT FROM EXCLUDED.patient_type
     RETURNING id
 )
 SELECT id FROM upsert
 UNION ALL
 SELECT id FROM visits
 WHERE
-    site_id = $2
-    AND mrn_id = $3
-    AND number = $4
+    site_id = $1
+    AND mrn_id = $2
+    AND number = $3
     AND NOT EXISTS (SELECT 1 FROM upsert)
 `
 
 type CreateVisitParams struct {
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
-	MessageID       pgtype.Int8
+	SiteID      pgtype.Int4
+	MrnID       pgtype.Int8
+	Number      string
+	PatientType int16
+	MessageID   pgtype.Int8
 }
 
 func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createVisit,
-		arg.OutsideSystemID,
 		arg.SiteID,
 		arg.MrnID,
 		arg.Number,
@@ -74,7 +68,7 @@ func (q *Queries) CreateVisit(ctx context.Context, arg CreateVisitParams) (int64
 
 const getVisitById = `-- name: GetVisitById :one
 SELECT
-    v.id, v.created_at, v.updated_at, v.outside_system_id, v.site_id, v.mrn_id, v.number, v.patient_type, v.message_id,
+    v.id, v.created_at, v.updated_at, v.site_id, v.mrn_id, v.number, v.patient_type, v.message_id,
     s.created_at as site_created_at,
     s.updated_at as site_updated_at,
     s.code as site_code,
@@ -91,24 +85,23 @@ WHERE v.id = $1
 `
 
 type GetVisitByIdRow struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
-	MessageID       pgtype.Int8
-	SiteCreatedAt   pgtype.Timestamp
-	SiteUpdatedAt   pgtype.Timestamp
-	SiteCode        pgtype.Text
-	SiteName        pgtype.Text
-	SiteAddress     pgtype.Text
-	SiteIsCms       pgtype.Bool
-	MrnCreatedAt    pgtype.Timestamp
-	MrnUpdatedAt    pgtype.Timestamp
-	MrnValue        pgtype.Text
+	ID            int64
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+	SiteID        pgtype.Int4
+	MrnID         pgtype.Int8
+	Number        string
+	PatientType   int16
+	MessageID     pgtype.Int8
+	SiteCreatedAt pgtype.Timestamp
+	SiteUpdatedAt pgtype.Timestamp
+	SiteCode      pgtype.Text
+	SiteName      pgtype.Text
+	SiteAddress   pgtype.Text
+	SiteIsCms     pgtype.Bool
+	MrnCreatedAt  pgtype.Timestamp
+	MrnUpdatedAt  pgtype.Timestamp
+	MrnValue      pgtype.Text
 }
 
 func (q *Queries) GetVisitById(ctx context.Context, id int64) (GetVisitByIdRow, error) {
@@ -118,7 +111,6 @@ func (q *Queries) GetVisitById(ctx context.Context, id int64) (GetVisitByIdRow, 
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OutsideSystemID,
 		&i.SiteID,
 		&i.MrnID,
 		&i.Number,
@@ -139,7 +131,7 @@ func (q *Queries) GetVisitById(ctx context.Context, id int64) (GetVisitByIdRow, 
 
 const getVisitBySiteIdNumber = `-- name: GetVisitBySiteIdNumber :one
 SELECT
-    v.id, v.created_at, v.updated_at, v.outside_system_id, v.site_id, v.mrn_id, v.number, v.patient_type, v.message_id,
+    v.id, v.created_at, v.updated_at, v.site_id, v.mrn_id, v.number, v.patient_type, v.message_id,
     s.created_at as site_created_at,
     s.updated_at as site_updated_at,
     s.code as site_code,
@@ -163,24 +155,23 @@ type GetVisitBySiteIdNumberParams struct {
 }
 
 type GetVisitBySiteIdNumberRow struct {
-	ID              int64
-	CreatedAt       pgtype.Timestamp
-	UpdatedAt       pgtype.Timestamp
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
-	MessageID       pgtype.Int8
-	SiteCreatedAt   pgtype.Timestamp
-	SiteUpdatedAt   pgtype.Timestamp
-	SiteCode        pgtype.Text
-	SiteName        pgtype.Text
-	SiteAddress     pgtype.Text
-	SiteIsCms       pgtype.Bool
-	MrnCreatedAt    pgtype.Timestamp
-	MrnUpdatedAt    pgtype.Timestamp
-	MrnValue        pgtype.Text
+	ID            int64
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+	SiteID        pgtype.Int4
+	MrnID         pgtype.Int8
+	Number        string
+	PatientType   int16
+	MessageID     pgtype.Int8
+	SiteCreatedAt pgtype.Timestamp
+	SiteUpdatedAt pgtype.Timestamp
+	SiteCode      pgtype.Text
+	SiteName      pgtype.Text
+	SiteAddress   pgtype.Text
+	SiteIsCms     pgtype.Bool
+	MrnCreatedAt  pgtype.Timestamp
+	MrnUpdatedAt  pgtype.Timestamp
+	MrnValue      pgtype.Text
 }
 
 func (q *Queries) GetVisitBySiteIdNumber(ctx context.Context, arg GetVisitBySiteIdNumberParams) (GetVisitBySiteIdNumberRow, error) {
@@ -190,7 +181,6 @@ func (q *Queries) GetVisitBySiteIdNumber(ctx context.Context, arg GetVisitBySite
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OutsideSystemID,
 		&i.SiteID,
 		&i.MrnID,
 		&i.Number,
@@ -213,28 +203,25 @@ const updateVisit = `-- name: UpdateVisit :one
 UPDATE visits
 SET
     updated_at = CURRENT_TIMESTAMP,
-    outside_system_id = $2,
-    site_id = $3,
-    mrn_id = $4,
-    number = $5,
-    patient_type = $6
+    site_id = $2,
+    mrn_id = $3,
+    number = $4,
+    patient_type = $5
 WHERE id = $1
-RETURNING id, created_at, updated_at, outside_system_id, site_id, mrn_id, number, patient_type, message_id
+RETURNING id, created_at, updated_at, site_id, mrn_id, number, patient_type, message_id
 `
 
 type UpdateVisitParams struct {
-	ID              int64
-	OutsideSystemID pgtype.Int4
-	SiteID          pgtype.Int4
-	MrnID           pgtype.Int8
-	Number          string
-	PatientType     int16
+	ID          int64
+	SiteID      pgtype.Int4
+	MrnID       pgtype.Int8
+	Number      string
+	PatientType int16
 }
 
 func (q *Queries) UpdateVisit(ctx context.Context, arg UpdateVisitParams) (Visit, error) {
 	row := q.db.QueryRow(ctx, updateVisit,
 		arg.ID,
-		arg.OutsideSystemID,
 		arg.SiteID,
 		arg.MrnID,
 		arg.Number,
@@ -245,7 +232,6 @@ func (q *Queries) UpdateVisit(ctx context.Context, arg UpdateVisitParams) (Visit
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OutsideSystemID,
 		&i.SiteID,
 		&i.MrnID,
 		&i.Number,

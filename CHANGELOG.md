@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.6.12]
 
 - Added Cloud Run function for assigning procedure specialty and modality
+- Added Schema Spy stuff
+- Changed recipe for `make ready` to run `go vet` before tests
 
 ## [v0.6.11]
 

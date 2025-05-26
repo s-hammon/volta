@@ -62,7 +62,7 @@ func (q *Queries) CreateSite(ctx context.Context, arg CreateSiteParams) (int32, 
 }
 
 const getSiteByCode = `-- name: GetSiteByCode :one
-SELECT id, created_at, updated_at, code, name, address, is_cms, message_id
+SELECT id, created_at, updated_at, code, name, address, is_cms, message_id, metasite_id
 FROM sites
 WHERE code = $1
 `
@@ -79,12 +79,13 @@ func (q *Queries) GetSiteByCode(ctx context.Context, code string) (Site, error) 
 		&i.Address,
 		&i.IsCms,
 		&i.MessageID,
+		&i.MetasiteID,
 	)
 	return i, err
 }
 
 const getSiteById = `-- name: GetSiteById :one
-SELECT id, created_at, updated_at, code, name, address, is_cms, message_id
+SELECT id, created_at, updated_at, code, name, address, is_cms, message_id, metasite_id
 FROM sites
 WHERE id = $1
 `
@@ -101,6 +102,7 @@ func (q *Queries) GetSiteById(ctx context.Context, id int32) (Site, error) {
 		&i.Address,
 		&i.IsCms,
 		&i.MessageID,
+		&i.MetasiteID,
 	)
 	return i, err
 }
