@@ -33,3 +33,19 @@ FROM procedures
 WHERE
     site_id = $1
     AND code = $2;
+
+-- name: GetProceduresForSpecialtyAssignment :many
+SELECT *
+FROM procedures
+WHERE
+    id > $1
+    AND specialty IS NULL
+ORDER BY id
+LIMIT 100;
+
+-- name: UpdateProcedureSpecialty :exec
+UPDATE procedures
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    specialty = $2
+WHERE id = $1;

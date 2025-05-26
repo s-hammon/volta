@@ -111,3 +111,61 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 	)
 	return i, err
 }
+
+const getProceduresForSpecialtyAssignment = `-- name: GetProceduresForSpecialtyAssignment :many
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+FROM procedures
+WHERE
+    id > $1
+    AND specialty IS NULL
+ORDER BY id
+LIMIT 100
+`
+
+func (q *Queries) GetProceduresForSpecialtyAssignment(ctx context.Context, id int32) ([]Procedure, error) {
+	rows, err := q.db.Query(ctx, getProceduresForSpecialtyAssignment, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Procedure
+	for rows.Next() {
+		var i Procedure
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SiteID,
+			&i.Code,
+			&i.Description,
+			&i.Specialty,
+			&i.Modality,
+			&i.MessageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProcedureSpecialty = `-- name: UpdateProcedureSpecialty :exec
+UPDATE procedures
+SET
+    updated_at = CURRENT_TIMESTAMP,
+    specialty = $2
+WHERE id = $1
+`
+
+type UpdateProcedureSpecialtyParams struct {
+	ID        int32
+	Specialty pgtype.Text
+}
+
+func (q *Queries) UpdateProcedureSpecialty(ctx context.Context, arg UpdateProcedureSpecialtyParams) error {
+	_, err := q.db.Exec(ctx, updateProcedureSpecialty, arg.ID, arg.Specialty)
+	return err
+}
