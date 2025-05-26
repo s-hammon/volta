@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
@@ -17,6 +20,11 @@ type HealthcareClient interface {
 type HL7Store interface {
 	SaveORM(context.Context, *entity.Order) error
 	SaveORU(context.Context, *entity.Observation) error
+	// TODO: already, I can see how this will get out of hand
+	// think of another design pattern that decouples the storing logic
+	// but still allows us to conveniently add handlers
+	GetProcedures(context.Context, int32) ([]byte, error)
+	UpdateProcedures(context.Context, []byte) (int, int, error)
 }
 
 type API struct {
@@ -37,6 +45,9 @@ func New(store HL7Store, client HealthcareClient, debugMode bool) http.Handler {
 	mux.HandleFunc("POST /", a.handleMessage)
 	mux.HandleFunc("GET /healthz", handleReadiness)
 
+	mux.HandleFunc("GET /procedure/specialty", a.handleGetProceduresForSpecialtyUpdate)
+	mux.HandleFunc("PUT /procedure", a.handleUpdateProcedureSpecialty)
+
 	return mux
 }
 
@@ -47,6 +58,75 @@ type response struct {
 	HL7Size              int    `json:"hl7_size,omitempty"`
 	ControlID            string `json:"hl7_control_id,omitempty"`
 	VoltaError           string `json:"volta_error,omitempty"`
+}
+
+type updateResult struct {
+	Message        string `json:"message"`
+	RecordsUpdated int    `json:"records_updated"`
+}
+
+func (a *API) handleGetProceduresForSpecialtyUpdate(w http.ResponseWriter, r *http.Request) {
+	resp := response{}
+	cursorID := r.URL.Query().Get("cursor_id")
+	if cursorID == "" {
+		resp.Message = "must provide value for cursor_id param (int)"
+		respondJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	id, err := convertCursor(cursorID)
+	if err != nil {
+		resp.Message = err.Error()
+		respondJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	ctx := context.Background()
+	procedures, err := a.Store.GetProcedures(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			resp.Message = "no procedures found"
+			respondJSON(w, http.StatusNotFound, resp)
+		} else {
+			resp.Message = fmt.Sprintf("error getting procedures: %v", err)
+			respondJSON(w, http.StatusInternalServerError, resp)
+		}
+		return
+	}
+	respondJSON(w, http.StatusOK, procedures)
+}
+
+func (a *API) handleUpdateProcedureSpecialty(w http.ResponseWriter, r *http.Request) {
+	resp := updateResult{}
+	if r.Body == nil {
+		resp.Message = "empty request body"
+		respondJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			resp.Message = fmt.Sprintf("error closing client connection: %v", err)
+			respondJSON(w, http.StatusBadRequest, resp)
+			return
+		}
+	}()
+	reqBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		resp.Message = fmt.Sprintf("could not decode request body: %v", err)
+		respondJSON(w, http.StatusInternalServerError, resp)
+		return
+	}
+	ctx := context.Background()
+	requested, n, err := a.Store.UpdateProcedures(ctx, reqBody)
+	if err != nil {
+		resp.Message = fmt.Sprintf("could not update procedures from request: %v", err)
+		respondJSON(w, http.StatusInternalServerError, resp)
+		return
+	}
+	resp.Message = "records updated successfully"
+	if n < requested {
+		resp.Message = fmt.Sprintf("%d out of %d updated", n, requested)
+	}
+	resp.RecordsUpdated = n
+	respondJSON(w, http.StatusOK, resp)
 }
 
 func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
@@ -151,4 +231,18 @@ func HandleByMsgType(store HL7Store, data []byte) (string, int, error) {
 	default:
 		return controlID, http.StatusBadRequest, fmt.Errorf("unsupported message type: %s", msg.MsgType.Name)
 	}
+}
+
+func convertCursor(s string) (int32, error) {
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	if i < 0 {
+		return 0, fmt.Errorf("integer must be positive, got %s", s)
+	}
+	if i > 100 {
+		i = 100
+	}
+	return int32(i), nil
 }

@@ -18,13 +18,9 @@ WITH upsert AS (
     ON CONFLICT (site_id, code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description),
-        specialty = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty),
-        modality = COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty)
+        description = COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description)
     WHERE
         COALESCE(NULLIF(EXCLUDED.description, ''), procedures.description) IS DISTINCT FROM EXCLUDED.description
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.specialty
-        OR COALESCE(NULLIF(EXCLUDED.specialty, ''), procedures.specialty) IS DISTINCT FROM EXCLUDED.modality
     RETURNING id
 )
 SELECT id FROM upsert
