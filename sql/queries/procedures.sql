@@ -43,3 +43,17 @@ LIMIT 100;
 UPDATE procedures
 SET specialty = $2
 WHERE id = $1;
+
+-- name: GetProceduresForModalityUpdate :many
+SELECT *
+FROM procedures
+WHERE
+    modality is null
+    AND id > $1
+ORDER BY id -- so one can move cursor value $1 to max(id)
+LIMIT 100;
+
+-- name: UpdateProcedureModality :exec
+UPDATE procedures
+SET modality = $2
+WHERE id = $1;

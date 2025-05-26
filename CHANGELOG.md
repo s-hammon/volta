@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.12]
+
+- Added Cloud Run function for assigning procedure specialty and modality
+
 ## [v0.6.11]
 
 - Two new endpoints for managing AI-assigned specialty to procedure

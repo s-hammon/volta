@@ -108,6 +108,46 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 	return i, err
 }
 
+const getProceduresForModalityUpdate = `-- name: GetProceduresForModalityUpdate :many
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+FROM procedures
+WHERE
+    modality is null
+    AND id > $1
+ORDER BY id -- so one can move cursor value $1 to max(id)
+LIMIT 100
+`
+
+func (q *Queries) GetProceduresForModalityUpdate(ctx context.Context, id int32) ([]Procedure, error) {
+	rows, err := q.db.Query(ctx, getProceduresForModalityUpdate, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Procedure
+	for rows.Next() {
+		var i Procedure
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SiteID,
+			&i.Code,
+			&i.Description,
+			&i.Specialty,
+			&i.Modality,
+			&i.MessageID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProceduresForSpecialtyUpdate = `-- name: GetProceduresForSpecialtyUpdate :many
 SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
 FROM procedures
@@ -146,6 +186,22 @@ func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32)
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateProcedureModality = `-- name: UpdateProcedureModality :exec
+UPDATE procedures
+SET modality = $2
+WHERE id = $1
+`
+
+type UpdateProcedureModalityParams struct {
+	ID       int32
+	Modality pgtype.Text
+}
+
+func (q *Queries) UpdateProcedureModality(ctx context.Context, arg UpdateProcedureModalityParams) error {
+	_, err := q.db.Exec(ctx, updateProcedureModality, arg.ID, arg.Modality)
+	return err
 }
 
 const updateProcedureSpecialty = `-- name: UpdateProcedureSpecialty :exec
