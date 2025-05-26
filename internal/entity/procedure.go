@@ -1,15 +1,6 @@
 package entity
 
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"sync"
-
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/s-hammon/volta/internal/database"
-	"github.com/s-hammon/volta/internal/objects"
-)
+import "github.com/s-hammon/volta/internal/objects"
 
 type Procedure struct {
 	Base
