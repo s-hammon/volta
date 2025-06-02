@@ -42,7 +42,7 @@ type Exam struct {
 	Cancelled     time.Time
 }
 
-func DBtoExam(exam database.GetExamBySiteIDAccessionRow) Exam {
+func DBtoExam(exam database.GetExamBySendingAppAccessionRow) Exam {
 	site := Site{
 		Base: Base{
 			ID:        int(exam.SiteID.Int32),

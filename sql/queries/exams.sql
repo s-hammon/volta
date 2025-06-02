@@ -12,14 +12,16 @@ WITH upsert as (
         begin_exam_dt, -- $9
         end_exam_dt, -- $10
         exam_cancelled_dt, -- $11
-        message_id -- $12
+        message_id, -- $12
+	sending_app -- $13
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-    ON CONFLICT (site_id, accession) DO UPDATE
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ON CONFLICT (sending_app, accession) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
         visit_id = EXCLUDED.visit_id,
         mrn_id = EXCLUDED.mrn_id,
+        site_id = EXCLUDED.site_id,
         procedure_id = EXCLUDED.procedure_id,
         ordering_physician_id = EXCLUDED.ordering_physician_id,
         current_status = COALESCE(NULLIF(EXCLUDED.current_status, ''), exams.current_status),
@@ -45,7 +47,7 @@ SELECT id FROM upsert
 UNION ALL
 SELECT id FROM exams
 WHERE
-    site_id = $4
+    sending_app = $13
     AND accession = $6
     AND NOT EXISTS (SELECT 1 FROM upsert);
 
@@ -57,14 +59,14 @@ WHERE id = $1;
 SELECT *
 FROM exams;
 
--- name: GetExamIDBySiteIDAccession :one
+-- name: GetExamIDBySendingAppAccession :one
 SELECT id
 FROM exams
 WHERE
-    site_id = $1
+    sending_app = $1
     AND accession = $2;
 
--- name: GetExamBySiteIDAccession :one
+-- name: GetExamBySendingAppAccession :one
 SELECT
     e.*,
     m.created_at AS mrn_created_at,
@@ -98,7 +100,7 @@ LEFT JOIN procedures AS p ON e.procedure_id = p.id and e.site_id = p.site_id
 LEFT JOIN physicians AS o ON e.ordering_physician_id = o.id
 LEFT JOIN sites AS s ON e.site_id = s.id
 WHERE
-    e.site_id = $1
+    e.sending_app = $1
     AND e.accession = $2;
 
 -- name: UpdateExam :one

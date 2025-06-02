@@ -139,9 +139,10 @@ func TestORMProcedure(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "MAMSTOM2", proc.Code)
 
-	res, err := repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	fmt.Printf("attempting exam fetch w/ %s...\n", msg.ReceivingApplication)
+	res, err := repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: msg.ReceivingApplication,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	exam := entity.DBtoExam(res)
@@ -166,9 +167,10 @@ func TestExamTimestampSequence(t *testing.T) {
 	err = repo.SaveORM(ctx, orm.ToOrder())
 	require.NoError(t, err)
 
-	res, err := repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	fmt.Printf("finding exam with %s and '29737914'\n", orm.ReceivingApp)
+	res, err := repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: orm.ReceivingApp,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	require.True(t, res.ScheduleDt.Valid)
@@ -189,9 +191,9 @@ func TestExamTimestampSequence(t *testing.T) {
 	err = repo.SaveORM(ctx, orm.ToOrder())
 	require.NoError(t, err)
 
-	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	res, err = repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: orm.ReceivingApp,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	require.True(t, res.ScheduleDt.Valid)
@@ -212,9 +214,9 @@ func TestExamTimestampSequence(t *testing.T) {
 	err = repo.SaveORM(ctx, orm.ToOrder())
 	require.NoError(t, err)
 
-	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	res, err = repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: orm.ReceivingApp,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	require.True(t, res.ScheduleDt.Valid)
@@ -235,9 +237,9 @@ func TestExamTimestampSequence(t *testing.T) {
 	err = repo.SaveORM(ctx, orm.ToOrder())
 	require.NoError(t, err)
 
-	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	res, err = repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: orm.ReceivingApp,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	require.True(t, res.ScheduleDt.Valid)
@@ -260,9 +262,9 @@ func TestExamTimestampSequence(t *testing.T) {
 	d = hl7.NewDecoder(data)
 	testUpsertORU(t, ctx, repo, d)
 
-	res, err = repo.Queries.GetExamBySiteIDAccession(ctx, database.GetExamBySiteIDAccessionParams{
-		SiteID:    pgtype.Int4{Int32: 1, Valid: true},
-		Accession: "29737914",
+	res, err = repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
+		SendingApp: orm.ReceivingApp,
+		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	require.True(t, res.ScheduleDt.Valid)
