@@ -1,6 +1,6 @@
 -- name: CreateSite :one
 WITH upsert AS (
-    INSERT INTO SITES (
+    INSERT INTO sites (
         code, -- $1
         name, -- $2
         address, -- $3
@@ -11,13 +11,8 @@ WITH upsert AS (
     ON CONFLICT (code) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
-        name = EXCLUDED.name,
-        address = EXCLUDED.address,
-        is_cms = EXCLUDED.is_cms
-    WHERE
-        sites.name IS DISTINCT FROM EXCLUDED.name
-        OR sites.address IS DISTINCT FROM EXCLUDED.address
-        OR sites.is_cms IS DISTINCT FROM EXCLUDED.is_cms
+        name = COALESCE(NULLIF(EXCLUDED.name, ''), sites.name),
+        address = COALESCE(NULLIF(EXCLUDED.address, ''), sites.address)
     RETURNING id
 )
 SELECT id FROM upsert

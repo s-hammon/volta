@@ -101,7 +101,7 @@ func (h *HL7Repo) SaveORM(ctx context.Context, orm *Order) error {
 		return dbErr{"visit", err}
 	}
 	if _, err = qtx.CreateExam(ctx, createExamParam(
-		orm.Exam,
+		orm.Exam, orm.Message.ReceivingApp,
 		sID, prID,
 		vID, mID, phID, msgID,
 	)); err != nil {
@@ -171,11 +171,11 @@ func (h *HL7Repo) SaveORU(ctx context.Context, oru *Observation) error {
 			return dbErr{"procedure", err}
 		}
 		var eID int64
-		eID, err = qtx.GetExamIDBySiteIDAccession(ctx, getExamIDParam(exam, sID))
+		eID, err = qtx.GetExamIDBySendingAppAccession(ctx, getExamIDParam(exam, oru.Message.ReceivingApp))
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				eID, err = qtx.CreateExam(ctx, createExamParam(
-					exam,
+					exam, oru.Message.ReceivingApp,
 					sID, prID,
 					vID, mID, phID, msgID,
 				))
@@ -241,6 +241,7 @@ func createSiteParam(obj Site, msgID int64) database.CreateSiteParams {
 	params.MessageID = pgtype.Int8{Int64: msgID, Valid: true}
 	params.Code = obj.Code
 	params.Address = obj.Address
+	params.IsCms = true
 	if obj.Name != "" {
 		params.Name.String = obj.Name
 	}
@@ -291,9 +292,10 @@ func createVisitParam(obj Visit, siteID int32, mrnID, msgID int64) database.Crea
 	return params
 }
 
-func createExamParam(obj Exam, siteID, procID int32, visitID, mrnID, physID, msgID int64) database.CreateExamParams {
+func createExamParam(obj Exam, rapp string, siteID, procID int32, visitID, mrnID, physID, msgID int64) database.CreateExamParams {
 	params := database.CreateExamParams{}
 	params.MessageID = pgtype.Int8{Int64: msgID, Valid: true}
+	params.SendingApp = rapp
 	params.SiteID = pgtype.Int4{Int32: siteID, Valid: true}
 	params.ProcedureID = pgtype.Int4{Int32: procID, Valid: true}
 	params.VisitID = pgtype.Int8{Int64: visitID, Valid: true}
@@ -316,9 +318,9 @@ func createReportParam(obj Report, radID, msgID int64) database.CreateReportPara
 	return params
 }
 
-func getExamIDParam(obj Exam, siteID int32) database.GetExamIDBySiteIDAccessionParams {
-	params := database.GetExamIDBySiteIDAccessionParams{}
-	params.SiteID = pgtype.Int4{Int32: siteID, Valid: true}
+func getExamIDParam(obj Exam, sendingApp string) database.GetExamIDBySendingAppAccessionParams {
+	params := database.GetExamIDBySendingAppAccessionParams{}
+	params.SendingApp = sendingApp
 	params.Accession = obj.Accession
 	return params
 }

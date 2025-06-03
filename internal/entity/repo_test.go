@@ -13,7 +13,7 @@ func TestCreateExamParam(t *testing.T) {
 		CurrentStatus: NewExamStatus("SC"),
 		Scheduled:     time.Date(2025, time.May, 1, 12, 0, 0, 0, time.UTC),
 	}
-	params := createExamParam(obj, 1, 1, 1, 1, 1, 1)
+	params := createExamParam(obj, "STRIC", 1, 1, 1, 1, 1, 1)
 	require.True(t, params.ScheduleDt.Valid)
 	require.False(t, params.BeginExamDt.Valid)
 	require.False(t, params.EndExamDt.Valid)
