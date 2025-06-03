@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### **Schema-breaking changes**
+
+- Exams will now reference new "sending_app" value to determine accession uniquenesss
+
+### **Bug fixes**
+
+- Fixed issue where site name is being overwritten in `site` upserts
+
 ## [v0.6.12]
 
 - Added Cloud Run function for assigning procedure specialty and modality
