@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.1]
+
+- Security patch (long overdue)
+- Added default null value for new column
+
 ## [v0.7.0]
 
 ### **Schema-breaking changes**
