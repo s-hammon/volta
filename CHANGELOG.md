@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.0]
+
 ### **Schema-breaking changes**
 
 - Exams will now reference new "sending_app" value to determine accession uniquenesss
@@ -234,3 +236,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.10]: https://github.com/s-hammon/volta/releases/tag/v0.6.10
 [v0.6.11]: https://github.com/s-hammon/volta/releases/tag/v0.6.11
 [v0.6.12]: https://github.com/s-hammon/volta/releases/tag/v0.6.12
+[v0.7.0]: https://github.com/s-hammon/volta/releases/tag/v0.7.0

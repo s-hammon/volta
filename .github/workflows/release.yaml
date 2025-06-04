@@ -1,32 +1,31 @@
 name: release
 on:
-    push:
-        tags:
-            - 'v*.*.*'
+  push:
+    tags:
+      - "v*.*.*"
 
-# if 'alpha' is in tag name, mark it as a pre-release
 permissions:
-    contents: write
+  contents: write
 
 jobs:
-    releaser:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
-            - run: git fetch --force --tags
-            - uses: actions/setup-go@v5
-              with:
-                go-version: '1.23.0'
-            - name: Make release notes
-              continue-on-error: true
-              run: ./scripts/release-notes.sh ${{ github.ref_name }} > ${{ runner.temp }}/release_notes.txt
-            - name: GoReleaser
-              uses: goreleaser/goreleaser-action@v6
-              with:
-                distribution: goreleaser
-                version: "~> v2"
-                args: release --clean --release-notes=${{ runner.temp }}/release_notes.txt
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  releaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
+      - name: Make release notes
+        continue-on-error: true
+        run: ./scripts/release-notes.sh ${{ github.ref_name }} > ${{ runner.temp }}/release_notes.txt
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --release-notes=${{ runner.temp }}/release_notes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

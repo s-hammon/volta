@@ -7,7 +7,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-version=$1
+version="$1"
 clog_file="${2:-CHANGELOG.md}"
 
 if [ ! -f "$clog_file" ]; then
@@ -22,7 +22,7 @@ while IFS= read -r LINE; do
     if [[ "${LINE}" == "##"* ]] && [[ "${CAPTURE}" -eq 1 ]]; then
         break
     fi
-    if [[ "${LINE}" =~ ^##\s*\[Unreleased\] ]]; then
+    if [[ "${LINE}" == "[Unreleased]"* ]]; then
         break
     fi
     if [[ "${LINE}" == "## [${version}]"* ]] && [[ "${CAPTURE}" -eq 0 ]]; then
@@ -33,9 +33,9 @@ while IFS= read -r LINE; do
         if [[ -z "${LINE}" ]]; then
             continue
         fi
-        items="${items}\n${LINE}"
+        items+="$(echo "${LINE}" | xargs -0)"
         if [[ -n "$items" ]]; then
-            items="${items}\n"
+            items+=$'\n'
         fi
     fi
 done <"${clog_file}"
