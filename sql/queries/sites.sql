@@ -8,11 +8,7 @@ WITH upsert AS (
         message_id -- $5
     )
     VALUES ($1, $2, $3, $4, $5)
-    ON CONFLICT (code) DO UPDATE
-    SET
-        updated_at = CURRENT_TIMESTAMP,
-        name = COALESCE(NULLIF(EXCLUDED.name, ''), sites.name),
-        address = COALESCE(NULLIF(EXCLUDED.address, ''), sites.address)
+    ON CONFLICT (code) DO NOTHING
     RETURNING id
 )
 SELECT id FROM upsert
