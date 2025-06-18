@@ -10,6 +10,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+
+	"github.com/s-hammon/p"
 )
 
 const (
@@ -86,7 +88,7 @@ func newPostgres(opts ...OptionsFunc) (*sql.DB, func(), error) {
 			fmt.Printf("failed to purge container: %v", err)
 		}
 	}
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	psqlInfo := p.Format("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		"localhost",
 		container.GetPort("5432/tcp"),
 		POSTGRES_USER,
@@ -153,7 +155,7 @@ func newPostgresPool(opts ...OptionsFunc) (*pgxpool.Pool, func(), error) {
 			fmt.Printf("failed to purge container: %v", err)
 		}
 	}
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	psqlInfo := p.Format("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		"localhost",
 		container.GetPort("5432/tcp"),
 		POSTGRES_USER,

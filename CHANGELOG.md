@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Incorporated library methods
+
 ## [v0.7.2]
 
 - no longer updating existing sites by code

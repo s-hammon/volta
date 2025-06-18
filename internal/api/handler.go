@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/s-hammon/p"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/pkg/hl7"
 )
@@ -86,7 +87,7 @@ func (a *API) handleGetProceduresForSpecialtyUpdate(w http.ResponseWriter, r *ht
 			resp.Message = "no procedures found"
 			respondJSON(w, http.StatusNotFound, resp)
 		} else {
-			resp.Message = fmt.Sprintf("error getting procedures: %v", err)
+			resp.Message = p.Format("error getting procedures: %v", err)
 			respondJSON(w, http.StatusInternalServerError, resp)
 		}
 		return
@@ -103,27 +104,27 @@ func (a *API) handleUpdateProcedureSpecialty(w http.ResponseWriter, r *http.Requ
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
-			resp.Message = fmt.Sprintf("error closing client connection: %v", err)
+			resp.Message = p.Format("error closing client connection: %v", err)
 			respondJSON(w, http.StatusBadRequest, resp)
 			return
 		}
 	}()
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		resp.Message = fmt.Sprintf("could not decode request body: %v", err)
+		resp.Message = p.Format("could not decode request body: %v", err)
 		respondJSON(w, http.StatusInternalServerError, resp)
 		return
 	}
 	ctx := context.Background()
 	requested, n, err := a.Store.UpdateProcedures(ctx, reqBody)
 	if err != nil {
-		resp.Message = fmt.Sprintf("could not update procedures from request: %v", err)
+		resp.Message = p.Format("could not update procedures from request: %v", err)
 		respondJSON(w, http.StatusInternalServerError, resp)
 		return
 	}
 	resp.Message = "records updated successfully"
 	if n < requested {
-		resp.Message = fmt.Sprintf("%d out of %d updated", n, requested)
+		resp.Message = p.Format("%d out of %d updated", n, requested)
 	}
 	resp.RecordsUpdated = n
 	respondJSON(w, http.StatusOK, resp)
@@ -139,7 +140,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() {
 		if err := r.Body.Close(); err != nil {
-			resp.Message = fmt.Sprintf("error closing client connection: %v", err)
+			resp.Message = p.Format("error closing client connection: %v", err)
 			respondJSON(w, http.StatusBadRequest, resp)
 			return
 		}
@@ -151,7 +152,7 @@ func (a *API) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	m, err := NewPubSubMessage(r.Body)
 	if err != nil {
-		resp.Message = fmt.Sprintf("error getting Healthcare API response: %v", err)
+		resp.Message = p.Format("error getting Healthcare API response: %v", err)
 		respondJSON(w, http.StatusBadRequest, resp)
 		return
 	}

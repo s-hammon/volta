@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"github.com/s-hammon/volta/internal/api"
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/spf13/cobra"
+
+	"github.com/s-hammon/p"
 )
 
 // TODO: include YAML config file to parse & pass to service.
@@ -111,7 +112,7 @@ var serveCmd = &cobra.Command{
 			ReadHeaderTimeout: 3 * time.Second,
 		}
 
-		log.Info().Msg(fmt.Sprintf("starting server on %s", srv.Addr))
+		log.Info().Msg(p.Format("starting server on %s", srv.Addr))
 		return srv.ListenAndServe()
 	},
 }

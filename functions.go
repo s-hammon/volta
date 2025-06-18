@@ -16,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/s-hammon/p"
 	"github.com/s-hammon/volta/internal/database"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/idtoken"
@@ -88,7 +89,7 @@ func AssignSpecialty(w http.ResponseWriter, r *http.Request) {
 
 	client, err := idtoken.NewClient(ctx, makotoURL)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("makoto client: %v", err), http.StatusInternalServerError)
+		http.Error(w, p.Format("makoto client: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -109,7 +110,7 @@ func AssignSpecialty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil && updated == 0 {
-		http.Error(w, fmt.Sprintf("no records updated: %v", err), http.StatusInternalServerError)
+		http.Error(w, p.Format("no records updated: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -305,7 +306,7 @@ func assignAll(ctx context.Context, q *database.Queries, client *http.Client, mo
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		http.Error(w, fmt.Sprintf("encoding response: %v", err), http.StatusInternalServerError)
+		http.Error(w, p.Format("encoding response: %v", err), http.StatusInternalServerError)
 	}
 }
 

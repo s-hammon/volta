@@ -5,6 +5,8 @@ import (
 
 	"github.com/s-hammon/volta/internal/entity"
 	"github.com/s-hammon/volta/internal/objects"
+
+	"github.com/s-hammon/p"
 )
 
 const cstName = "America/Chicago"
@@ -108,7 +110,7 @@ func (o *ORM) ToOrder() *entity.Order {
 		Description: o.Service.Text,
 	}
 	order.Exam = entity.Exam{
-		Accession: coalesce(o.Accession, o.FillerOrderNo),
+		Accession: p.Coalesce(o.Accession, o.FillerOrderNo),
 		Procedure: entity.Procedure{
 			Site:        *site,
 			Code:        o.Service.Identifier,
@@ -219,7 +221,7 @@ type Exam struct {
 }
 
 func (e *Exam) ToEntity(site entity.Site) (exam entity.Exam) {
-	exam.Accession = coalesce(e.Accession, e.FillerOrderNo)
+	exam.Accession = p.Coalesce(e.Accession, e.FillerOrderNo)
 	exam.Procedure = entity.Procedure{
 		Site:        site,
 		Code:        e.Service.Identifier,
@@ -364,11 +366,4 @@ func convertCSTtoUTC(stringDT string) time.Time {
 	}
 
 	return dt.UTC()
-}
-
-func coalesce(a, b string) string {
-	if a == "" {
-		return b
-	}
-	return a
 }

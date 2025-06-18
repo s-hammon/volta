@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/s-hammon/p"
 	"github.com/s-hammon/volta/internal/database"
 	"github.com/s-hammon/volta/internal/objects"
 )
@@ -19,7 +20,7 @@ type dbErr struct {
 }
 
 func (e dbErr) Error() string {
-	return fmt.Sprintf("error writing %s to database: %v", e.entityName, e.errMsg)
+	return p.Format("error writing %s to database: %v", e.entityName, e.errMsg)
 }
 
 type HL7Repo struct {
