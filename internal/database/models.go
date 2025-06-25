@@ -111,6 +111,7 @@ type Procedure struct {
 	Specialty   pgtype.Text
 	Modality    pgtype.Text
 	MessageID   pgtype.Int8
+	UpdatedBy   string
 }
 
 type Report struct {

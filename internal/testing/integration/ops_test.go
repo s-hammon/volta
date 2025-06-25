@@ -67,12 +67,12 @@ func TestHL7Upserts(t *testing.T) {
 	for _, proc := range procs {
 		require.Equal(t, "", proc.Specialty.String)
 	}
-	procs[0].Specialty = pgtype.Text{String: "Breast"}
-	procs[1].Specialty = pgtype.Text{String: "MSK"}
-	procs[2].Specialty = pgtype.Text{String: "MSK"}
-	procs[3].Specialty = pgtype.Text{String: "MSK"}
-	procs[4].Specialty = pgtype.Text{String: "Vascular"}
-	procs[5].Specialty = pgtype.Text{String: "Breast"}
+	procs[0].Specialty = pgtype.Text{String: "Breast", Valid: true}
+	procs[1].Specialty = pgtype.Text{String: "MSK", Valid: true}
+	procs[2].Specialty = pgtype.Text{String: "MSK", Valid: true}
+	procs[3].Specialty = pgtype.Text{String: "MSK", Valid: true}
+	procs[4].Specialty = pgtype.Text{String: "Vascular", Valid: true}
+	procs[5].Specialty = pgtype.Text{String: "Breast", Valid: true}
 
 	for i, proc := range procs {
 		req := database.UpdateProcedureSpecialtyParams{
@@ -84,7 +84,9 @@ func TestHL7Upserts(t *testing.T) {
 
 		res, err := repo.Queries.GetProcedureById(ctx, procs[i].ID)
 		require.NoError(t, err)
-		require.NotEqual(t, "", res.Specialty)
+		require.Equal(t, proc.ID, res.ID)
+		require.Equal(t, proc.Specialty.String, res.Specialty.String)
+		require.Equal(t, "postgres", res.UpdatedBy)
 	}
 }
 
