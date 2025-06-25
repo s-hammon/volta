@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.3]
+
 - Incorporated library methods
+- New `updated_by` column in `procedures`; updates w/ username when modifying:
+  * `specialty`
+  * `modality`
 
 ## [v0.7.2]
 
@@ -248,3 +253,6 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.6.11]: https://github.com/s-hammon/volta/releases/tag/v0.6.11
 [v0.6.12]: https://github.com/s-hammon/volta/releases/tag/v0.6.12
 [v0.7.0]: https://github.com/s-hammon/volta/releases/tag/v0.7.0
+[v0.7.1]: https://github.com/s-hammon/volta/releases/tag/v0.7.1
+[v0.7.2]: https://github.com/s-hammon/volta/releases/tag/v0.7.2
+[v0.7.3]: https://github.com/s-hammon/volta/releases/tag/v0.7.3
