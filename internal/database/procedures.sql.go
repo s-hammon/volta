@@ -56,7 +56,7 @@ func (q *Queries) CreateProcedure(ctx context.Context, arg CreateProcedureParams
 }
 
 const getProcedureById = `-- name: GetProcedureById :one
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id, updated_by
 FROM procedures
 WHERE id = $1
 `
@@ -74,12 +74,13 @@ func (q *Queries) GetProcedureById(ctx context.Context, id int32) (Procedure, er
 		&i.Specialty,
 		&i.Modality,
 		&i.MessageID,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const getProcedureBySiteIDCode = `-- name: GetProcedureBySiteIDCode :one
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id, updated_by
 FROM procedures
 WHERE
     site_id = $1
@@ -104,12 +105,13 @@ func (q *Queries) GetProcedureBySiteIDCode(ctx context.Context, arg GetProcedure
 		&i.Specialty,
 		&i.Modality,
 		&i.MessageID,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const getProceduresForModalityUpdate = `-- name: GetProceduresForModalityUpdate :many
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id, updated_by
 FROM procedures
 WHERE
     modality is null
@@ -137,6 +139,7 @@ func (q *Queries) GetProceduresForModalityUpdate(ctx context.Context, id int32) 
 			&i.Specialty,
 			&i.Modality,
 			&i.MessageID,
+			&i.UpdatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -149,7 +152,7 @@ func (q *Queries) GetProceduresForModalityUpdate(ctx context.Context, id int32) 
 }
 
 const getProceduresForSpecialtyUpdate = `-- name: GetProceduresForSpecialtyUpdate :many
-SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id
+SELECT id, created_at, updated_at, site_id, code, description, specialty, modality, message_id, updated_by
 FROM procedures
 WHERE
     specialty is null
@@ -177,6 +180,7 @@ func (q *Queries) GetProceduresForSpecialtyUpdate(ctx context.Context, id int32)
 			&i.Specialty,
 			&i.Modality,
 			&i.MessageID,
+			&i.UpdatedBy,
 		); err != nil {
 			return nil, err
 		}
