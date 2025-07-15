@@ -10,6 +10,7 @@ require (
 	github.com/ory/dockertest/v3 v3.11.0
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/rs/zerolog v1.33.0
+	github.com/s-hammon/p v0.0.0-20250618143643-9b8a603fe7c8
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/sync v0.12.0
@@ -59,7 +60,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/s-hammon/p v0.0.0-20250618143643-9b8a603fe7c8 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect

@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Added dictation start & end times to `reports` table
+
 ## [v0.7.3]
 
 - Incorporated library methods
 - New `updated_by` column in `procedures`; updates w/ username when modifying:
-  * `specialty`
-  * `modality`
+  - `specialty`
+  - `modality`
 
 ## [v0.7.2]
 
@@ -171,7 +173,6 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 - Fixed & modified logging for JSON response
 - Changed HL7 parsing logic to handle any repeating segment
 - Added "OrderGroup" data type to handle ORUs w/ multiple orders
-
   - ORUs may come with a second, third, etc. ORC/OBR group
   - Dictation handles all in one report
   - Each group is still handled as their own exam
@@ -179,7 +180,6 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 - **Schema change**
 
   ![updated data model](assets/diagrams/relationships.real.large.png)
-
   - `reports` model no longer has FK reference to `exam.id`; `exam` model now has `final_report_id` and `addendum_report_id` FK reference
   - This is because one report may be assigned to multiple exams (see above)
   - No significant instance of >2 reports (1 final, 1 addendum) assigned to an exam to warrant a bridge table
