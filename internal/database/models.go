@@ -115,15 +115,17 @@ type Procedure struct {
 }
 
 type Report struct {
-	ID            int64
-	CreatedAt     pgtype.Timestamp
-	UpdatedAt     pgtype.Timestamp
-	RadiologistID pgtype.Int8
-	Body          string
-	Impression    string
-	ReportStatus  string
-	SubmittedDt   pgtype.Timestamp
-	MessageID     pgtype.Int8
+	ID             int64
+	CreatedAt      pgtype.Timestamp
+	UpdatedAt      pgtype.Timestamp
+	RadiologistID  pgtype.Int8
+	Body           string
+	Impression     string
+	ReportStatus   string
+	SubmittedDt    pgtype.Timestamp
+	MessageID      pgtype.Int8
+	DictationStart pgtype.Timestamp
+	DictationEnd   pgtype.Timestamp
 }
 
 type Site struct {
