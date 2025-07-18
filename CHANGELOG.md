@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.7.5]
+
+- Added priority field to `exams` table
+
 ## [v0.7.4]
 
 - Added dictation start & end times to `reports` table
@@ -260,3 +264,4 @@ Updated `go mod` and introduced CI/CD pipelines w/ GCP.
 [v0.7.2]: https://github.com/s-hammon/volta/releases/tag/v0.7.2
 [v0.7.3]: https://github.com/s-hammon/volta/releases/tag/v0.7.3
 [v0.7.4]: https://github.com/s-hammon/volta/releases/tag/v0.7.4
+[v0.7.5]: https://github.com/s-hammon/volta/releases/tag/v0.7.5
