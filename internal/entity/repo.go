@@ -303,6 +303,7 @@ func createExamParam(obj Exam, rapp string, siteID, procID int32, visitID, mrnID
 	params.MrnID = pgtype.Int8{Int64: mrnID, Valid: true}
 	params.OrderingPhysicianID = pgtype.Int8{Int64: physID, Valid: true}
 	params.Accession = obj.Accession
+	params.Priority = pgtype.Text{String: obj.Priority, Valid: true}
 	params.CurrentStatus = obj.CurrentStatus.String()
 	obj.timestamp(&params)
 	return params

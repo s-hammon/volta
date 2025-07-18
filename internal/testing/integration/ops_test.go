@@ -141,13 +141,14 @@ func TestORMProcedure(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "MAMSTOM2", proc.Code)
 
-	fmt.Printf("attempting exam fetch w/ %s...\n", msg.ReceivingApplication)
+	t.Logf("attempting exam fetch w/ %s...\n", msg.ReceivingApplication)
 	res, err := repo.Queries.GetExamBySendingAppAccession(ctx, database.GetExamBySendingAppAccessionParams{
 		SendingApp: msg.ReceivingApplication,
 		Accession:  "29737914",
 	})
 	require.NoError(t, err)
 	exam := entity.DBtoExam(res)
+	require.Equal(t, "N^N", exam.Priority)
 	require.Equal(t, "MAMSTOM2", exam.Procedure.Code)
 	require.Equal(t, "Mammogram Digital Screening Bilateral w/CAD & DBT", exam.Procedure.Description)
 }
