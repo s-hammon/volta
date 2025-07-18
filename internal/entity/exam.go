@@ -32,6 +32,7 @@ func (o ExamStatus) String() string {
 type Exam struct {
 	Base
 	Accession     string
+	Priority      string
 	Procedure     Procedure
 	CurrentStatus ExamStatus
 	Provider      Physician
@@ -60,6 +61,7 @@ func DBtoExam(exam database.GetExamBySendingAppAccessionRow) Exam {
 			UpdatedAt: exam.UpdatedAt.Time,
 		},
 		Accession: exam.Accession,
+		Priority:  exam.Priority.String,
 		Procedure: Procedure{
 			Base: Base{
 				ID:        int(exam.ProcedureID.Int32),

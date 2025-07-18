@@ -62,6 +62,7 @@ type ORM struct {
 	OrderDT          string `hl7:"ORC.9"`
 	OrderingProvider XCN    `hl7:"ORC.12"`
 	Service          CE     `hl7:"OBR.4"`
+	Priority         string `hl7:"OBR.5"`
 	StatusDT         string `hl7:"OBR.22"`
 }
 
@@ -111,6 +112,7 @@ func (o *ORM) ToOrder() *entity.Order {
 	}
 	order.Exam = entity.Exam{
 		Accession: p.Coalesce(o.Accession, o.FillerOrderNo),
+		Priority:  o.Priority,
 		Procedure: entity.Procedure{
 			Site:        *site,
 			Code:        o.Service.Identifier,
@@ -217,11 +219,13 @@ type Exam struct {
 	OrderDT          string `hl7:"ORC.9"`
 	OrderingProvider XCN    `hl7:"ORC.12"`
 	Service          CE     `hl7:"OBR.4"`
+	Priority         string `hl7:"OBR.5"`
 	StatusDT         string `hl7:"OBR.22"`
 }
 
 func (e *Exam) ToEntity(site entity.Site) (exam entity.Exam) {
 	exam.Accession = p.Coalesce(e.Accession, e.FillerOrderNo)
+	exam.Priority = e.Priority
 	exam.Procedure = entity.Procedure{
 		Site:        site,
 		Code:        e.Service.Identifier,

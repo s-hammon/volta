@@ -13,9 +13,10 @@ WITH upsert as (
         end_exam_dt, -- $10
         exam_cancelled_dt, -- $11
         message_id, -- $12
-	sending_app -- $13
+	sending_app, -- $13
+	priority -- $14
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     ON CONFLICT (sending_app, accession) DO UPDATE
     SET
         updated_at = CURRENT_TIMESTAMP,
