@@ -31,7 +31,7 @@ func TestNewPubSubMessage(t *testing.T) {
 
 func BenchmarkNewPubSubMessage(b *testing.B) {
 	r := bytes.NewReader(mockPubSubMessage)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		r.Reset(mockPubSubMessage)
 		_, err := NewPubSubMessage(r)
 		if err != nil {

@@ -19,7 +19,7 @@ type pubSubMessage struct {
 
 type message struct {
 	Data       []byte     `json:"data,omitempty"`
-	Attributes attributes `json:"attributes,omitempty"`
+	Attributes attributes `json:"attributes"`
 }
 
 type attributes struct {

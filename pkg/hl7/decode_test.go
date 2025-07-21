@@ -158,7 +158,7 @@ func BenchmarkDecoderEach(b *testing.B) {
 		b.Run(entry.Name(), func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				d := NewDecoder(data)
 				if d.savedErr != nil {
 					b.Fatalf("unexpected error in parsing: %v", d.savedErr)

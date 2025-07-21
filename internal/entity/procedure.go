@@ -13,7 +13,7 @@ import (
 
 type Procedure struct {
 	Base
-	Site        Site              `json:"site,omitempty"`
+	Site        Site              `json:"site"`
 	Code        string            `json:"code"`
 	Description string            `json:"description"`
 	Specialty   objects.Specialty `json:"specialty,omitempty"`

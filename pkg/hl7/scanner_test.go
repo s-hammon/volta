@@ -41,7 +41,7 @@ func BenchmarkFastScan(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_, err = FastScan(data, segDelim, fieldDelim)
 		if err != nil {
 			b.Fatal(err)
@@ -71,7 +71,7 @@ func BenchmarkGetField(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		_ = seg.GetField(data, 3)
 	}
 }
