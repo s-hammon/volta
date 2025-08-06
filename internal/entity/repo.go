@@ -316,6 +316,8 @@ func createReportParam(obj Report, radID, msgID int64) database.CreateReportPara
 	params.Body = obj.Body
 	params.Impression = obj.Impression
 	params.ReportStatus = obj.Status.String()
+	params.DictationStart = pgtype.Timestamp{Time: obj.DictationStart, Valid: true}
+	params.DictationEnd = pgtype.Timestamp{Time: obj.DictationEnd, Valid: true}
 	params.SubmittedDt = pgtype.Timestamp{Time: obj.SubmittedDT, Valid: true}
 	return params
 }

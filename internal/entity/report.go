@@ -9,11 +9,13 @@ import (
 
 type Report struct {
 	Base
-	Radiologist Physician
-	Body        string
-	Impression  string
-	Status      objects.ReportStatus
-	SubmittedDT time.Time
+	Radiologist    Physician
+	Body           string
+	Impression     string
+	Status         objects.ReportStatus
+	DictationStart time.Time
+	DictationEnd   time.Time
+	SubmittedDT    time.Time
 }
 
 func DBtoReport(report database.Report) Report {
@@ -26,9 +28,11 @@ func DBtoReport(report database.Report) Report {
 		Radiologist: Physician{
 			Base: Base{ID: int(report.RadiologistID.Int64)},
 		},
-		Body:        report.Body,
-		Impression:  report.Impression,
-		Status:      objects.NewReportStatus(report.ReportStatus),
-		SubmittedDT: report.SubmittedDt.Time,
+		Body:           report.Body,
+		Impression:     report.Impression,
+		Status:         objects.NewReportStatus(report.ReportStatus),
+		DictationStart: report.DictationStart.Time,
+		DictationEnd:   report.DictationEnd.Time,
+		SubmittedDT:    report.SubmittedDt.Time,
 	}
 }

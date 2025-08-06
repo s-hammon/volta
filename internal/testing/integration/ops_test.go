@@ -283,6 +283,12 @@ func TestExamTimestampSequence(t *testing.T) {
 	assert.Equal(t, time.Date(2025, time.April, 4, 15, 30, 0, 0, time.UTC), exam.Begin)
 	assert.Equal(t, time.Date(2025, time.April, 4, 16, 0, 0, 0, time.UTC), exam.End)
 	assert.Equal(t, time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC), exam.Cancelled)
+
+	report, err := repo.Queries.GetAllReports(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(report))
+	require.Equal(t, time.Date(2025, time.April, 4, 20, 24, 45, 0, time.UTC), report[0].DictationStart.Time)
+	require.Equal(t, time.Date(2025, time.April, 4, 20, 25, 35, 0, time.UTC), report[0].DictationEnd.Time)
 }
 
 func testUpsertORM(t *testing.T, ctx context.Context, repo *entity.HL7Repo, d *hl7.Decoder) {
