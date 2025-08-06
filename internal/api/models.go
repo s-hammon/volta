@@ -146,25 +146,26 @@ func (o *ORM) ToOrder() *entity.Order {
 }
 
 type ORU struct {
-	FieldSeparator   string `hl7:"MSH.1"`
-	EncodingChars    string `hl7:"MSH.2"`
-	SendingApp       string `hl7:"MSH.3"`
-	SendingFac       string `hl7:"MSH.4"`
-	ReceivingApp     string `hl7:"MSH.5"`
-	ReceivingFac     string `hl7:"MSH.6"`
-	DateTime         string `hl7:"MSH.7"`
-	MsgType          CM_MSG `hl7:"MSH.9"`
-	ControlID        string `hl7:"MSH.10"`
-	ProcessingID     string `hl7:"MSH.11"`
-	Version          string `hl7:"MSH.12"`
-	MRN              CX     `hl7:"PID.3"`
-	PatientName      XPN    `hl7:"PID.5"`
-	DOB              string `hl7:"PID.7"`
-	Sex              string `hl7:"PID.8"`
-	SSN              string `hl7:"PID.19"`
-	VisitNo          string `hl7:"PV1.19"`
-	PatientClass     string `hl7:"PV1.2"`
-	AssignedLocation PL     `hl7:"PV1.3"`
+	FieldSeparator   string  `hl7:"MSH.1"`
+	EncodingChars    string  `hl7:"MSH.2"`
+	SendingApp       string  `hl7:"MSH.3"`
+	SendingFac       string  `hl7:"MSH.4"`
+	ReceivingApp     string  `hl7:"MSH.5"`
+	ReceivingFac     string  `hl7:"MSH.6"`
+	DateTime         string  `hl7:"MSH.7"`
+	MsgType          CM_MSG  `hl7:"MSH.9"`
+	ControlID        string  `hl7:"MSH.10"`
+	ProcessingID     string  `hl7:"MSH.11"`
+	Version          string  `hl7:"MSH.12"`
+	MRN              CX      `hl7:"PID.3"`
+	PatientName      XPN     `hl7:"PID.5"`
+	DOB              string  `hl7:"PID.7"`
+	Sex              string  `hl7:"PID.8"`
+	SSN              string  `hl7:"PID.19"`
+	VisitNo          string  `hl7:"PV1.19"`
+	PatientClass     string  `hl7:"PV1.2"`
+	AssignedLocation PL      `hl7:"PV1.3"`
+	DictationTimes   CM_DICT `hl7:"ORC.7"`
 }
 
 func (o *ORU) ToObservation(report entity.Report, exams ...Exam) *entity.Observation {
@@ -206,6 +207,8 @@ func (o *ORU) ToObservation(report entity.Report, exams ...Exam) *entity.Observa
 		},
 	}
 	observation.Report = report
+	observation.Report.DictationStart = convertCSTtoUTC(o.DictationTimes.StartDT)
+	observation.Report.DictationEnd = convertCSTtoUTC(o.DictationTimes.EndDT)
 	for _, exam := range exams {
 		observation.Exams = append(observation.Exams, exam.ToEntity(*site))
 	}
@@ -345,6 +348,13 @@ type CE struct {
 type CM_NDL struct {
 	ObservingPractitioner XCN    `hl7:"1"`
 	ObservationDT         string `hl7:"3"`
+}
+
+// Dictation Times (custom composite)
+type CM_DICT struct {
+	SubmitDT string `hl7:"1"`
+	StartDT  string `hl7:"2"`
+	EndDT    string `hl7:"3"`
 }
 
 func tryParseDOB(dob string) time.Time {
