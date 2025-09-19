@@ -1,8 +1,6 @@
 module github.com/s-hammon/volta
 
-go 1.24.0
-
-toolchain go1.24.3
+go 1.25.0
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2

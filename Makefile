@@ -26,6 +26,9 @@ reset:
 test:
 	@go test -cover ./...
 
+vet:
+	@go vet ./...
+
 test-packages:
 	go test -json $$(go list ./... | grep -v -e /bin -e /cmd -e /vendor -e /internal/api/models) |\
 		tparse --follow -sort=elapsed -trimpath=auto -all
@@ -46,4 +49,7 @@ ready: clean
 	golangci-lint run ./...
 	gosec -terse ./...
 
-.PHONY: build clean up down status reset test test-packages test-packages-short artifact ready
+bench-mllp-send: vet
+	go test -bench=Send -benchmem -benchtime=5s -cpu=1,2,4 ./pkg/mllp
+
+.PHONY: build clean up down status reset test test-packages test-packages-short artifact ready vet
