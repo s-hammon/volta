@@ -5,7 +5,7 @@ SCHEMA_DIR := sql/schema
 DATABASE_URL := ${DATABASE_URL}
 
 build:
-	@GOOS=${GOOS} GOARCH=${GOARCH} go build -o bin/${PROJECT_NAME} cmd/service/main.go
+	@GOOS=${GOOS} GOARCH=${GOARCH} go build -o bin/${PROJECT_NAME} cmd/${PROJECT_NAME}/main.go
 
 clean: reset up
 	@rm -rf bin

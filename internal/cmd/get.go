@@ -25,7 +25,6 @@ var cmdGet = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// log.Println("welcome to the client")
 		msg, err := client.GetHl7v2Message(args[0])
 		if err != nil {
 			return err
