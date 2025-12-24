@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"log"
-
 	"github.com/spf13/cobra"
 )
 
@@ -16,8 +14,8 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the Volta service",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		log.Printf("host: %s\tport: %s\n", host, port)
-		// log.Info().Str("host", host).Str("port", port).Msg("service configuration")
+		// log.Printf("host: %s\tport: %s\n", host, port)
+
 		return nil
 	},
 }
