@@ -1,11 +1,20 @@
 # Volta
 
-[![license](https://img.shields.io/github/license/s-hammon/volta)](https://github.com/s-hammon/volta/blob/master/LICENSE)
-[![Volta CI](https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml/badge.svg)](https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml)
-[![Go report
-Card](https://goreportcard.com/badge/github.com/s-hammon/volta)](https://goreportcard.com/report/github.com/s-hammon/volta)
-
-Volta is an HL7 message parsing service for use with the Google Healthcare API.
+<div align="center">
+    <img alt="volta logo" src="https://raw.githubusercontent.com/s-hammon/volta/master/assets/volta.png" width="400" height="300">
+</div>
+<div align="center">
+    <a href="https://github.com/s-hammon/volta/blob/master/LICENSE">
+        <img alt="license" src="https://img.shields.io/github/license/s-hammon/volta" />
+    </a>
+    <a href="https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml">
+        <img alt="Volta CI" src="https://github.com/s-hammon/volta/actions/workflows/volta-ci.yaml/badge.svg" />
+    </a>
+    <a href="https://goreportcard.com/report/github.com/s-hammon/volta">
+        <img alt="Go report card" src="https://goreportcard.com/badge/github.com/s-hammon/volta" />
+    </a>
+    <p>Volta is an HL7 message parsing service for use with the Google Healthcare API.</p>
+</div>
 
 ### Introduction
 
